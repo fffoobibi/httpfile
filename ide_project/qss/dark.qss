@@ -1,0 +1,21 @@
+QTabWidget::pane{
+border:none;
+}
+
+QTabWidget::tab-bar {
+     left: 5px;
+}
+
+QTabBar::tab {
+     background: gray;
+     border: 2px solid #C4C4C3;
+     border-bottom-color: #C2C7CB;
+     border-top-left-radius: 4px;
+     border-top-right-radius: 4px;
+     min-width: 60px;
+     padding: 2px;
+ }
+/*选中teble背景色*/
+QTabBar::tab:selected{
+    background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0.278409 rgba(118, 159, 193, 255), stop:1 rgba(255, 255, 255, 255));
+}

@@ -1,0 +1,228 @@
+from datetime import datetime
+from urllib.parse import urlparse
+
+import aiohttp
+from PyQt5.QtCore import QModelIndex, Qt, QRectF
+from PyQt5.QtGui import QStandardItem, QCursor, QStandardItemModel, QPainter, QTextOption
+from PyQt5.QtWidgets import QDialog, QWidget, QGridLayout, QLabel, QLineEdit, QMenu, QStyledItemDelegate, QStyle
+
+from pyqt5utils.components import Message, Confirm
+from widgets.components import VirtualFileSystemTreeView
+from widgets.base import PluginBaseMixIn
+from widgets.signals import signal_manager
+
+from . import register
+
+
+@register('远程连接', index=0)
+class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn):
+    class _TreeViewDelegate(QStyledItemDelegate):
+        def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex) -> None:
+            data = index.data(Qt.UserRole)
+            super().paint(painter, option, index)
+            if option.state & QStyle.State_HasFocus and data is None:
+                option.font.setBold(True)
+            if data is None:  # and option.state & QStyle.State_MouseOver:
+                dt = index.data(Qt.UserRole + 3)
+                if dt:
+                    painter.setPen(Qt.darkGray)
+                    text = NetWorkFileSystemTreeView.format_time(dt)
+                    fm_width = option.fontMetrics.width(text)
+                    display = index.data(Qt.DisplayRole)
+                    display_width = option.fontMetrics.width(display)
+                    rect = option.rect
+                    if fm_width + display_width > rect.width():
+                        fm_width = rect.width() - display_width - 30
+                        text = option.fontMetrics.elidedText(text, Qt.ElideRight, rect.width() - display_width - 30,
+                                                             Qt.AlignRight)
+                    painter.drawText(QRectF(rect.width() - fm_width, rect.y(), fm_width, rect.height()), text,
+                                     QTextOption())
+
+    def after_init(self):
+        self.init_header_bar()
+        self.load_remote_from_local()
+        self.setStyleSheet('QTreeView{border:none}')
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.menu_policy)
+
+        print('load ', self.settings.value(self.config_name('remote_logs'), defaultValue={}))
+
+    def init_header_bar(self):
+        btn = self.add_header_item('', ':/icon/tianjia.svg', '添加新的地址')
+        btn1 = self.add_header_item('', ':/icon/crosshairmiaozhun.svg', '选择打开的文件')
+        btn2 = self.add_header_item('', ':/icon/24gf-shrinkVertical2.svg', '全部收起')
+        btn3 = self.add_header_item('', ':/icon/24gf-expandVertical2.svg', '全部展开')
+        btn4 = self.add_header_item('', ':/icon/shezhixitongshezhigongnengshezhishuxing.svg', '显示选项菜单')
+        btn.clicked.connect(self.add_new_remote)
+        btn2.clicked.connect(lambda e: self.collapseAll())
+        btn3.clicked.connect(self.expandAll)
+
+    ### menu
+    def menu_policy(self):
+        if self.model().rowCount():
+            index = self.currentIndex()
+            is_root_item = index.data(Qt.UserRole + 2)
+            if is_root_item:
+                menu = QMenu()
+                ac1 = menu.addAction('开始连接')
+                menu.addSeparator()
+                act2 = menu.addAction('同步所有文件')
+                act = menu.exec_(QCursor.pos())
+                if act == ac1:
+                    model: QStandardItemModel = self.model()
+                    current_item = model.itemFromIndex(index)
+                    self.connect_remote_addr(current_item)
+                elif act == act2:
+                    pass
+                print('c ', index.data(Qt.UserRole + 1))
+
+    def add_new_remote(self):
+        def ok():
+            if http_line.text() and name_line.text():
+                http = http_line.text()
+                name = name_line.text()
+                if not http.startswith('http'):
+                    http = f'http://{http}'
+                addr, port = self._get_host_port(http)
+                self.load_remote_addr(addr, port, name)
+
+        content = QWidget()
+        content.setStyleSheet('QLabel, QLineEdit{font-family:微软雅黑;padding-top:2px; padding-bottom:2px}')
+        content_lay = QGridLayout(content)
+        content_lay.addWidget(QLabel('地址'), 0, 0)
+        http_line = QLineEdit()
+        http_line.setPlaceholderText(' http://url:port')
+        http_line.setClearButtonEnabled(True)
+        content_lay.addWidget(http_line, 0, 1)
+        content_lay.addWidget(QLabel('名称'), 1, 0)
+        name_line = QLineEdit()
+        name_line.setPlaceholderText(' 显示名称')
+        name_line.setClearButtonEnabled(True)
+        content_lay.addWidget(name_line, 1, 1)
+        Confirm.msg(title='添加新的连接', target=self, content=content, ok=ok)
+
+    def load_remote_from_local(self):
+        def add_site_item(addr, port, name):
+            item = QStandardItem()
+            path = f'http://{addr}:{port}'
+            self.add_api_root(path, name, item)
+
+        remotes: dict = self.settings.value(self.config_name('remote_logs'), defaultValue={})
+        for k, value in remotes.items():
+            url, name = value
+            addr, port = self._get_host_port(url)
+            add_site_item(addr, port, name)
+            # self.load_remote_addr(addr, port, name)
+
+    def load_remote_addr(self, addr, port, name):
+        item = QStandardItem()
+        self.worker.add_coro(self._fetch_remote(addr, port, name, item, False), call_back=self._fetch_call_back,
+                             err_back=self._fetch_error)
+
+    def connect_remote_addr(self, root_item: QStandardItem):
+        name = root_item.data(Qt.DisplayRole)
+        url = root_item.data(Qt.UserRole + 1)
+        addr, port = self._get_host_port(url)
+        self.worker.add_coro(self._fetch_remote(addr, port, name, root_item, True), call_back=self._fetch_call_back,
+                             err_back=self._fetch_error)
+
+    async def _fetch_remote(self, addr, port, name, item, add_new):
+        url = f'http://{addr}:{port}'
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                resp.raise_for_status()
+                json = await resp.json()
+                return json['data'], url, name, item, add_new
+
+    def _fetch_call_back(self, ret_val):
+        ret, http_path, name, _, add_new = ret_val
+        self.clear_model()
+        item = self.add_api_root(http_path, name)
+        item.setData(datetime.now(), Qt.UserRole + 3)
+        self.load_dir_to_root(item, ret, http_path)
+        self.setHorizontalHeaderLabels('项目')
+        remote_log_key = self.config_name('remote_logs')
+        remote_logs: dict = self.settings.value(remote_log_key, defaultValue={})
+        remote_logs[remote_log_key] = [http_path, name]
+        self.settings.setValue(remote_log_key, remote_logs)
+
+    def _fetch_error(self, error):
+        print('fetch error ', error)
+        sm = signal_manager
+        sm.emit(sm.warn, error, 2500)
+
+    def click_slot(self, index: QModelIndex):
+        pass
+
+    #####
+    def double_click_slot(self, index: QModelIndex):
+        def _down_load_err(err):
+            pass
+
+        def _down_call_back(ret):
+            text, url = ret
+            signal_manager.emit(signal_manager.openUrlFile, url, text)
+
+        display, url, is_dir = index.data(Qt.DisplayRole), index.data(Qt.UserRole), index.data(Qt.UserRole + 1)
+        self.worker.add_coro(self._download(url, is_dir), _down_call_back, _down_load_err)
+
+    async def _download(self, url, is_dir):
+        if not is_dir:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    resp.raise_for_status()
+                    ret = await resp.text()
+                    return ret, url
+        return '', url
+
+    ### utils
+    def _get_host_port(self, url: str):
+        """
+        127.0.0.1:9999
+        """
+        parse = urlparse(url)
+        return parse.hostname, parse.port
+
+    @classmethod
+    def _display_time(cls, seconds, granularity=2):
+        intervals = (
+            ('周', 604800),  # 60 * 60 * 24 * 7
+            ('天', 86400),  # 60 * 60 * 24
+            ('小时', 3600),  # 60 * 60
+            ('分', 60),
+            ('秒', 1),
+        )
+        result = []
+        for name, count in intervals:
+            value = seconds // count
+            if value:
+                seconds -= value * count
+                if value == 1:
+                    name = name.rstrip('s')
+                result.append("{} {}".format(value, name))
+        return ', '.join(result[:granularity])
+
+    @classmethod
+    def format_time(cls, time: datetime) -> str:
+        time_delta = datetime.now() - time
+        total_seconds = time_delta.total_seconds()
+        return f'(更新于{time.strftime("%m/%d %H:%M:%S")})'
+        if time_delta.days > 1:
+            return f'(更新于{time.strftime("%Y-%m-%d %H:%M:%S")})'
+        else:
+            m, s = divmod(total_seconds, 60)
+            h, m = divmod(m, 60)
+            return f'(更新于{cls._display_time(total_seconds)}前)'
+
+    ###
+    def when_app_exit(self, main_app):
+        config_key = self.config_name('width')
+        if self.width() != 640:
+            self.settings.setValue(config_key, self.width())
+
+    def when_app_start_up(self, main_app):
+        config_key = self.config_name('width')
+        default = self.settings.value(config_key)
+        sm = main_app.sm
+        if default is not None:
+            sm.emit(sm.changeSplitSize, default, 10)
