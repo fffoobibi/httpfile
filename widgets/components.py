@@ -343,6 +343,14 @@ class CodeTabWidget(QTabWidget):
         #     self.setTabToolTip(count, widget.raw_file)
 
 
+FileNameFlag = Qt.DisplayRole
+RootUriFlag = Qt.UserRole
+FileUriFlag = Qt.UserRole + 1
+DirFlag = Qt.UserRole + 2
+ModifyFlag = Qt.UserRole + 3
+RootItemFlag = Qt.UserRole + 4
+
+
 class VirtualFileSystemTreeView(QTreeView):
     class _TreeViewDelegate(QStyledItemDelegate):
         def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex) -> None:
@@ -412,7 +420,7 @@ class VirtualFileSystemTreeView(QTreeView):
     def clear_model(self):
         self.model().clear()
 
-    def add_api_root(self, path: str, name, item: QStandardItem = None):
+    def add_api_root(self, base_url: str, name, item: QStandardItem = None):
         """
         item:
         Qt.UserRole+1 url_path
@@ -422,14 +430,37 @@ class VirtualFileSystemTreeView(QTreeView):
         if item is None:
             item = QStandardItem()
         item.setText(name)
-        item.setData(path, Qt.UserRole + 1)
-        item.setData(True, Qt.UserRole + 2)
-        item.setToolTip(path)
+        item.setData(base_url, RootUriFlag)
+        item.setData(True, DirFlag)
+        item.setData(True, RootItemFlag)
+        item.setToolTip(base_url)
         self.__model.appendRow(item)
         return item
 
-    def load_dir_to_root(self, item: QStandardItem, data: list, base_url: str):
-        self._process_model_data(item, data, base_url=base_url)
+    def load_dir_to_root(self, root_item: QStandardItem, data: dict, base_url: str):
+        self._process_model_data2(root_item, data, base_url=base_url)
+        path_root_item = root_item.takeChild(0, 0)
+        path_root_item.setText(root_item.text())
+        path_root_item.setToolTip(base_url)
+        path_root_item.setData(base_url, RootUriFlag)
+        path_root_item.setData(True, DirFlag)
+        path_root_item.setData(True, RootItemFlag)
+
+        self.__model.appendRow(path_root_item)
+        row_count = self.__model.rowCount()
+        self.__model.takeRow(row_count - 2)
+
+    def add_dir_root(self, name: str, data: dict, base_url: str):
+        item = QStandardItem()
+        item.setText(name)
+        self._process_model_data2(item, data, base_url=base_url)
+        out = item.takeChild(0, 0)
+        out.setText(name)
+        out.setToolTip(base_url)
+        out.setData(base_url, RootUriFlag)
+        out.setData(True, DirFlag)
+        self.__model.appendRow(out)
+        return out
 
     def setHorizontalHeaderLabels(self, data):
         self.__model.setHorizontalHeaderLabels([''])
@@ -462,56 +493,55 @@ class VirtualFileSystemTreeView(QTreeView):
     def add_header_item(self, content: str, icon: str, tool_tip: str) -> QPushButton:
         return self.__header.header_widget.add_item(content, icon, tool_tip)
 
-    def _process_model_data(self, model: QStandardItem, data: list, parent_item: QStandardItem = None,
-                            base_url: str = None):
-        """
-        item:
-            Qt.UserRole+1 file_path
-            Qt.UserRole+2 dir_flag
-        """
-        for d in data:
-            if isinstance(d, list):
-                if d:
-                    dir_name = d[-1].split('\\')[-2]
-                    abs_path = '\\'.join(d[-1].split('\\')[:-1])
-                    dir_item = QStandardItem(dir_name)
-                    dir_item.setEditable(False)
-                    dir_item.setText(dir_name)
-                    url_path = abs_path.replace("\\", "/")
-                    dir_item.setData(f'{base_url}{url_path}', Qt.UserRole)
-                    dir_item.setData(True, Qt.UserRole + 1)
-                    dir_item.setIcon(self.icon_provider('', True))
-                    if parent_item is not None:
-                        parent_item.appendRow(dir_item)
-                    else:
-                        model.appendRow(dir_item)
-
-                    self._process_model_data(model, d, dir_item, base_url)
-            else:
-                item_name = d.split('\\')[-1]
-                item = QStandardItem(item_name)
-                item.setEditable(False)
-                url_path = d.replace('\\', '/')
-                item.setData(f'{base_url}{url_path}', Qt.UserRole)
-                item.setData(False, Qt.UserRole + 1)
-                item.setIcon(self.icon_provider(d, False))
-                if parent_item is None:
-                    model.appendRow(item)
-                else:
-                    parent_item.appendRow(item)
-
-        return model
-
-    def _model_data_test(self, current: Path):
+    def _model_data_test2(self, current: Path) -> dict:
         dirs = list(current.iterdir())
-        ret_ = []
+        root = {}
+        top_path = current.__str__()
         dirs.sort(key=lambda e: 0 if e.is_dir() else 1)
         for d in dirs:
             if d.is_file():
-                ret_.append(d.__str__())
+                v = root.setdefault(top_path, [])
+                v.append(d.__str__())
             else:
-                ret_.append(self._model_data_test(d))
-        return ret_
+                v = root.setdefault(top_path, [])
+                v.append(self._model_data_test2(d))
+        if not dirs:
+            root.setdefault(top_path, [])
+
+        return root
+
+    def _process_model_data2(self, model: QStandardItem, data: dict, parent_item: QStandardItem = None, base_url: str = None):
+        """
+           item:
+               Qt.UserRole   http_path file_item
+               Qt.UserRole+1 is_dir bool
+               # Qt.UserRole+2 dir_flag
+           """
+        for d, v in data.items():
+            dir_name = d.split('\\')[-1]
+            dir_item = QStandardItem(dir_name)
+            dir_item.setData(f'{base_url}', FileUriFlag)
+            dir_item.setData(True, DirFlag)
+            dir_item.setIcon(self.icon_provider('', True))
+            dir_item.setEditable(False)
+            if parent_item is None:
+                model.appendRow(dir_item)
+            else:
+                parent_item.appendRow(dir_item)
+            for value in v:
+                if isinstance(value, dict):
+                    self._process_model_data2(model, value, dir_item, base_url)
+                else:
+                    file_name = value.split('\\')[-1]
+                    file_uri = base_url + value.replace('\\', '/')
+                    file_item = QStandardItem()
+                    file_item.setText(file_name)
+                    file_item.setData(file_uri, FileUriFlag)
+                    file_item.setData(False, DirFlag)
+                    file_item.setIcon(self.icon_provider(file_name, False))
+                    file_item.setEditable(False)
+                    dir_item.appendRow(file_item)
+        return model
 
 
 if __name__ == '__main__':

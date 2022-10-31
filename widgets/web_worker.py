@@ -1,23 +1,30 @@
 from pathlib import Path
 
-from flask import Flask, Response
+from flask import Flask
 from multiprocessing import Process
 
 
-def _web_task(static_folder: str, port=6666):
+def _web_task(static_folder: str, port=9527):
     app = Flask(__name__, static_folder=static_folder, static_url_path='/')
     replace_name = Path(static_folder).__str__()
+    print('replace_name ', replace_name)
 
-    def _process(current: Path):
+    def _process(current: Path) -> dict:
         dirs = list(current.iterdir())
-        ret_ = []
+        root = {}
+        top_path = current.__str__().replace(replace_name, '')
         dirs.sort(key=lambda e: 0 if e.is_dir() else 1)
         for d in dirs:
             if d.is_file():
-                ret_.append(d.__str__().replace(replace_name, ''))
+                v = root.setdefault(top_path, [])
+                v.append(d.__str__().replace(replace_name, ''))
             else:
-                ret_.append(_process(d))
-        return ret_
+                v = root.setdefault(top_path, [])
+                v.append(_process(d))
+        if not dirs:
+            root.setdefault(top_path, [])
+
+        return root
 
     @app.get('/')
     def index():

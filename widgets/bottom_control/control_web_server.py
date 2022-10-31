@@ -26,9 +26,14 @@ class WebControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn):
         from widgets.mainwidget import MainWidget
         main_app: MainWidget = self.gp('main_app')
         web_server_path = main_app.r_run_time.current
-        self.process_id = web_server_run(web_server_path)
+        print('web server path ', web_server_path)
+        self.process_id = web_server_run(web_server_path.__str__())
 
     def stop_web_task(self):
         if self.process_id is not None:
             self.process_id.terminate()
             self.process_id = None
+
+    def when_app_exit(self, main_app):
+        print('close web task')
+        self.stop_web_task()

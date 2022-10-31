@@ -80,4 +80,4 @@ class Ui_Form(object):
         Form.setWindowTitle(_translate("Form", "Form"))
         self.label.setText(_translate("Form", "文件过滤"))
         self.label_2.setText(_translate("Form", "启用端口"))
-import ide_sources_rc
+from widgets.ide_sources_rc import *
