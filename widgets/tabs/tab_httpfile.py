@@ -5,7 +5,7 @@ from PyQt5.QtGui import QColor, QFont
 
 from pyqt5utils.qsci.lexers.http_file import HttpFileLexer, CustomStyles
 from pyqt5utils.qsci.base import BaseCodeWidget
-from . import register
+from . import register, TabCodeMixIn
 
 
 class HttpFileStyles(CustomStyles):
@@ -93,6 +93,9 @@ class TabHttpLexer(HttpFileLexer):
 
 
 @register(file_types=['http'])
-class HTTPFileCodeWidget(BaseCodeWidget):
+class HTTPFileCodeWidget(BaseCodeWidget, TabCodeMixIn):
     def set_lexer(self) -> Any:
         return TabHttpLexer(self)
+
+    def after_init(self):
+        self._after_init()

@@ -1,21 +1,19 @@
+import sys
 from pathlib import Path
 
 from PyQt5.QtCore import QModelIndex, QPoint, QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction
-
-from pyqt5utils.components import Message
-from ui.main2ui import Ui_MainWindow
-from widgets.base import PluginBaseMixIn
-from widgets.bottom_control import load_control_widgets
-from widgets.components import FileSystemModel
-from widgets.left_control import load_left_control_widgets
-from widgets.signals import app_exit, app_start_up
-from widgets.tabs import load_tab_widgets
-
 from pydantic import BaseModel, Field
 
-from widgets.toolbar_actions import load_toolbar_actions
+from pyqt5utils.components import Message
+from pyqt5utils.components.styles import StylesHelper
+from ui.main2ui import Ui_MainWindow
+from widgets.base import PluginBaseMixIn
+from widgets.collect import collect_plugins, Collections
+from widgets.components import FileSystemModel
+from widgets.signals import app_exit, app_start_up
+from widgets.utils import ConfigProvider, ConfigKey
 
 
 class RunTime(BaseModel):
@@ -24,6 +22,8 @@ class RunTime(BaseModel):
 
 class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
     model: FileSystemModel = None
+    plugins: Collections  # type hint
+    single_step = ConfigProvider.default(ConfigKey.general, 'single_step')
 
     def __init__(self):
         super().__init__()
@@ -45,9 +45,9 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     def load_tool_bar(self):
         self.toolbar = self.addToolBar('File')
-        cl = sorted(toolbar_actions, key=lambda k: toolbar_actions[k]['index'])
+        cl = sorted(self.plugins.toolbar_actions, key=lambda k: self.plugins.toolbar_actions[k]['index'])
         for clz in cl:
-            v = toolbar_actions.get(clz)
+            v = self.plugins.toolbar_actions.get(clz)
             tool_tip, icon = v.get('tool_tip'), v.get('icon')
             action_provider = clz(self)
             action: QAction = action_provider.make_action(icon, tool_tip, self)
@@ -58,6 +58,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     def after_init(self):
         self.set_provider('main_app', self)
+        StylesHelper.set_v_history_style_dynamic(self.treeView, color='#CFCFCF', background='transparent', width=10)
+        StylesHelper.set_h_history_style_dynamic(self.treeView, color='#CFCFCF', background='transparent', height=10)
+        self.treeView.setVerticalScrollMode(self.treeView.ScrollPerPixel)
+        self.treeView.verticalScrollBar().setSingleStep(self.single_step.value)
+        self.treeView.setHorizontalScrollMode(self.treeView.ScrollPerPixel)
+        self.treeView.horizontalScrollBar().setSingleStep(self.single_step.value)
         app_start_up.send(self)
 
     def init_signal_manager(self):
@@ -91,7 +97,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
         self.tabWidget.tabCloseRequested.connect(remove_tab)
 
-        work_path = Path.cwd().parent.__str__()
+        work_path = Path.cwd().__str__()
         self.model = FileSystemModel(work_path)
         self.treeView.setModel(self.model)
         self.treeView.doubleClicked.connect(click_file)
@@ -106,10 +112,10 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     def load_left(self):
         i = 0
-        cl = sorted(left_controls, key=lambda k: left_controls[k]['index'])
+        cl = sorted(self.plugins.left_controls, key=lambda k: self.plugins.left_controls[k]['index'])
         for k in cl:
             i += 1
-            v = left_controls[k]
+            v = self.plugins.left_controls[k]
             name = v['name']
             self.tabWidget_2.addTab(k(), name)
 
@@ -119,10 +125,10 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
     def load_bottom(self):
         self.bottom_groups = QButtonGroup()
         i = 0
-        cl = sorted(controls, key=lambda k: controls[k]['index'])
+        cl = sorted(self.plugins.controls, key=lambda k: self.plugins.controls[k]['index'])
         for k in cl:
             i += 1
-            v = controls[k]
+            v = self.plugins.controls[k]
             name, icon = v['name'], v['icon']
             btn = QPushButton()
             btn.setCheckable(True)
@@ -158,7 +164,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         print('call add tab', file_type, file_name, file_path)
         if url is None:
             def _create_tab_code_widget():
-                for k, v in tabs.items():
+                for k, v in self.plugins.tabs.items():
                     if file_type in v:
                         code = k()
                         code.load_file(file_path)
@@ -169,10 +175,10 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             self.tabWidget.setCurrentWidget(tab)
         else:
             file_type = url.split('.')[-1] + ' File'
-            print('here', file_type, tabs)
+            print('here', file_type, self.plugins.tabs)
 
             def _create_tab_code_widget():
-                for k, v in tabs.items():
+                for k, v in self.plugins.tabs.items():
                     if file_type in v:
                         code = k()
                         code.load_content(content)
@@ -205,17 +211,24 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         self.settings.setValue(key, [pos.x(), pos.y()])
         self.settings.setValue(size_key, [w, h])
 
+    @classmethod
+    def run(cls):
+        plugins = collect_plugins()
+        cls.plugins = plugins
+        app = QApplication(sys.argv)
+        mainapp = cls()
+        mainapp.show()
+        app.exec_()
 
-if __name__ == '__main__':
-    folder = Path.cwd().parent.__str__()
-    tabs = load_tab_widgets()
-    controls = load_control_widgets()
-    left_controls = load_left_control_widgets()
-    toolbar_actions = load_toolbar_actions()
-    # process = web_server_run(folder)
 
-    app = QApplication([])
-    mainapp = MainWidget()
-    mainapp.show()
-    app.exec_()
-    # process.terminate()
+run = MainWidget.run
+# if __name__ == '__main__':
+# folder = Path.cwd().parent.__str__()
+# tabs = load_tab_widgets()
+# controls = load_control_widgets()
+# left_controls = load_left_control_widgets()
+# toolbar_actions = load_toolbar_actions()
+# app = QApplication([])
+# mainapp = MainWidget()
+# mainapp.show()
+# app.exec_()
