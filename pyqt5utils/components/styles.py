@@ -336,8 +336,8 @@ class Sh(str, Enum):
     '''
 
     history_v_scroll_style_dynamic = '''
-        QScrollBar:vertical {background: #E4E4E4;padding: 0px; border-radius: 3px;max-width: 8px;}
-        QScrollBar::handle:vertical {background: %s; min-height: 20px; border-radius: 3px;}
+        QScrollBar:vertical {background: %s;padding: 0px; border-radius: 0px;max-width: %spx;}
+        QScrollBar::handle:vertical {background: %s; min-height: 20px; border-radius: 0px;}
         QScrollBar::handle:vertical:hover {background: %s;}
         QScrollBar::handle:vertical:pressed {background: %s;}
         QScrollBar::add-page:vertical {background: none;height:0px}
@@ -346,6 +346,19 @@ class Sh(str, Enum):
         QScrollBar::sub-line:vertical {background: none;height:0px}
         QScrollBar::down-arrow:vertical{height:0px}
         QScrollBar::up-arrow:vertical{height:0px}
+    '''
+
+    history_h_scroll_style_dynamic = '''
+        QScrollBar:horizontal {background: %s;padding: 0px; border-radius: 0px; max-height: %spx;}
+        QScrollBar::handle:horizontal {background: %s; min-width: 20px; border-radius: 0px;}
+        QScrollBar::handle:horizontal:hover {background: %s;}
+        QScrollBar::handle:horizontal:pressed {background: %s;}
+        QScrollBar::add-page:horizontal {background: none;height:0px}
+        QScrollBar::sub-page:horizontal {background: none;height:0px}
+        QScrollBar::add-line:horizontal {background: none;height:0px}
+        QScrollBar::sub-line:horizontal {background: none;height:0px}
+        QScrollBar::down-arrow:horizontal{height:0px}
+        QScrollBar::up-arrow:horizontal{height:0px}
     '''
 
     history_v_gray_scroll_style = '''
@@ -711,8 +724,16 @@ class StylesHelper(object):
             t.horizontalScrollBar().setStyleSheet(Sh.history_h_scroll_style)
 
     @classmethod
-    def set_h_history_style_dynamic(cls, target, color: str, hover: str):
-        target.verticalScrollBar().setStyleSheet(Sh.history_v_scroll_style_dynamic % (color, hover, hover))
+    def set_v_history_style_dynamic(cls, *target: QListView, color: str, background: str, width: int = 8):
+        for t in target:
+            t.verticalScrollBar().setStyleSheet(
+                Sh.history_v_scroll_style_dynamic % (background, width, color, color, color))
+
+    @classmethod
+    def set_h_history_style_dynamic(cls, *target: QListView, color: str, background: str, height: int = 8):
+        for t in target:
+            t.horizontalScrollBar().setStyleSheet(
+                Sh.history_h_scroll_style_dynamic % (background, height, color, color, color))
 
     @classmethod
     def set_list_view_style(cls, *target: QListView, background='transparent', text_color='transparent',

@@ -7,13 +7,13 @@ from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup
 from pydantic import BaseModel, Field
 
 from pyqt5utils.components import Message
+from pyqt5utils.components.styles import StylesHelper
 from ui.main2ui import Ui_MainWindow
 from widgets.base import PluginBaseMixIn
 from widgets.collect import collect_plugins, Collections
 from widgets.components import FileSystemModel
 from widgets.signals import app_exit, app_start_up
 from widgets.utils import ConfigProvider, ConfigKey
-from widgets.config import configs
 
 
 class RunTime(BaseModel):
@@ -23,6 +23,7 @@ class RunTime(BaseModel):
 class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
     model: FileSystemModel = None
     plugins: Collections  # type hint
+    single_step = ConfigProvider.default(ConfigKey.general, 'single_step')
 
     def __init__(self):
         super().__init__()
@@ -57,6 +58,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     def after_init(self):
         self.set_provider('main_app', self)
+        StylesHelper.set_v_history_style_dynamic(self.treeView, color='#CFCFCF', background='transparent', width=10)
+        StylesHelper.set_h_history_style_dynamic(self.treeView, color='#CFCFCF', background='transparent', height=10)
+        self.treeView.setVerticalScrollMode(self.treeView.ScrollPerPixel)
+        self.treeView.verticalScrollBar().setSingleStep(self.single_step.value)
+        self.treeView.setHorizontalScrollMode(self.treeView.ScrollPerPixel)
+        self.treeView.horizontalScrollBar().setSingleStep(self.single_step.value)
         app_start_up.send(self)
 
     def init_signal_manager(self):

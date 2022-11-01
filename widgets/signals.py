@@ -1,5 +1,11 @@
+import typing
+from threading import Thread
+
 from blinker import signal
 from pyqt5utils.decorators import singleton
+from multiprocessing import Queue, Process, freeze_support
+
+freeze_support()
 
 app_exit = signal('app_exit')
 app_start_up = signal('app_start_up')
@@ -33,3 +39,35 @@ class SignalManager(object):
 
 
 signal_manager = SignalManager()
+
+
+class ProcessSignalMixIn(object):
+    _queues: typing.Dict[str, Queue] = {}
+
+    def fork(self, event: str, *a):
+        if self._queues.get(event, None) is None:
+            queue = Queue()
+            self._queues[event] = queue
+
+        def _threading_task():
+            while True:
+                data = self._queues[event].get()
+                self.when_accept_msg(data)
+
+        def _process_task():
+            self.fork_func(*a)
+            t = Thread(target=_threading_task)
+            t.start()
+
+        process = Process(target=_process_task, args=())
+        process.start()
+        return process
+
+    def push_msg(self, event, v: typing.Any):
+        self._queues[event].put(v)
+
+    def when_accept_msg(self, v: typing.Any):
+        pass
+
+    def fork_func(self, *a):
+        pass

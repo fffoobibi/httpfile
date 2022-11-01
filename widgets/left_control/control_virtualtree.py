@@ -6,11 +6,15 @@ from pathlib import Path
 
 import aiohttp
 from PyQt5.QtCore import QModelIndex, Qt, QRectF
-from PyQt5.QtGui import QStandardItem, QCursor, QStandardItemModel, QPainter, QTextOption
-from PyQt5.QtWidgets import QDialog, QWidget, QGridLayout, QLabel, QLineEdit, QMenu, QStyledItemDelegate, QStyle, QHBoxLayout, QPushButton
+from PyQt5.QtGui import QStandardItem, QCursor, QStandardItemModel, QPainter, QTextOption, QColor
+from PyQt5.QtWidgets import QDialog, QWidget, QGridLayout, QLabel, QLineEdit, QMenu, QStyledItemDelegate, QStyle, \
+    QHBoxLayout, QPushButton, QScrollBar
 
 from pyqt5utils.components import Message, Confirm
-from widgets.components import VirtualFileSystemTreeView, DirFlag, RootUriFlag, FileUriFlag, FileNameFlag, ModifyFlag, RootItemFlag
+from pyqt5utils.components.helper import ObjectsHelper
+from pyqt5utils.components.styles import StylesHelper
+from widgets.components import VirtualFileSystemTreeView, DirFlag, RootUriFlag, FileUriFlag, FileNameFlag, ModifyFlag, \
+    RootItemFlag
 from widgets.base import PluginBaseMixIn
 from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
@@ -23,6 +27,7 @@ WorkPathFlag = Qt.UserRole + 10
 @register('远程连接', index=0)
 class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn):
     default_work_path: str = ConfigProvider.default(ConfigKey.left_control_virtualtree, 'work_path')
+    single_step = ConfigProvider.default(ConfigKey.general, 'single_step')
 
     class _TreeViewDelegate(QStyledItemDelegate):
         def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex) -> None:
@@ -53,7 +58,13 @@ class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn):
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.menu_policy)
 
-        print('load ', self.settings.value(self.config_name('remote_logs'), defaultValue={}))
+        StylesHelper.set_v_history_style_dynamic(self, color='#CFCFCF', background='transparent', width=10)
+        StylesHelper.set_h_history_style_dynamic(self, color='#CFCFCF', background='transparent', height=10)
+        self.setVerticalScrollMode(self.ScrollPerPixel)
+        self.verticalScrollBar().setSingleStep(self.single_step.value)
+        self.setHorizontalScrollMode(self.ScrollPerPixel)
+        self.horizontalScrollBar().setSingleStep(self.single_step.value)
+
 
     def init_header_bar(self):
         btn = self.add_header_item('', ':/icon/tianjia.svg', '添加新的地址')
@@ -116,7 +127,7 @@ class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn):
         work_f_lay.setContentsMargins(0, 0, 0, 0)
         work_line = QLineEdit()
         work_line.setClearButtonEnabled(False)
-        work_line.setText(self.default_work_path)
+        work_line.setText(self.default_work_path.value)
         work_line.setEnabled(False)
         work_line_btn = QPushButton()
         work_line_btn.setStyleSheet('QPushButton{border:none;background:transparent}')
@@ -174,15 +185,17 @@ class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn):
 
     def load_remote_addr(self, addr, port, name, work_path: str):
         item = QStandardItem()
-        self.worker.add_coro(self._fetch_remote_data(addr, port, name, item, False, work_path), call_back=self._fetch_call_back,
+        self.worker.add_coro(self._fetch_remote_data(addr, port, name, item, False, work_path),
+                             call_back=self._fetch_call_back,
                              err_back=self._fetch_error)
 
     def connect_remote_addr(self, root_item: QStandardItem):
         name = root_item.data(FileNameFlag)
         url = root_item.data(RootUriFlag)
-        work_path = root_item.data(WorkPathFlag) or self.default_work_path
+        work_path = root_item.data(WorkPathFlag) or self.default_work_path.value
         addr, port = self._get_host_port(url)
-        self.worker.add_coro(self._fetch_remote_data(addr, port, name, root_item, True, work_path), call_back=self._fetch_call_back,
+        self.worker.add_coro(self._fetch_remote_data(addr, port, name, root_item, True, work_path),
+                             call_back=self._fetch_call_back,
                              err_back=self._fetch_error)
 
     async def _fetch_remote_data(self, addr, port, name, item, add_new, work_path):
@@ -203,7 +216,7 @@ class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn):
         self.setHorizontalHeaderLabels('项目')
         remote_log_key = self.config_name('remote_logs')
         remote_logs: dict = self.settings.value(remote_log_key, defaultValue={})
-        remote_logs[remote_log_key] = [http_path, name, remote_logs.get('work_path') or self.default_work_path]
+        remote_logs[remote_log_key] = [http_path, name, remote_logs.get('work_path') or self.default_work_path.value]
         # create work path
         dir_name = re.sub(r'[+\-*/\\<>?:"|]', '_', http_path + name)
         path = Path(work_path) / dir_name
@@ -251,7 +264,7 @@ class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn):
     def _get_item_work_dir(self, root_item: QStandardItem) -> Path:
         name = root_item.data(FileNameFlag)
         http_path = root_item.data(RootUriFlag)
-        work_path = root_item.data(WorkPathFlag) or self.default_work_path
+        work_path = root_item.data(WorkPathFlag) or self.default_work_path.value
         dir_name = re.sub(r'[+\-*/\\<>?:"|]', '_', http_path + name)
         return Path(work_path) / dir_name
 

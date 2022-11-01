@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from flask import Flask
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 
 
 def _web_task(static_folder: str, port=9527):

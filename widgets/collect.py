@@ -14,6 +14,7 @@ Collections = namedtuple('Collections', 'folder tabs controls left_controls tool
 
 def collect_plugins() -> Collections:
     ConfigProvider.register_configs(configs)
+    print(ConfigProvider._defaults)
     folder = Path.cwd().__str__()
     tabs = load_tab_widgets()
     controls = load_control_widgets()

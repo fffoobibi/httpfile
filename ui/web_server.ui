@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>550</width>
-    <height>154</height>
+    <height>157</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -34,6 +34,23 @@ QTextBrowser{border:none}</string>
         <iconset resource="../sources/ide_sources.qrc">
          <normaloff>:/icon/运行，调试.svg</normaloff>:/icon/运行，调试.svg</iconset>
        </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_3">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="../sources/ide_sources.qrc">
+         <normaloff>:/icon/重新开始,恢复_jurassic.svg</normaloff>:/icon/重新开始,恢复_jurassic.svg</iconset>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item>
@@ -44,6 +61,9 @@ QTextBrowser{border:none}</string>
        <property name="icon">
         <iconset resource="../sources/ide_sources.qrc">
          <normaloff>:/icon/停止.svg</normaloff>:/icon/停止.svg</iconset>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
