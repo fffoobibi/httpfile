@@ -222,13 +222,3 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
 
 run = MainWidget.run
-# if __name__ == '__main__':
-# folder = Path.cwd().parent.__str__()
-# tabs = load_tab_widgets()
-# controls = load_control_widgets()
-# left_controls = load_left_control_widgets()
-# toolbar_actions = load_toolbar_actions()
-# app = QApplication([])
-# mainapp = MainWidget()
-# mainapp.show()
-# app.exec_()

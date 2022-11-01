@@ -29,3 +29,6 @@ class _Lazy(object):
     @property
     def value(self):
         return self._func()
+
+
+

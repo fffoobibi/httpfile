@@ -30,7 +30,6 @@ class TabCodeMixIn(PluginBaseMixIn):
     vertical = ConfigProvider.default(ConfigKey.general, 'vertical_width')
 
     def _after_init(self):
-        print('call =====', self.single_step.value, self)
         StylesHelper.set_v_history_style_dynamic(self, color='#CFCFCF', background='transparent',
                                                  width=self.vertical.value)
         StylesHelper.set_h_history_style_dynamic(self, color='#CFCFCF', background='transparent',

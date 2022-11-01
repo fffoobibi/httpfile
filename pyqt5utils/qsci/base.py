@@ -10,7 +10,7 @@ from PyQt5.QtGui import QColor, QFont, QKeySequence
 from PyQt5.QtWidgets import QAction, QMenu
 
 from pyqt5utils.workers import BackgroundWorker
-
+from pyqt5utils.qsci.scintillacompat import QsciScintillaCompat
 
 class ColorTypes(str, Enum):
     code_background = 'code_background',
@@ -114,7 +114,7 @@ class MenuStyles(str):
             }'''
 
 
-class BaseCodeWidget(QsciScintilla):
+class BaseCodeWidget(QsciScintillaCompat):
     """
     https://qscintilla.com/
     """
@@ -133,6 +133,8 @@ class BaseCodeWidget(QsciScintilla):
     attrs = {
         Themes.dark: Themes.dark_theme()
     }
+
+    word_indicator_show = False
 
     def after_init(self):
         pass
@@ -465,24 +467,25 @@ class BaseCodeWidget(QsciScintilla):
             self._repeat_timer.stop()
 
     def _click(self):
-        line, col = self.getCursorPosition()
-        word = self.wordAtLineIndex(line, col)
-        # clear indicator
-        self.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, 10)
-        self.SendScintilla(QsciScintilla.SCI_INDICATORCLEARRANGE, self._indicator_word_start,
-                           self._indicator_word_length)
-        if word:
-            # add indicator
-            word_index = self.positionFromLineIndex(line, col)
-            start = self.SendScintilla(self.SCI_WORDSTARTPOSITION, word_index, 1)
-            end = self.SendScintilla(self.SCI_WORDENDPOSITION, word_index, 1)
-            self._indicator_word_start = start
-            self._indicator_word_length = len(word)
-            line_content = self.text(line)
-            if_comment = True if line_content.strip().startswith('#') else False
-            if not word.isnumeric() and word not in keyword.kwlist and not if_comment:
-                self.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, 10)
-                self.SendScintilla(QsciScintilla.SCI_INDICATORFILLRANGE, start, self._indicator_word_length)
+        if self.word_indicator_show:
+            line, col = self.getCursorPosition()
+            word = self.wordAtLineIndex(line, col)
+            # clear indicator
+            self.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, 10)
+            self.SendScintilla(QsciScintilla.SCI_INDICATORCLEARRANGE, self._indicator_word_start,
+                               self._indicator_word_length)
+            if word:
+                # add indicator
+                word_index = self.positionFromLineIndex(line, col)
+                start = self.SendScintilla(self.SCI_WORDSTARTPOSITION, word_index, 1)
+                end = self.SendScintilla(self.SCI_WORDENDPOSITION, word_index, 1)
+                self._indicator_word_start = start
+                self._indicator_word_length = len(word)
+                line_content = self.text(line)
+                if_comment = True if line_content.strip().startswith('#') else False
+                if not word.isnumeric() and word not in keyword.kwlist and not if_comment:
+                    self.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, 10)
+                    self.SendScintilla(QsciScintilla.SCI_INDICATORFILLRANGE, start, self._indicator_word_length)
 
     def set_format(self, selected_text: str, all_text: str, *a, **kw) -> str:
         return all_text
