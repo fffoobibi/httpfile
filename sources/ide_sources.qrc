@@ -1,5 +1,10 @@
 <RCC>
   <qresource prefix="icon">
+    <file>zhengzeshi.svg</file>
+    <file>zifuxiao.svg</file>
+    <file>guanbi.svg</file>
+    <file>jiantou_liebiaoshouqi.svg</file>
+    <file>jiantou_liebiaozhankai.svg</file>
     <file>重新开始,恢复_jurassic.svg</file>
     <file>停止.svg</file>
     <file>24gf-expandVertical2.svg</file>

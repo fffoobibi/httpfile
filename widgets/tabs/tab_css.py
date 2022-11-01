@@ -1,12 +1,10 @@
-from pyqt5utils.qsci.base import BaseCodeWidget
 from PyQt5.Qsci import QsciLexerCSS
-from . import register, TabCodeMixIn
+
+from . import register, TabCodeWidget
 
 
 @register(file_types=['css'])
-class CssCodeWidget(BaseCodeWidget, TabCodeMixIn):
+class CssCodeWidget(TabCodeWidget):
     def set_lexer(self):
         return QsciLexerCSS(self)
 
-    def after_init(self):
-        self._after_init()

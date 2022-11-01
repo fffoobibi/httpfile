@@ -1,13 +1,11 @@
 import typing
+from multiprocessing import Queue, Process
 from threading import Thread, Event
 
 from blinker import signal
+from cached_property import cached_property
+
 from pyqt5utils.decorators import singleton
-from multiprocessing import Queue, Process
-
-from PyQt5.QtCore import QThread
-
-from cached_property import threaded_cached_property, cached_property
 
 
 class ProcessSignalMixIn(object):
@@ -93,6 +91,8 @@ class SignalManager(object):
     bottomButtonClicked = 'bottomButtonClicked'
     info = 'info'
     warn = 'warn'
+    titleInfo = 'titleInfo'
+    statusInfo = 'statusInfo'
 
     def __init__(self):
         self._signals = {}
