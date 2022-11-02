@@ -35,7 +35,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         self.load_left()
         self.load_right()
         self.load_bottom()
-        self.load_status()
+        # self.load_status()
         self.init_signal_manager()
 
     def init_run_time(self):

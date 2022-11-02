@@ -5,7 +5,7 @@ from widgets.bottom_control import load_control_widgets
 from widgets.left_control import load_left_control_widgets
 from widgets.tabs import load_tab_widgets
 from widgets.toolbar_actions import load_toolbar_actions
-from widgets.status import load_status_control_widgets
+# from widgets.status import load_status_control_widgets
 
 from widgets.utils import ConfigProvider
 from configs import configs
@@ -21,7 +21,7 @@ def collect_plugins() -> Collections:
     controls = load_control_widgets()
     left_controls = load_left_control_widgets()
     toolbar_actions = load_toolbar_actions()
-    status_widgets = load_status_control_widgets()
+    # status_widgets = load_status_control_widgets()
     return Collections(folder=folder, tabs=tabs, controls=controls, left_controls=left_controls, toolbar_actions=toolbar_actions,
-                       status=status_widgets
+                       status={}
                        )

@@ -17,8 +17,7 @@ class Ui_Form(object):
         Form.resize(550, 157)
         Form.setStyleSheet("QPushButton{background:transparent;border:none;padding:3px}\n"
                            "QPushButton:hover{background:lightgray}\n"
-                           "QLabel, QLineEdit{font-family: 微软雅黑}\n"
-                           "QTextBrowser{border:none}")
+                           "QLabel, QLineEdit{font-family: 微软雅黑}")
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout(Form)
         self.horizontalLayout_3.setSpacing(0)
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
@@ -75,9 +74,7 @@ class Ui_Form(object):
         spacerItem2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem2)
         self.verticalLayout_2.addLayout(self.horizontalLayout)
-        spacerItem3 = QtWidgets.QSpacerItem(20, 6, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.verticalLayout_2.addItem(spacerItem3)
-        self.textBrowser = QtWidgets.QTextBrowser(Form)
+        self.textBrowser = WebServerConsole(Form)
         self.textBrowser.setObjectName("textBrowser")
         self.verticalLayout_2.addWidget(self.textBrowser)
         self.horizontalLayout_3.addLayout(self.verticalLayout_2)
@@ -92,4 +89,5 @@ class Ui_Form(object):
         self.label_2.setText(_translate("Form", "启用端口"))
 
 
+from widgets.bottom_control.web_server_lexer import WebServerConsole
 from widgets.ide_sources_rc import *

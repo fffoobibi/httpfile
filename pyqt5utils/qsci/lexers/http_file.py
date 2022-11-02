@@ -96,7 +96,6 @@ class HttpFileLexer(CustomLexerCompat):
     def __init__(self, parent):
         super(HttpFileLexer, self).__init__(parent)
         editor = self.parent()
-        print('editor ----', editor, parent)
         self.define_hotspots(editor)
         self.define_indicators(editor)
         self.define_apis(editor)

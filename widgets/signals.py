@@ -22,7 +22,8 @@ class ProcessSignalMixIn(object):
     def fork_func(self, queue, *a):
         pass
 
-    def push_msg(self, queue, v: typing.Any):
+    @classmethod
+    def push_msg(cls, queue, v: typing.Any):
         queue.put(v)
 
 

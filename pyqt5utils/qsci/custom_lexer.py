@@ -4,6 +4,10 @@ from typing import Dict
 from PyQt5.Qsci import QsciLexerCustom
 from PyQt5.QtGui import QFont, QColor
 
+__all__ = ('CustomStyles', 'CustomLexerCompat')
+
+from abc import abstractmethod
+
 
 class CustomStyles(IntEnum):
 
@@ -52,3 +56,6 @@ class CustomLexerCompat(QsciLexerCustom):
     def defaultFont(self, style: int):
         font: QFont = super().defaultFont(style)
         return self.styles_class.defaultFont(style, font)
+
+    def styleText(self, start, end):
+        raise NotImplementedError
