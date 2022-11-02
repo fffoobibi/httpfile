@@ -604,6 +604,9 @@ class Toast(QDialog):
     def set_text(self, st: str):
         pass
 
+    def set_keep(self, v: bool):
+        self._keep = v
+
     @classmethod
     def make_text(cls, text: str, target: QWidget,
                   text_color=None, back_color=None,
