@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QApplication, QPushButton, QLabel, QWidget, QDialog
 from PyQt5.QtCore import (QObject, QRectF,
                           Qt, pyqtSignal, QSize, QPropertyAnimation,
                           QEvent, QRect, QPoint, QAbstractAnimation, QSizeF,
-                          QPointF)
+                          QPointF, QTimer)
 from PyQt5.QtGui import (QPixmap, QIcon, QMovie, QPainter,
                          QColor, QFont, QFontMetrics,
                          QMouseEvent, QPainterPath, QPolygonF, QBitmap)
@@ -143,7 +143,7 @@ class Loading(GifLabel):
         target.resizeEvent = MethodType(resize_event, target)
 
     @classmethod
-    def load(cls, target: QWidget, margin=0, image: str=None):
+    def load(cls, target: QWidget, margin=0, image: str = None):
 
         if getattr(target, '__hook_xx_loading__', None) is None:
             self = cls(target)
@@ -569,7 +569,10 @@ class Toast(QDialog):
         if a1.type() == QEvent.WindowDeactivate:
             if not self._keep:
                 if self._target is not None:
-                    delattr(self._target, '__0xxxmake_text_from_toastxxx0__')
+                    try:
+                        delattr(self._target, '__0xxxmake_text_from_toastxxx0__')
+                    except:
+                        pass
                 self.close()
         return QDialog.eventFilter(self, a0, a1)
 
@@ -597,6 +600,9 @@ class Toast(QDialog):
         #     ) - 2 * self._padding, self.height() - 2 * self._padding - 5)
         #     # painter.drawRect(QRectF(rect))
         #     painter.drawText(rect, Qt.AlignLeft, self._text)
+
+    def set_text(self, st: str):
+        pass
 
     @classmethod
     def make_text(cls, text: str, target: QWidget,
@@ -724,7 +730,7 @@ class Confirm(QDialog):
     def msg(cls, title: str, target: QWidget, content: QWidget = None,
             ok: Callable = None, cancel: Callable = None,
             ok_condition: Callable = None, cancel_condition: Callable = None,
-            image: str = None, rich=False):
+            image: str = None, rich=False, after_close=None, after_close_duration=None):
         def _wrapper_ok():
             if ok:
                 if ok_condition is not None:
@@ -739,14 +745,20 @@ class Confirm(QDialog):
                     ret = ok()
                     if ret is None:
                         dia.close()
+                        if timer:
+                            timer.start(after_close_duration or 100)
                     else:
                         if ret:
                             dia.close()
+                            if timer:
+                                timer.start(after_close_duration or 100)
                 else:
                     Message.warn(msg, dia)
 
             else:
                 dia.close()
+                if timer:
+                    timer.start(after_close_duration or 100)
 
         def _wrapper_cancel():
             if cancel:
@@ -769,6 +781,16 @@ class Confirm(QDialog):
                     Message.warn(msg, dia)
             else:
                 dia.close()
+
+        if after_close:
+            def _close():
+                after_close()
+                timer.stop()
+
+            timer = QTimer()
+            timer.timeout.connect(_close)
+        else:
+            timer = None
 
         dia = cls(target)
         dia.setObjectName('ConfirmObject')

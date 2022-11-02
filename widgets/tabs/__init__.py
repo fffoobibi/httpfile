@@ -1,13 +1,17 @@
 from pathlib import Path
+from contextlib import suppress
 
-from PyQt5.QtGui import QFont, QFontMetrics, QIcon
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QFontMetrics, QIcon, QCursor, QPalette, QColor
 from PyQt5.QtWidgets import (QAction, QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QSpacerItem,
-                             QSizePolicy, QFrame, QVBoxLayout)
+                             QSizePolicy, QFrame, QVBoxLayout, QToolTip)
+from cached_property import cached_property
 
+from pyqt5utils.components import Toast
 from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.qsci.base import BaseCodeWidget
 from widgets.base import PluginBaseMixIn
-
+from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
 
 tab_codes = {}
@@ -61,14 +65,25 @@ class TabCodeWidget(QWidget):
     def file_path(self) -> str:
         return getattr(self, '_file', '')
 
+    def move_to(self, line, col):
+        if line >= self.code.lines() - 1:
+            line = self.code.lines()
+        self.code.setFocus()
+        self.code.ensureLineVisible(line)
+        self.code.setCursorPosition(line, col)
+        self.code.update()
+
+    def set_read_only(self, v):
+        self.code.setReadOnly(v)
+
     def __init__(self):
         super(TabCodeWidget, self).__init__()
         self.lay = QVBoxLayout(self)
         self.lay.setContentsMargins(0, 0, 0, 0)
         self.lay.setSpacing(1)
 
-        self.code = _make_child(self, BaseCodeWidget, self.set_lexer, self.when_app_exit, self.when_app_start_up)()
-        self.code.setStyleSheet('border:none')
+        self.code: BaseCodeWidget = _make_child(self, BaseCodeWidget, self.set_lexer, self.when_app_exit, self.when_app_start_up)()
+        self.code.setStyleSheet('BaseCodeWidget{border:none}QToolTip{background:red;color:white}')
 
         StylesHelper.set_v_history_style_dynamic(self.code, color='#CFCFCF', background='transparent',
                                                  width=self.vertical.value)
@@ -84,11 +99,78 @@ class TabCodeWidget(QWidget):
         self.__save_action.setShortcut('ctrl+s')
         self.__save_action.triggered.connect(self.__auto_save_slot)
 
+        self.__cut_action = QAction()
+        self.__cut_action.setShortcut('ctrl+x')
+        self.__cut_action.triggered.connect(self.__cut_slot)
+
+        self.__copy_action = QAction()
+        self.__copy_action.setShortcut('ctrl+c')
+        self.__copy_action.triggered.connect(self.__copy_slot)
+
         self.lay.addWidget(self.__search_widget)
         self.lay.addWidget(self.code)
 
         self.addAction(self.__search_action)
         self.addAction(self.__save_action)
+        self.addAction(self.__cut_action)
+
+        self.code.cursor_signal.connect(self.__update_line_col)
+        self.code.SCN_MODIFIED.connect(self.__modify)
+        self.code.SCN_MODIFYATTEMPTRO.connect(self.__show_information)
+        self.code.setReadOnly(True)
+
+    @cached_property
+    def toast(self):
+        t = Toast.make_text('只读模式', self.code, keep=False, width=50)
+        t.hide()
+        return t
+
+    def closeEvent(self, event) -> None:
+        super().closeEvent(event)
+        with suppress(Exception):
+            self.toast.close()
+
+    def hideEvent(self, a0) -> None:
+        super().hideEvent(a0)
+        with suppress(Exception):
+            self.toast.hide()
+
+    def __modify(self, position, modificationType, text, length, linesAdded,
+                 line, foldLevelNow, foldLevelPrev, token, annotationLinesAdded):
+        full = self.code.SC_MOD_INSERTTEXT | self.code.SC_MOD_DELETETEXT
+        if (~modificationType & full == full):
+            return
+        point = self.code.getGlobalCursorPosition()
+        point = self.code.mapToGlobal(point)
+        point.setY(point.y() - 40)
+        self.toast.move(point)
+        self.toast.show()
+
+    def __show_information(self):
+        point = self.code.getGlobalCursorPosition()
+        point = self.code.mapToGlobal(point)
+        point.setY(point.y() - 40)
+        self.toast.move(point)
+        self.toast.show()
+
+    def __update_line_col(self, line, col):
+        signal_manager.emit(signal_manager.statusLineInfo, line, col)
+
+    def __cut_slot(self):
+        if not self.code.hasSelection():
+            width = self.code.lineLength(self.code._current_line)
+            self.code.setSelection(self.code._current_line, 0, self.code._current_line, width - 1)
+            self.code.cut()
+        else:
+            self.code.cut()
+
+    def __copy_slot(self):
+        if not self.code.hasSelection():
+            width = self.code.lineLength(self.code._current_line)
+            self.code.setSelection(self.code._current_line, 0, self.code._current_line, width - 1)
+            self.code.copy()
+        else:
+            self.code.copy()
 
     def __auto_save_slot(self):
         if self.file_path():

@@ -1,7 +1,3 @@
-from typing import Type, Dict
-
-from PyQt5.QtWidgets import QWidget
-
 module_name = 'widgets.left_control'
 left_controls = {}
 

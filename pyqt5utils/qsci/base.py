@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import QAction, QMenu
 from pyqt5utils.workers import BackgroundWorker
 from pyqt5utils.qsci.scintillacompat import QsciScintillaCompat
 
+
 class ColorTypes(str, Enum):
     code_background = 'code_background',
 
@@ -459,6 +460,10 @@ class BaseCodeWidget(QsciScintillaCompat):
         else:
             self._repeat_key = None
             self._code_state = CodeState.normal
+        # if event.modifiers() & Qt.Key_Control and event.key() == Qt.Key_X:
+        #     print('ctrl+x ---')
+        # else:
+        #     pass
         super().keyReleaseEvent(event)
 
     def _repeat_timeout(self):

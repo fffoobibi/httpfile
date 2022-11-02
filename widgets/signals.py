@@ -93,6 +93,8 @@ class SignalManager(object):
     warn = 'warn'
     titleInfo = 'titleInfo'
     statusInfo = 'statusInfo'
+    statusLineInfo = 'statusLineInfo'
+    statusReadOnly = 'statusReadOnly'
 
     def __init__(self):
         self._signals = {}

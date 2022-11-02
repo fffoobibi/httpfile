@@ -1,4 +1,5 @@
 import threading
+import typing
 import warnings
 
 from typing import Type
@@ -14,7 +15,10 @@ def deprecated(func):
     return func
 
 
-def singleton(cls: Type) -> Type:
+T = typing.TypeVar('T')
+
+
+def singleton(cls: Type[T]) -> Type[T]:
     instances = {}
     lock = threading.Lock()
     _old = cls.__new__

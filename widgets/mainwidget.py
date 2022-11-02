@@ -35,6 +35,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         self.load_left()
         self.load_right()
         self.load_bottom()
+        self.load_status()
         self.init_signal_manager()
 
     def init_run_time(self):
@@ -55,6 +56,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             self.toolbar.addAction(action)
 
         self.toolbar.setIconSize(QSize(24, 24))
+
+    def load_status(self):
+        cl = sorted(self.plugins.status, key=lambda k: self.plugins.status[k]['index'])
+        for clz in cl:
+            widget = clz()
+            self.statusbar.addPermanentWidget(widget)
 
     def after_init(self):
         self.set_provider('main_app', self)

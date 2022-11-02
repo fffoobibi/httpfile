@@ -3,7 +3,7 @@ from multiprocessing import freeze_support
 
 path = r".\chromedriver_97.0.4692.99.exe"
 url = 'https://instagram.com/stories/battlerigs/2961784597757525872?utm_source=ig_story_item_share&igshid=MDJmNzVkMjY='
-url= 'http://www.google.com'
+# url= 'http://www.google.com'
 
 from selenium.webdriver import Chrome, ChromeOptions
 

@@ -119,3 +119,6 @@ class PluginBaseMixIn(object):
             return self.__provider__[key]
 
     gp = get_provider
+
+    def get_app(self):
+        return self.get_provider('main_app')
