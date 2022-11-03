@@ -93,7 +93,9 @@ class SignalManager(object):
     info = 'info'
     warn = 'warn'
     titleInfo = 'titleInfo'
-    statusInfo = 'statusInfo'
+
+    statusInfo = 'statusInfo'  # message warn
+    statusMsg = 'statusMsg'  # showMessage
     statusLineInfo = 'statusLineInfo'
     statusReadOnly = 'statusReadOnly'
 

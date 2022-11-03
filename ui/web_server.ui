@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>550</width>
-    <height>157</height>
+    <height>160</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -63,6 +63,28 @@ QLabel, QLineEdit{font-family: 微软雅黑}</string>
        </property>
        <property name="checkable">
         <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_4">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="../sources/ide_sources.qrc">
+         <normaloff>:/icon/扳手.svg</normaloff>:/icon/扳手.svg</iconset>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_5">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="../sources/ide_sources.qrc">
+         <normaloff>:/icon/清空.svg</normaloff>:/icon/清空.svg</iconset>
        </property>
       </widget>
      </item>

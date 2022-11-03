@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="icon">
+    <file>扳手.svg</file>
+    <file>清空.svg</file>
     <file>zhengzeshi.svg</file>
     <file>zifuxiao.svg</file>
     <file>guanbi.svg</file>

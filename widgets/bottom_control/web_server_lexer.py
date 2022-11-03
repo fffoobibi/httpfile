@@ -13,6 +13,8 @@ from PyQt5.QtGui import QColor, QFont, QDesktopServices
 from pyqt5utils.qsci.custom_lexer import CustomStyles, CustomLexerCompat
 from pyqt5utils.qsci.scintillacompat import QsciScintillaCompat
 
+from contextlib import suppress
+
 
 class WebServerStyles(CustomStyles):
     http = 1
@@ -83,7 +85,8 @@ class WebServerConsoleLexer(CustomLexerCompat):
             # start = editor.SendScintilla(QsciScintilla.SCI_INDICATORSTART, indicator_num, position)
             # end = editor.SendScintilla(QsciScintilla.SCI_INDICATOREND, indicator_num, position)
 
-        editor.indicatorDefine(QsciScintilla.INDIC_HIDDEN, self.url_ind)  # 波浪线
+        editor.indicatorDefine(QsciScintilla.INDIC_COMPOSITIONTHIN, self.url_ind)
+        editor.setIndicatorForegroundColor(QColor(Qt.blue))
         editor.setIndicatorHoverStyle(QsciScintilla.INDIC_COMPOSITIONTHICK, self.url_ind)
         editor.setIndicatorHoverForegroundColor(QColor(Qt.blue), self.url_ind)
 
@@ -125,26 +128,22 @@ class WebServerConsoleLexer(CustomLexerCompat):
             elif re.match(info_time, word, re.I):
                 self.setStyling(length, self.styles_class.info_time)
             elif re.match(info_status, word, re.I):
-                try:
+                with suppress(Exception):
                     match = re.match(r'(HTTP/1.1 )(\d+)', word, re.I)
                     l1 = match.span(1)[1] - match.span(1)[0]
                     self.setStyling(l1, self.styles_class.normal)
                     l2 = match.span(2)[1] - match.span(2)[0]
                     self.setStyling(l2, self.styles_class.info_status)
-                except:
-                    pass
+
             elif re.match(fold_info, word, re.I):
-                try:
+                with suppress(Exception):
                     match = re.match(r'(run server fold at: )(.*)', word, re.I)
                     l1 = match.span(1)[1] - match.span(1)[0]
                     self.setStyling(l1, self.styles_class.normal)
                     l2 = match.span(2)[1] - match.span(2)[0]
                     self.setStyling(l2, self.styles_class.fold_info)
-                    editor: QsciScintilla
                     editor.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, self.fold_ind)
                     editor.SendScintilla(QsciScintilla.SCI_INDICATORFILLRANGE, total_length + l1, l2)
-                except:
-                    pass
             else:
                 self.setStyling(length, self.styles_class.normal)
 
@@ -165,4 +164,6 @@ class WebServerConsole(QsciScintillaCompat):
         self.setCaretForegroundColor(QColor(Qt.red))
         # self.setCaretLineBackgroundColor(QColor("blue"))
 
+        self.setSelectionBackgroundColor(QColor('#343544'))
+        self.setSelectionForegroundColor(QColor('#D6D6D9'))
         self.setStyleSheet('border:none')

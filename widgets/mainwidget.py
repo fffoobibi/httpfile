@@ -16,8 +16,9 @@ from widgets.signals import app_exit, app_start_up
 from widgets.utils import ConfigProvider, ConfigKey
 
 
-class RunTime(BaseModel):
+class AppRunTime(BaseModel):
     current: Path = Field(None, description='当前工作目录')
+    read_only: bool = Field(False, description='阅读模式')
 
 
 class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
@@ -35,11 +36,11 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         self.load_left()
         self.load_right()
         self.load_bottom()
-        # self.load_status()
+        self.load_status()
         self.init_signal_manager()
 
     def init_run_time(self):
-        self.r_run_time: RunTime = RunTime()
+        self.r_run_time: AppRunTime = AppRunTime()
 
     def load_menu_bar(self):
         pass
@@ -80,6 +81,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         def _change_v_split_size(size1, size2):
             self.splitter_2.setSizes([size1, size2])
 
+        def _change_read_state(v):
+            self.r_run_time.read_only = v
+
+        def _show_message(msg: str, timeout: int = 0):
+            self.statusbar.showMessage(msg, timeout)
+
         from widgets.signals import signal_manager
         signal_manager.add_event(signal_manager.openUrlFile, None,
                                  call_back=lambda url, content: self.add_tab_widget(None, None, None, url,
@@ -90,6 +97,8 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                                  call_back=lambda msg, dura=1500: Message.info(msg, self, dura))
         signal_manager.add_event(signal_manager.warn, None,
                                  call_back=lambda err, dura=1500: Message.warn(f'{err}', self, dura))
+        signal_manager.add_event(signal_manager.statusReadOnly, None, call_back=_change_read_state)
+        signal_manager.add_event(signal_manager.statusMsg, None, call_back=_show_message)
         self.sm = signal_manager
 
     def init_project(self):
@@ -168,34 +177,36 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     #### add tab ####
     def add_tab_widget(self, file_type, file_name, file_path: str, url: str = None, content: str = None):
-        print('call add tab', file_type, file_name, file_path)
         if url is None:
             def _create_tab_code_widget():
                 for k, v in self.plugins.tabs.items():
                     if file_type in v:
                         code = k()
+                        code.is_remote = False
                         code.load_file(file_path)
                         return code
 
             tab = _create_tab_code_widget()
+            tab.set_read_only(self.r_run_time.read_only)
             self.tabWidget.addTab(tab, file_name)
             self.tabWidget.setCurrentWidget(tab)
         else:
             file_type = url.split('.')[-1] + ' File'
-            print('here', file_type, self.plugins.tabs)
 
             def _create_tab_code_widget():
                 for k, v in self.plugins.tabs.items():
                     if file_type in v:
                         code = k()
-                        code.load_content(content)
+                        code.is_remote = True
+                        code.load_file(url, content)
                         return code
 
             tab = _create_tab_code_widget()
+            tab.set_read_only(self.r_run_time.read_only)
             self.tabWidget.addTab(tab, url)
             self.tabWidget.setCurrentWidget(tab)
 
-    ###close
+    ### close
     def closeEvent(self, a0) -> None:
         app_exit.send(self)
         super().closeEvent(a0)

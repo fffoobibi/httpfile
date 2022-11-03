@@ -1,10 +1,9 @@
-from pathlib import Path
 from contextlib import suppress
+from pathlib import Path
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QFontMetrics, QIcon, QCursor, QPalette, QColor
+from PyQt5.QtGui import QFont, QFontMetrics, QIcon
 from PyQt5.QtWidgets import (QAction, QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QSpacerItem,
-                             QSizePolicy, QFrame, QVBoxLayout, QToolTip)
+                             QSizePolicy, QFrame, QVBoxLayout)
 from cached_property import cached_property
 
 from pyqt5utils.components import Toast
@@ -58,9 +57,29 @@ class TabCodeWidget(QWidget):
     vertical = ConfigProvider.default(ConfigKey.general, 'vertical_width')
     horizontal = ConfigProvider.default(ConfigKey.general, 'horizontal_height')
 
-    def load_file(self, file_path):
-        self._file = file_path
-        self.code.load_file(file_path)
+    @property
+    def is_remote(self):
+        return self._is_remote
+
+    @is_remote.setter
+    def is_remote(self, v: bool):
+        self._is_remote = v
+
+    @property
+    def update_time(self) -> str:
+        return self._update_time or ''
+
+    @update_time.setter
+    def update_time(self, v: str):
+        self._update_time = v
+
+    def load_file(self, file_path, content: str = None):
+        if not self.is_remote:
+            self._file = file_path
+            self.code.load_file(file_path)
+        else:
+            self._file = file_path
+            self.code.load_content(content)
 
     def file_path(self) -> str:
         return getattr(self, '_file', '')
@@ -89,6 +108,8 @@ class TabCodeWidget(QWidget):
                                                  width=self.vertical.value)
         StylesHelper.set_h_history_style_dynamic(self.code, color='#CFCFCF', background='transparent',
                                                  height=self.horizontal.value)
+        self._is_remote = False
+        self._update_time = None
         self.__search_action = QAction()
         self.__search_action.setShortcut('ctrl+f')
         self.__search_action.triggered.connect(self.__search_action_slot)
@@ -117,7 +138,7 @@ class TabCodeWidget(QWidget):
         self.code.cursor_signal.connect(self.__update_line_col)
         self.code.SCN_MODIFIED.connect(self.__modify)
         self.code.SCN_MODIFYATTEMPTRO.connect(self.__show_information)
-        self.code.setReadOnly(True)
+        # self.code.setReadOnly(True)
 
     @cached_property
     def toast(self):
@@ -140,16 +161,17 @@ class TabCodeWidget(QWidget):
         full = self.code.SC_MOD_INSERTTEXT | self.code.SC_MOD_DELETETEXT
         if (~modificationType & full == full):
             return
-        point = self.code.getGlobalCursorPosition()
-        point = self.code.mapToGlobal(point)
-        point.setY(point.y() - 40)
-        self.toast.move(point)
-        self.toast.show()
+        # point = self.code.getGlobalCursorPosition()
+        # point = self.code.mapToGlobal(point)
+        # point.setY(point.y() - 40)
+        # self.toast.move(point)
+        # self.toast.show()
 
     def __show_information(self):
         point = self.code.getGlobalCursorPosition()
         point = self.code.mapToGlobal(point)
         point.setY(point.y() - 40)
+        point.setX(point.x() - self.toast.width() / 2)
         self.toast.move(point)
         self.toast.show()
 
@@ -217,6 +239,7 @@ class TabCodeWidget(QWidget):
 
         groups.addButton(c_btn)
         groups.addButton(r_btn)
+        update_btn = QPushButton()
         lay.addWidget(c_btn)
         lay.addWidget(r_btn)
         lay.addWidget(p_btn)
