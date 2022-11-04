@@ -1,7 +1,8 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtWidgets import QWidget, QListView, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy
 
 from pyqt5utils.qsci.lexers.http_file import HttpFileLexer, CustomStyles
 from . import register, TabCodeWidget
@@ -96,3 +97,20 @@ class HTTPFileCodeWidget(TabCodeWidget):
 
     def set_lexer(self) -> Any:
         return TabHttpLexer(self)
+
+    def set_splitter_widgets(self) -> List[QWidget]:
+        return [
+            QListView()
+        ]
+
+    def set_splitter_handle(self, index):
+        if index == 1:
+            handler = self.splitter.handle(1)
+            handler.setCursor(Qt.SizeHorCursor)
+            layout = QVBoxLayout()
+            layout.setContentsMargins(0, 0, 0, 0)
+            button = QToolButton(handler)
+            button.setArrowType(Qt.RightArrow)
+            layout.addWidget(button)
+            layout.addSpacerItem(QSpacerItem(20, 20, vPolicy=QSizePolicy.Expanding))
+            handler.setLayout(layout)

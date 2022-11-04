@@ -1,9 +1,10 @@
 from contextlib import suppress
 from pathlib import Path
+from typing import List
 
 from PyQt5.QtGui import QFont, QFontMetrics, QIcon
 from PyQt5.QtWidgets import (QAction, QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QSpacerItem,
-                             QSizePolicy, QFrame, QVBoxLayout)
+                             QSizePolicy, QFrame, QVBoxLayout, QSplitter)
 from cached_property import cached_property
 
 from pyqt5utils.components import Toast
@@ -97,7 +98,15 @@ class TabCodeWidget(QWidget):
 
     def __init__(self):
         super(TabCodeWidget, self).__init__()
-        self.lay = QVBoxLayout(self)
+        self.__main_lay = QHBoxLayout(self)
+        self.__main_lay.setContentsMargins(0, 0, 0, 0)
+        self.__main_lay.setSpacing(1)
+
+        self.splitter = QSplitter(self)
+        self.splitter.setHandleWidth(15)
+
+        self.__code_container = QWidget(self)
+        self.lay = QVBoxLayout(self.__code_container)
         self.lay.setContentsMargins(0, 0, 0, 0)
         self.lay.setSpacing(1)
 
@@ -139,6 +148,14 @@ class TabCodeWidget(QWidget):
         self.code.SCN_MODIFIED.connect(self.__modify)
         self.code.SCN_MODIFYATTEMPTRO.connect(self.__show_information)
         # self.code.setReadOnly(True)
+        self.__main_lay.addWidget(self.splitter)
+        self.splitter.addWidget(self.__code_container)
+        for widget in self.set_splitter_widgets():
+            self.splitter.addWidget(widget)
+        self.splitter.setSizes([200, 100])
+        # self.__splitter.setStretchFactor(0, 2)
+        self.splitter.setStretchFactor(1, 0)
+        self.set_splitter_handle(1)
 
     @cached_property
     def toast(self):
@@ -262,6 +279,12 @@ class TabCodeWidget(QWidget):
         w.search_line.setMinimumWidth(search_line.fontMetrics().width('a' * 30))
         w.setFixedHeight(QFontMetrics(QFont('微软雅黑', 10)).height() * 1.5)
         return w
+
+    def set_splitter_handle(self, index):
+        pass
+
+    def set_splitter_widgets(self) -> List[QWidget]:
+        return []
 
     def set_lexer(self):
         pass

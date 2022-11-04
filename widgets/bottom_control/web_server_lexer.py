@@ -158,12 +158,17 @@ class WebServerConsole(QsciScintillaCompat):
         self.setMargins(0)
         self.setUtf8(True)
 
-        # self: QsciScintilla
-        # self.setCaretLineVisible(True)
+        # 设置光标宽度, 颜色
         self.setCaretWidth(2)
         self.setCaretForegroundColor(QColor(Qt.red))
-        # self.setCaretLineBackgroundColor(QColor("blue"))
 
+        # 设置选中颜色
         self.setSelectionBackgroundColor(QColor('#343544'))
         self.setSelectionForegroundColor(QColor('#D6D6D9'))
+
+        # 匹配括号
+        self.setBraceMatching(True)
+        # self.setMatchedBraceForegroundColor(QColor('orange'))
+        # self.setMatchedBraceBackgroundColor(QColor('yellow'))
+
         self.setStyleSheet('border:none')

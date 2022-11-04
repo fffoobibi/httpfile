@@ -356,7 +356,7 @@ class BaseCodeWidget(QsciScintillaCompat):
         # self.setCaretLineBackgroundColor(QColor('#212131'))
         if self.theme == Themes.light:
             self.setCaretForegroundColor(QColor('#FFB900'))
-            self.setCaretLineBackgroundColor(QColor('lightgray'))
+            self.setCaretLineBackgroundColor(QColor('#E8E8FF'))
 
         # 折叠栏
         # self.setFoldMarginColors(QColor('#2D2B29'), QColor('#2D2B29'))
