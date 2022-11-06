@@ -145,7 +145,7 @@ class TabCodeWidget(QWidget):
         self.addAction(self.__cut_action)
 
         self.code.cursor_signal.connect(self.__update_line_col)
-        self.code.SCN_MODIFIED.connect(self.__modify)
+        self.code.SCN_MODIFIED.connect(self.when_modify)
         self.code.SCN_MODIFYATTEMPTRO.connect(self.__show_information)
         # self.code.setReadOnly(True)
         self.__main_lay.addWidget(self.splitter)
@@ -173,7 +173,7 @@ class TabCodeWidget(QWidget):
         with suppress(Exception):
             self.toast.hide()
 
-    def __modify(self, position, modificationType, text, length, linesAdded,
+    def when_modify(self, position, modificationType, text, length, linesAdded,
                  line, foldLevelNow, foldLevelPrev, token, annotationLinesAdded):
         full = self.code.SC_MOD_INSERTTEXT | self.code.SC_MOD_DELETETEXT
         if (~modificationType & full == full):

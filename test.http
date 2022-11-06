@@ -1,7 +1,22 @@
+POST http://localhost:80/api/item{{dddd}}
+Content-Type: application/x-www-form-urlencoded
 
+
+###
 POST http://localhost:80/api/item
 Content-Type: application/x-www-form-urlencoded
 
+
+###
+POST http://localhost:80/api/item
+Content-Type: application/x-www-form-urlencoded
+
+
+###
+POST http://localhost:80/api/item{{123}}
+Content-Type: application/x-www-form-urlencoded
+Accept: application/atom+xml
+Authorization: Bear 123123123213
 
 ###
 POST http://localhost:80/api/item
@@ -11,7 +26,20 @@ Content-Type: application/x-www-form-urlencoded
 
 ###
 GET http://localhost:80/api/item?id=99
-Accept: application/json
+Content-Type: application/json
+asdfasdf
+
+{
+"a":1,
+"b":[1,2,3]
+}
 
 ###
+asdf
+asdfasdf
+12 13123123123
+sdfasdf: 123123
 
+asdfsdf: 1312
+
+r'###.*\n(\S+\n)(\S+\n)+'

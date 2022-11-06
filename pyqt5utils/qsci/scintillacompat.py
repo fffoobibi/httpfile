@@ -183,6 +183,8 @@ class QsciScintillaCompat(QsciScintilla):
         """
         return self.SendScintilla(QsciScintilla.SCI_LINESONSCREEN)
 
+    # def lineContent(self, line_number):
+    #     start_post = self.inde
     def lineAt(self, pos):
         """
         Public method to calculate the line at a position.
@@ -1087,6 +1089,14 @@ class QsciScintillaCompat(QsciScintilla):
             raise ValueError("indicator number out of range")
 
         self.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, indicator)
+
+    def getIndicatorText(self, indicator, pos):
+        if self.hasIndicator(indicator, pos):
+            print('has indicaotr')
+            start = self.getIndicatorStartPos(indicator, pos)
+            end = self.getIndicatorEndPos(indicator, pos)
+            return self.text(start, end)
+        return ''
 
     def setIndicatorRange(self, indicator, spos, length):
         """

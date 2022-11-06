@@ -2,8 +2,9 @@ import re
 from typing import Dict
 
 from PyQt5.Qsci import QsciScintilla, QsciAPIs
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QFont, QPixmap
+from cached_property import cached_property
 
 from pyqt5utils.qsci.custom_lexer import CustomStyles, CustomLexerCompat
 
@@ -20,6 +21,8 @@ class HttpFileStyles(CustomStyles):
     section = 8
     chinese = 12
     output = 13
+    request_data = 14
+    variable = 15
 
     # font flags
     underline = 9
@@ -55,6 +58,10 @@ class HttpFileStyles(CustomStyles):
             return QColor(Qt.black)
         elif style == cls.output:
             return QColor(Qt.darkGray)
+        elif style == cls.request_data:
+            return QColor(Qt.darkYellow)
+        elif style == cls.dynamic_variable:
+            return QColor(Qt.darkGreen)
 
     @classmethod
     def defaultPaper(cls, style: int):
@@ -93,12 +100,42 @@ class HttpFileLexer(CustomLexerCompat):
     language_desc = 'Http Files'
     url_indicator = 10
 
+    run_margin_type = 1
+    run_margin_pixmap = ':/icon/运行，调试.svg'
+
+    header_fold_level = 5
+
+    _load_file = False
+
     def __init__(self, parent):
         super(HttpFileLexer, self).__init__(parent)
         editor = self.parent()
+        self.runner = HttpRunner(editor, self)
         self.define_hotspots(editor)
         self.define_indicators(editor)
         self.define_apis(editor)
+        self.define_markers(editor)
+
+    def margin_slot(self, margin_lr, line, state):
+        # from PyQt5 import QsciScintilla
+        editor: QsciScintilla = self.parent()
+        margin_type = editor.markersAtLine(line)
+        if margin_type == self.run_margin_type + 1:
+            self.runner.run_current_http(line)
+        position = editor.positionFromLineIndex(line, 0)
+        style = editor.styleAt(position)
+        print('style: ', style)
+
+    def define_markers(self, editor: QsciScintilla):
+        # from PyQt5 import QsciScintilla
+        editor.setMarginType(self.run_margin_type, editor.SymbolMargin)
+        editor.markerDefine(QPixmap(self.run_margin_pixmap).scaled(18, 18, transformMode=Qt.SmoothTransformation),
+                            self.run_margin_type)
+        editor.setMarginWidth(self.run_margin_type, 24)
+        editor.setMarginSensitivity(self.run_margin_type, True)
+        editor.marginClicked.connect(self.margin_slot)
+        # editor.marginRightClicked.connect(self.margin_slot)
+        # editor.markerDefine(editor.SymbolMargin, self.run_margin)
 
     def define_apis(self, editor):
         api = QsciAPIs(self)
@@ -148,23 +185,18 @@ class HttpFileLexer(CustomLexerCompat):
     def hotpot_func(self, position, modifiers):
         print("Hotspot clicked at position: " + str(position))
 
+    @cached_property
+    def url_indicators(self):
+        return []
+
     def styleText(self, start, end):
-        # 1. Initialize the styling procedure
-        # ------------------------------------
-        # self.startStyling(start)
-        self.startStyling(0)
-
-        # 2. Slice out a part from the text
-        # ----------------------------------
-        # text = self.parent().text()[start:end]
-        text = self.parent().text()
-        # 3. Tokenize the text
-        # ---------------------
+        self.startStyling(start)
+        text = self.parent().text()[start: end]
         editor = self.parent()
-
         splitter = r"^\s*?#.*?\s*?$"
-        key_word = r"^\s*?post|get|delete|put|patch|head\s(?=http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)\s*?$"
-        http_path = r"(http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)"
+        key_word = r"post|get|delete|put|patch|head\s(?=http[s]?://.*?$)\s*?$"
+        # http_path = r"(http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)"
+        http_path = r'http[s]?://.*?$'
         headers = r"^.*?\:.*?$"
 
         output2 = r'(?-s:^\s*?out)'
@@ -172,32 +204,32 @@ class HttpFileLexer(CustomLexerCompat):
         output4 = r'.*?(?=end\s+out)\s*?'
         output_data = r'^\s*?(?<=out).*?(?=end\s+?out\s*?)'
         china = r'[\u4E00-\u9FA5]'
+        variable = r'{{\S*?}}'
         p = re.compile(
             r'(?<=out).*?(?=end\s+?out\s*?)|'
             r'^\s*?out|'
             r'^\s*?end\s+out\s*?$|'
             r'(?<=out).*?|'
             r'.*?(?=end\s+?out)\s*?$|'
-
             r"^(?-s:\s*?#.*?\s*?$)|"
-            r"^\s*?post|get|delete|put|patch|head\s(?=http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)\s*?$|"
-            r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+\s*?$|"
+            r"post|get|delete|put|patch|head\s(?=http[s]?://.*?)$|"
+            fr'{http_path}|'
             r"^(?-s:.*?\:.*?$)|"
             r"[\u4E00-\u9FA5]|"
             r"\s+|\w+",
             re.I | re.M | re.S)
         token_list = [(token, len(bytearray(token, "utf-8"))) for token in p.findall(text)]
-
-        total_length = 0
+        total_length = start
         for i, token in enumerate(token_list):
             word, length = token
             out_flag = False
             end_out_flag = False
             out_put_data_flag = False
+            line, col = editor.lineIndexFromPosition(total_length)
+
             if re.match(output_data, word, re.I | re.M | re.S):
                 self.setStyling(length, self.styles_class.bold)
                 out_put_data_flag = True
-
             elif re.match(output2, word, re.I | re.M | re.S):
                 line, col = editor.lineIndexFromPosition(total_length)
                 out_flag = True
@@ -210,37 +242,64 @@ class HttpFileLexer(CustomLexerCompat):
             elif re.match(china, word):
                 self.setStyling(length, self.styles_class.chinese)
             elif re.match(key_word, word, re.IGNORECASE | re.MULTILINE):
+                # from PyQt5 import QsciScintilla
+                line, col = editor.lineIndexFromPosition(total_length)
+                # print('find line ,', line)
+                # print('---')
+                editor: QsciScintilla
+                editor.markerDelete(line, self.run_margin_type)
+                editor.markerAdd(line, self.run_margin_type)
                 self.setStyling(length, self.styles_class.key)
-                # Tell the editor which indicator-style to use
-                # (pass it the indicator-style ID number)
                 editor.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, 9)
-                # Assign a value to the text
-                editor.SendScintilla(QsciScintilla.SCI_SETINDICATORVALUE, 666)
-                # Now apply the indicator-style on the chosen text
                 editor.SendScintilla(QsciScintilla.SCI_INDICATORFILLRANGE, total_length, len(word))
+                # self.url_indicators.append((line, col, total_length, editor.text(line)))
 
             elif re.match(http_path, word, re.IGNORECASE | re.MULTILINE):
-                self.setStyling(length, self.styles_class.request_url)
+                ret = re.findall('(.*?)({{)(.*?)(}})(.*)', word)
+                print('ret ', ret)
+                if ret:
+                    a0, a1, a2, a3, a4 = ret[0]
+                    try:
+                        print(self.styles_class.__members__.keys())
+                        self.setStyling(len(a0), self.styles_class.request_url)
+                        self.setStyling(len(a1), self.styles_class.variable)
+                        self.setStyling(len(a2), self.styles_class.variable)
+                        self.setStyling(len(a3), self.styles_class.variable)
+                        self.setStyling(len(a4), self.styles_class.request_url)
+                    except:
+                        import traceback
+                        traceback.print_exc()
+                        print(self.styles_class)
+                else:
+                    self.setStyling(length, self.styles_class.request_url)
+
                 editor.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, self.url_indicator)
+                value = editor.SendScintilla(QsciScintilla.SCI_INDICATORVALUEAT, self.url_indicator,
+                                             total_length - 1)
+                if not value:
+                    editor.SendScintilla(QsciScintilla.SCI_SETINDICATORVALUE, line + 1)
                 editor.SendScintilla(QsciScintilla.SCI_INDICATORFILLRANGE, total_length, len(word))
+
 
             elif re.match(splitter, word, re.IGNORECASE | re.MULTILINE):
                 self.setStyling(length, self.styles_class.splitter)
             elif re.match(headers, word, re.IGNORECASE | re.MULTILINE):
-                headers_key, headers_value = word.split(':')
-                self.setStyling(len(headers_key), self.styles_class.header)
-                self.setStyling(1, self.styles_class.black)
-                self.setStyling(len(headers_value), self.styles_class.black)
+                try:
+                    # line, col = editor.lineIndexFromPosition(total_length)
+                    # editor.SendScintilla(editor.SCI_SETFOLDLEVEL, line, 5 | QsciScintilla.SC_FOLDLEVELHEADERFLAG)
+                    headers_key, headers_value = word.split(':')
+                    self.setStyling(len(headers_key), self.styles_class.header)
+                    self.setStyling(1, self.styles_class.black)
+                    self.setStyling(len(headers_value), self.styles_class.black)
+                except:
+                    pass
             else:
                 self.setStyling(length, self.styles_class.response)
 
-            line, col = editor.lineIndexFromPosition(total_length)
             if out_flag:
                 level = editor.SendScintilla(editor.SCI_GETFOLDLEVEL, line)
-                # print('get level', level)
                 editor.SendScintilla(editor.SCI_SETFOLDLEVEL, line, 0 | QsciScintilla.SC_FOLDLEVELHEADERFLAG)
             elif end_out_flag:
-                # print('rend end', line, col)
                 editor.SendScintilla(editor.SCI_SETFOLDLEVEL, line, 0 | QsciScintilla.SC_FOLDLEVELHEADERFLAG)
             elif out_put_data_flag:
                 level = editor.SendScintilla(editor.SCI_GETFOLDLEVEL, line)
@@ -248,3 +307,58 @@ class HttpFileLexer(CustomLexerCompat):
                     editor.SendScintilla(editor.SCI_SETFOLDLEVEL, line, 1 | QsciScintilla.SC_FOLDLEVELHEADERFLAG)
 
             total_length += length
+
+
+from pyqt5utils.qsci.base import QsciScintillaCompat
+
+
+class HttpRunner(object):
+    def __init__(self, editor: QsciScintillaCompat, lexer: HttpFileLexer):
+        self.editor = editor
+        self.lexer = lexer
+
+    def _find_url_method(self, line):
+        position = self.editor.lineEndPosition(line)
+        url = self.editor.getIndicatorText(self.lexer.url_indicator, position - 1)
+        method = self.editor.text(line).strip()
+        ret = re.findall(r'(get|post|patch|delete|put|header|options)(\s+?)(http[s]?://)', method, re.IGNORECASE)
+        if ret:
+            return url, ret[0][0].lower()
+        return url, ''
+
+    def _find_data(self, line):
+        pass
+
+    def _find_headers(self, line: int) -> dict:
+        start_line = line
+        headers = ''
+        while True:
+            start_line += 1
+            start_position = self.editor.positionFromLineIndex(start_line, 0)
+            if self.editor.styleAt(start_position) in [HttpFileStyles.header, HttpFileStyles.response]:
+                headers += self.editor.text(start_line)
+            else:
+                break
+        headers = headers.strip()
+        ret = {}
+        for line_content in headers.splitlines():
+            line_content: str
+            try:
+                key, value = line_content.split(':', 1)
+                ret[key.strip()] = value.strip()
+            except:
+                pass
+        return ret
+
+    def run_current_http(self, line):
+        # from PyQt5 import QsciScintilla
+        # self.editor: QsciScintilla
+
+        url, method = self._find_url_method(line)
+        headers = self._find_headers(line)
+        print(url, method)
+        style = self.editor.styleAt(line)
+        print(style == HttpFileStyles.request_url, style)
+        headers = self._find_headers(line)
+        # self.editor.getSubStyleRange()
+        print(headers)
