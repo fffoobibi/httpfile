@@ -6,9 +6,10 @@ from typing import List
 from PyQt5.QtCore import QSize, QFileInfo
 from PyQt5.QtCore import Qt, QModelIndex, QRect, pyqtSignal
 from PyQt5.QtGui import QDragEnterEvent, \
-    QDropEvent, QDragMoveEvent, QCursor
+    QDropEvent, QDragMoveEvent, QCursor, QFont
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QIcon, QPainter, QPixmap
-from PyQt5.QtWidgets import QMenu, QTabWidget, QFileSystemModel
+from PyQt5.QtWidgets import QMenu, QTabWidget, QFileSystemModel, QComboBox, QListWidget, QListWidgetItem, QCheckBox, \
+    QLineEdit
 from PyQt5.QtWidgets import QTreeView, QApplication, QStyledItemDelegate, QStyle, QHeaderView, QWidget, QHBoxLayout, \
     QPushButton, QFrame, QSpacerItem, QSizePolicy
 
@@ -510,7 +511,8 @@ class VirtualFileSystemTreeView(QTreeView):
 
         return root
 
-    def _process_model_data2(self, model: QStandardItem, data: dict, parent_item: QStandardItem = None, base_url: str = None):
+    def _process_model_data2(self, model: QStandardItem, data: dict, parent_item: QStandardItem = None,
+                             base_url: str = None):
         """
            item:
                Qt.UserRole   http_path file_item
@@ -542,6 +544,43 @@ class VirtualFileSystemTreeView(QTreeView):
                     file_item.setEditable(False)
                     dir_item.appendRow(file_item)
         return model
+
+
+class MultiSelectComboBox(QComboBox):
+    def __init__(self, *a, **kw):
+        super(MultiSelectComboBox, self).__init__(*a, **kw)
+        self.line = QLineEdit()
+        self.checkAll = QCheckBox()
+        self.checkAll.setText('全选')
+        self.checkAll.clicked.connect(self.check_all_clicked)
+
+        self.list_widget = QListWidget()
+
+        item = QListWidgetItem()
+        self.list_widget.addItem(item)
+        self.list_widget.setItemWidget(item, self.checkAll)
+        self.setModel(self.list_widget.model())
+        self.setView(self.list_widget)
+        self.setLineEdit(self.line)
+        self.line.setStyleSheet('QLineEdit{font-family:微软雅黑; color:red;border:none}')
+        self.line.setText('输出内容')
+        self.line.setReadOnly(True)
+
+    def check_all_clicked(self, checked: bool):
+        for i in range(self.list_widget.count()):
+            if i != 0:
+                item = self.list_widget.item(i)
+                checked_box = self.list_widget.itemWidget(item)
+                checked_box.setChecked(checked)
+
+    def add_item(self, text, state=False):
+        item = QListWidgetItem()
+        self.list_widget.addItem(item)
+        checked = QCheckBox()
+        checked.setText(text)
+        checked.setChecked(state)
+        checked.setFont(QFont('微软雅黑'))
+        self.list_widget.setItemWidget(item, checked)
 
 
 if __name__ == '__main__':

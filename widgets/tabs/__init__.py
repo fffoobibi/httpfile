@@ -3,6 +3,7 @@ from contextlib import suppress
 from pathlib import Path
 from typing import List
 
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QFont, QFontMetrics, QIcon
 from PyQt5.QtWidgets import (QAction, QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QSpacerItem,
                              QSizePolicy, QFrame, QVBoxLayout, QSplitter)
@@ -39,6 +40,8 @@ def load_tab_widgets():
 
 def _make_child(instance, lex_func, app_exit, app_start_up):
     class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn):
+        file_styled = pyqtSignal()
+        run_margin_signal = pyqtSignal(int)
 
         def __getattr__(self, item):
             return getattr(instance, item)
@@ -77,12 +80,11 @@ class TabCodeWidget(QWidget):
 
     def load_file(self, file_path, content: str = None):
         if not self.is_remote:
-            print('load file', file_path)
             self._file = file_path
-            self.code.load_file(file_path)
+            return self.code.load_file(file_path)
         else:
             self._file = file_path
-            self.code.load_content(content)
+            return self.code.load_content(content)
 
     def file_path(self) -> str:
         return getattr(self, '_file', '')

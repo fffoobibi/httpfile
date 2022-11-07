@@ -4,7 +4,7 @@
 # @Email   : 2836204894@qq.com
 # @File    : buttons.py
 # @Software: PyCharm
-from PyQt5.QtCore import QRect, Qt, QRectF, pyqtSignal
+from PyQt5.QtCore import QRect, Qt, QRectF, pyqtSignal, QEvent
 from PyQt5.QtGui import QPainter, QFont, QPen, QPainterPath, QColor, QMouseEvent, QPixmap, QPaintEvent
 from PyQt5.QtWidgets import QPushButton, QWidget
 
@@ -70,7 +70,7 @@ class CorNerButton(QPushButton):
 class RotateIconButton(QWidget):
     clicked = pyqtSignal(bool)
 
-    def __init__(self, padding=2, icon_size=18):
+    def __init__(self, padding=4, icon_size=18):
         super(RotateIconButton, self).__init__()
         self.setCursor(Qt.PointingHandCursor)
         self.__time_id = None
@@ -78,6 +78,7 @@ class RotateIconButton(QWidget):
         self.__icon = None
         self.__padding = padding
         self.__icon_size = icon_size
+        self._enter = False
 
         self.setFixedWidth(padding * 2 + icon_size)
         self.setFixedHeight(padding * 2 + icon_size)
@@ -100,21 +101,39 @@ class RotateIconButton(QWidget):
         self.update()
 
     def setIcon(self, pixmap: str):
-        self.__icon: QPixmap = QPixmap(pixmap).scaled(self.__icon_size, self.__icon_size, transformMode=Qt.SmoothTransformation)
+        self.__icon: QPixmap = QPixmap(pixmap).scaled(self.__icon_size, self.__icon_size,
+                                                      transformMode=Qt.SmoothTransformation)
+
+    def enterEvent(self, a0: QEvent) -> None:
+        super(RotateIconButton, self).enterEvent(a0)
+        self._enter = True
+        self.update()
+
+    def leaveEvent(self, a0: QEvent) -> None:
+        super(RotateIconButton, self).leaveEvent(a0)
+        self._enter = False
+        self.update()
 
     def mousePressEvent(self, a0: QMouseEvent) -> None:
         super(RotateIconButton, self).mousePressEvent(a0)
         if self.__time_id is None:
+            print('start click')
             self.__time_id = self.startTimer(35)
             self.clicked.emit(True)
-        self.clicked.emit(False)
+        # else:
+        #     self.clicked.emit(False)
 
     def paintEvent(self, a0: QPaintEvent) -> None:
+        if self._enter:
+            painter = QPainter(self)
+            painter.fillRect(self.rect(), Qt.lightGray)
         if self.__icon:
             size = self.size()
             w, h = size.width(), size.height()
-            painter = QPainter(self)
+            painter = QPainter()
+            painter.begin(self)
             painter.setRenderHints(QPainter.SmoothPixmapTransform)
             painter.translate(w / 2, h / 2)
             painter.rotate(self.__rotate)
             painter.drawPixmap(-self.__icon_size / 2, -self.__icon_size / 2, self.__icon)
+            painter.end()

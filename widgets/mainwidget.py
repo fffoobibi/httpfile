@@ -125,6 +125,11 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             file_type = self.model.type(index)
             file_name = self.model.fileName(index)
             file_path = self.model.filePath(index)
+            for i in range(self.tabWidget.count()):
+                widget = self.tabWidget.widget(i)
+                if widget.file_path() == file_path:
+                    self.tabWidget.setCurrentWidget(widget)
+                    return
             self.add_tab_widget(file_type, file_name, file_path)
 
         def remove_tab(index):

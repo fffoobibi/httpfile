@@ -1,9 +1,9 @@
-POST http://localhost:80/api/item{{dddd}}
+POST http://{{host}}
 Content-Type: application/x-www-form-urlencoded
 
 
-###
-POST http://localhost:80/api/item
+### 啊啊啊啊你们在干什么
+GET http://www.baidu.com
 Content-Type: application/x-www-form-urlencoded
 
 
@@ -21,7 +21,6 @@ Authorization: Bear 123123123213
 ###
 POST http://localhost:80/api/item
 Content-Type: application/x-www-form-urlencoded
-
 
 
 ###

@@ -6,6 +6,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QPixmap
 from cached_property import cached_property
 
+from pyqt5utils.qsci.base import QsciScintillaCompat
 from pyqt5utils.qsci.custom_lexer import CustomStyles, CustomLexerCompat
 
 
@@ -121,7 +122,11 @@ class HttpFileLexer(CustomLexerCompat):
         editor: QsciScintilla = self.parent()
         margin_type = editor.markersAtLine(line)
         if margin_type == self.run_margin_type + 1:
-            self.runner.run_current_http(line)
+            try:
+                editor.run_margin_signal.emit(line)
+            except:
+                pass
+            # self.runner.run_current_http(line)
         position = editor.positionFromLineIndex(line, 0)
         style = editor.styleAt(position)
         print('style: ', style)
@@ -256,7 +261,6 @@ class HttpFileLexer(CustomLexerCompat):
 
             elif re.match(http_path, word, re.IGNORECASE | re.MULTILINE):
                 ret = re.findall('(.*?)({{)(.*?)(}})(.*)', word)
-                print('ret ', ret)
                 if ret:
                     a0, a1, a2, a3, a4 = ret[0]
                     try:
@@ -269,7 +273,6 @@ class HttpFileLexer(CustomLexerCompat):
                     except:
                         import traceback
                         traceback.print_exc()
-                        print(self.styles_class)
                 else:
                     self.setStyling(length, self.styles_class.request_url)
 
@@ -308,8 +311,10 @@ class HttpFileLexer(CustomLexerCompat):
 
             total_length += length
 
-
-from pyqt5utils.qsci.base import QsciScintillaCompat
+        try:
+            editor.file_styled.emit()
+        except:
+            pass
 
 
 class HttpRunner(object):

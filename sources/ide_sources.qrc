@@ -1,5 +1,9 @@
 <RCC>
   <qresource prefix="icon">
+    <file>配置.svg</file>
+    <file>成功.svg</file>
+    <file>感叹号.svg</file>
+    <file>icons_next.svg</file>
     <file>扳手.svg</file>
     <file>清空.svg</file>
     <file>zhengzeshi.svg</file>

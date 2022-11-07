@@ -526,6 +526,8 @@ class BaseCodeWidget(QsciScintillaCompat):
     def load_file(self, file_path):
         from pathlib import Path
         self.setText(Path(file_path).read_text(encoding='utf-8'))
+        return self.lines()
 
     def load_content(self, content: str):
         self.setText(content)
+        return len(content.splitlines())

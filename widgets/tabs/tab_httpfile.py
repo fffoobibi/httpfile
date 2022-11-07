@@ -1,17 +1,20 @@
+import json
 import re
+import time
 from pathlib import Path
 from types import MethodType
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from PyQt5.QtCore import Qt, pyqtSignal, QSize, QModelIndex
-from PyQt5.QtGui import QColor, QFont, QMouseEvent, QCursor, QPainter
+import aiohttp
+from PyQt5.QtCore import Qt, pyqtSignal, QSize, pyqtSlot, QEvent
+from PyQt5.QtGui import QColor, QFont, QMouseEvent, QCursor, QIcon
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy, QListWidget, \
-    QListWidgetItem, QApplication, QLabel, QToolTip, QHBoxLayout, QPushButton, QLineEdit, QStyledItemDelegate, QStyle, QMenu
+    QListWidgetItem, QApplication, QLabel, QToolTip, QHBoxLayout, QPushButton, QLineEdit, QMenu, QActionGroup, QAction
+from aiohttp import ClientResponseError, ClientSession
 from cached_property import cached_property
 
 from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.components.widgets.buttons import RotateIconButton
-from pyqt5utils.components.widgets.labels import InfoLabel, DotLabel
 from pyqt5utils.qsci.lexers.http_file import HttpFileLexer, CustomStyles
 from widgets.utils import ConfigProvider, ConfigKey
 from . import register, TabCodeWidget
@@ -121,43 +124,27 @@ def hook_code_mouseMoveEvent(self, a0: QMouseEvent) -> None:
 @register(file_types=['http'])
 class HTTPFileCodeWidget(TabCodeWidget):
     url_indicator_signal = pyqtSignal(int, int, int, int, str)  # line, index, position, value, text
+    file_loaded_flag = False
+
     listview: QListWidget  # type hint
     listview_loading_btn: RotateIconButton  # type hint
+    listview_ret_label: QLabel  # type hint
 
     item_value_role = Qt.UserRole
     item_line_role = Qt.UserRole + 1
     item_method_url_role = Qt.UserRole + 2
     item_max_line_role = Qt.UserRole + 3
 
-    # class _ListViewItemDelegate(QStyledItemDelegate):
-    #     def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex) -> None:
-    #         line = index.data(HTTPFileCodeWidget.item_line_role)
-    #         method_url = index.data(HTTPFileCodeWidget.item_method_url_role)
-    #         max_line = index.data(HTTPFileCodeWidget.item_max_line_role)
-    #         painter.drawStaticText()
-    #         super().paint(painter, option, index)
-    #         if option.state & QStyle.State_HasFocus and data is None:
-    #             option.font.setBold(True)
-    #         if data is None:  # and option.state & QStyle.State_MouseOver:
-    #             dt = index.data(ModifyFlag)
-    #             if dt:
-    #                 painter.setPen(Qt.darkGray)
-    #                 text = NetWorkFileSystemTreeView.format_time(dt)
-    #                 fm_width = option.fontMetrics.width(text)
-    #                 display = index.data(FileNameFlag)
-    #                 display_width = option.fontMetrics.width(display)
-    #                 rect = option.rect
-    #                 if fm_width + display_width > rect.width():
-    #                     fm_width = rect.width() - display_width - 30
-    #                     text = option.fontMetrics.elidedText(text, Qt.ElideRight, rect.width() - display_width - 30,
-    #                                                          Qt.AlignRight)
-    #                 painter.drawText(QRectF(rect.width() - fm_width, rect.y(), fm_width, rect.height()), text,
-    #                                  QTextOption())
-
     def __init__(self):
         super(HTTPFileCodeWidget, self).__init__()
         self.code.setMouseTracking(True)
         self.code.mouseMoveEvent = MethodType(hook_code_mouseMoveEvent, self.code)
+        self.code.file_styled.connect(self._file_styled)
+        self.code.run_margin_signal.connect(self._run_request)
+
+    @cached_property
+    def lexer(self) -> HttpFileLexer:
+        return self.code.lexer()
 
     def set_lexer(self) -> Any:
         return TabHttpLexer(self)
@@ -177,7 +164,8 @@ class HTTPFileCodeWidget(TabCodeWidget):
             label.setIndent(4)
             line_number = f'{line + 1}'.zfill(max_lines or 2)
             label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-            label.setText(f'{line_number}. <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline">{url}</font>', )
+            label.setText(
+                f'{line_number}. <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline">{url}</font>', )
             # raw_text=f'{line_number}. {method} {url}')
             listview.addItem(item)
             listview.setItemWidget(item, label)
@@ -191,7 +179,8 @@ class HTTPFileCodeWidget(TabCodeWidget):
                     label = self.listview.itemWidget(item)
                     label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
                     line_number = f'{line + 1}'.zfill(max_lines or 2)
-                    label.setText(f'{line_number}. <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline">{url}</font>', )
+                    label.setText(
+                        f'{line_number}. <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline">{url}</font>', )
                     # raw_text=f'{line_number}. {method} {url}')
                     return
 
@@ -222,6 +211,8 @@ class HTTPFileCodeWidget(TabCodeWidget):
             load_btn = QPushButton('从文件中导入')
             menu = QMenu()
             menu.addAction('txt中导入')
+            StylesHelper.add_menu_style(menu)
+
             load_btn.setMenu(menu)
             run_all_btn.setCursor(Qt.PointingHandCursor)
             add_request_btn.setCursor(Qt.PointingHandCursor)
@@ -229,9 +220,30 @@ class HTTPFileCodeWidget(TabCodeWidget):
             load_btn.setCursor(Qt.PointingHandCursor)
             lay.addWidget(run_all_btn)
             lay.addSpacerItem(QSpacerItem(20, 20, hPolicy=QSizePolicy.Expanding))
+
             lay.addWidget(load_btn)
             lay.addWidget(add_request_btn)
             lay.addWidget(add_env_btn)
+
+            check = QPushButton()
+            check.setText('输出内容')
+            check_menu = QMenu()
+            check_menu.installEventFilter(self)
+            action_group = QActionGroup(self)
+            action_group.setExclusive(False)
+            ac1 = QAction('响应时间')
+            ac2 = QAction('响应头')
+            ac3 = QAction('响应体')
+            ac1.setCheckable(True)
+            ac2.setCheckable(True)
+            ac3.setCheckable(True)
+            check_menu.addAction(action_group.addAction(ac1))
+            check_menu.addAction(action_group.addAction(ac2))
+            check_menu.addAction(action_group.addAction(ac3))
+            StylesHelper.add_menu_style(check_menu)
+            check.setMenu(check_menu)
+            lay.addWidget(check)
+
             add_env_btn.clicked.connect(lambda e: signal_manager.emit(signal_manager.createFileAndOpen,
                                                                       _create_current_path(),
                                                                       '{}'))
@@ -244,23 +256,23 @@ class HTTPFileCodeWidget(TabCodeWidget):
 
     def set_splitter_widgets(self) -> List[QWidget]:
         def _fresh_indicators(loading):
-            if loading:
-                pass
-            else:
-                self.fresh_search_panel()
+            self.fresh_search_panel()
 
         def _panel_search():
             text = self.sender().text().strip()
             if text:
+                flag = 0
                 for i in range(self.listview.count()):
                     QApplication.processEvents()
                     item = self.listview.item(i)
                     label = self.listview.itemWidget(item)
                     txt = label.text()
                     if text in txt:
+                        flag += 1
                         self.listview.setRowHidden(i, False)
                     else:
                         self.listview.setRowHidden(i, True)
+                self.listview_ret_label.setText(f'{flag}条结果')
 
         def _line_blank(st):
             txt = self.sender().text().strip()
@@ -268,12 +280,13 @@ class HTTPFileCodeWidget(TabCodeWidget):
                 for i in range(self.listview.count()):
                     QApplication.processEvents()
                     self.listview.setRowHidden(i, False)
+                self.listview_ret_label.clear()
 
         def _create_search_panel():
             container = QWidget()
             container.setStyleSheet('QPushButton{border:none;background:transparent;padding:2px}'
                                     'QPushButton:hover{background:lightgray}'
-                                    'QLineEdit{font-family:微软雅黑}')
+                                    'QLabel, QLineEdit{font-family:微软雅黑}')
             lay = QVBoxLayout(container)
             lay.setContentsMargins(0, 0, 0, 0)
             lay.setSpacing(1)
@@ -288,17 +301,33 @@ class HTTPFileCodeWidget(TabCodeWidget):
             line.returnPressed.connect(_panel_search)
             line.textChanged.connect(_line_blank)
             top_lay.addWidget(line)
+            top_lay.addSpacing(10)
+            ret_label = QLabel()
+            top_lay.addWidget(ret_label)
             top_lay.addSpacerItem(QSpacerItem(20, 20, hPolicy=QSizePolicy.Expanding))
+
+            run_all_btn = QPushButton()
+            run_all_btn.setIcon(QIcon(':/icon/icons_next.svg'))
+            run_all_btn.setCursor(Qt.PointingHandCursor)
+            run_all_btn.setToolTip('运行所有请求')
+            top_lay.addWidget(run_all_btn)
 
             btn = RotateIconButton()
             btn.setIcon(':/icon/icon-refresh.svg')
+            btn.setToolTip('刷新页面')
             btn.clicked.connect(_fresh_indicators)
             top_lay.addWidget(btn)
+
+            cf_btn = QPushButton()
+            cf_btn.setIcon(QIcon(':/icon/扳手.svg'))
+            cf_btn.setToolTip('配置')
+            top_lay.addWidget(cf_btn)
 
             lay.addWidget(top_container)
             listview = QListWidget()
             container.listview = listview
             container.btn = btn
+            container.ret_label = ret_label
             lay.addWidget(listview)
             return container
 
@@ -306,6 +335,7 @@ class HTTPFileCodeWidget(TabCodeWidget):
         handler_background = ConfigProvider.default(ConfigKey.general, 'handler_background').value
         search_panel = _create_search_panel()
         self.listview_loading_btn = search_panel.btn
+        self.listview_ret_label = search_panel.ret_label
         self.listview = search_panel.listview
         self.listview._item_values = set()
         self.url_indicator_signal.connect(self.add_url_item)
@@ -333,6 +363,7 @@ class HTTPFileCodeWidget(TabCodeWidget):
             # layout.addSpacerItem(QSpacerItem(20, 20, vPolicy=QSizePolicy.Expanding))
             handler.setLayout(layout)
 
+    # slots #
     def when_modify(self, position, modificationType, text, length, linesAdded,
                     line, foldLevelNow, foldLevelPrev, token, annotationLinesAdded):
         super(HTTPFileCodeWidget, self).when_modify(position, modificationType, text, length, linesAdded, line,
@@ -352,13 +383,53 @@ class HTTPFileCodeWidget(TabCodeWidget):
             if linesAdded:
                 pass
 
+    @pyqtSlot()
+    def _file_styled(self):
+        if self.file_loaded_flag:
+            self.fresh_search_panel()
+            self.file_loaded_flag = False
+
+    @pyqtSlot(int)
+    def _run_request(self, line):
+        url, method = self.lexer.runner._find_url_method(line)
+        headers = self.lexer.runner._find_headers(line)
+        ret = re.findall(r'{{.*?}}', url)
+        if ret:
+            real_url = url.replace('{{', '{').replace('}}', '}').strip().format(**self.get_env())
+            self.run_request_async(real_url, method, headers)
+        print('get ', url, method, headers)
+
+    def run_request_async(self, url, method, headers, session: ClientSession = None):
+        async def _run():
+            async with aiohttp.ClientSession() as sess:
+                run_time = time.time()
+                async with sess.request(method, url, headers=headers) as resp:
+                    try:
+                        resp.raise_for_status()
+                        text = await resp.text()
+                        end_time = time.time()
+                        return resp.headers, text, resp.status, end_time - run_time
+                    except ClientResponseError as e:
+                        raise e
+
+        def call_back(ret):
+            headers, text, status, run_time = ret
+            print('headers: ', dict(**headers))
+            print('status: ', status)
+            print('run time', run_time)
+
+        def err_back(error: ClientResponseError):
+            print('request fail error')
+
+        self.analyse_worker.add_coro(_run(), call_back, err_back)
+
     @cached_property
     def analyse_worker(self):
         return self.code.get_or_create_worker('analyse_worker')
 
     def fresh_search_panel(self, content: str = None):
         def run_in_worker():
-            pattern = r'(?:get|post|header|delete|patch|options)(?:\s+?http[s]?://.*)'
+            pattern = r'get|post|header|delete|patch|options(\s+?http[s]?://.*)'
             ret = []
             lexer = self.code.lexer()
             line_count = self.code.lines()
@@ -387,5 +458,33 @@ class HTTPFileCodeWidget(TabCodeWidget):
         self.analyse_worker.add_task(run_in_worker, call_back=call_back, err_back=err_back)
 
     def load_file(self, file_path, content: str = None):
+        self.file_loaded_flag = True
         super().load_file(file_path, content)
-        self.fresh_search_panel()
+
+    # utils
+    def get_env(self) -> dict:
+        def _current_env_path():
+            current_file_path_dir = Path(self.file_path())
+            file_name = current_file_path_dir.name
+            file_path = current_file_path_dir.parent / f'{file_name}.env.json'
+            return file_path
+
+        file_path = _current_env_path()
+        if file_path.exists():
+            content = file_path.read_text('utf-8')
+            try:
+                ret = json.loads(content)
+                return ret
+            except:
+                return {}
+        return {}
+
+    # filter
+    def eventFilter(self, a0: 'QObject', a1: QEvent) -> bool:
+        if isinstance(a0, QMenu):
+            if a1.type() == QEvent.MouseButtonRelease:
+                action = a0.actionAt(a1.pos())
+                if action:
+                    action.activate(QAction.Trigger)
+                return True
+        return super().eventFilter(a0, a1)
