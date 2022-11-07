@@ -129,7 +129,7 @@ class HttpFileLexer(CustomLexerCompat):
     def define_markers(self, editor: QsciScintilla):
         # from PyQt5 import QsciScintilla
         editor.setMarginType(self.run_margin_type, editor.SymbolMargin)
-        editor.markerDefine(QPixmap(self.run_margin_pixmap).scaled(18, 18, transformMode=Qt.SmoothTransformation),
+        editor.markerDefine(QPixmap(self.run_margin_pixmap).scaled(16, 16, transformMode=Qt.SmoothTransformation),
                             self.run_margin_type)
         editor.setMarginWidth(self.run_margin_type, 24)
         editor.setMarginSensitivity(self.run_margin_type, True)

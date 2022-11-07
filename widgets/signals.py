@@ -85,6 +85,8 @@ class ProcessSignalMixInHelper(object):
 
 @singleton
 class SignalManager(object):
+    createFile = 'createFile'
+    createFileAndOpen = 'createFileAndOpen'
     openUrlFile = 'openUrlFile'
     changeSplitSize = 'changeSplitSize'
     changeVSplitSize = 'changeVSplitSize'
@@ -103,15 +105,14 @@ class SignalManager(object):
         self._signals = {}
 
     def add_event(self, signal_name: str, signal=None, call_back=None):
-        # print('add event', signal_name, signal, call_back)
         self._signals[signal_name] = [signal, call_back]
 
     def emit(self, signal_name, *a, **kw):
         ret = self._signals.get(signal_name, None)
         if ret:
-            signal, call_back = ret
-            if signal:
-                signal.emit(*a, **kw)
+            signal_, call_back = ret
+            if signal_:
+                signal_.emit(*a, **kw)
             if call_back:
                 call_back(*a, **kw)
 

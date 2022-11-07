@@ -1,13 +1,21 @@
+import re
+from pathlib import Path
 from types import MethodType
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from PyQt5.QtCore import Qt, pyqtSignal, QSize
-from PyQt5.QtGui import QColor, QFont, QMouseEvent, QCursor
-from PyQt5.QtWidgets import QWidget, QListView, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy, QListWidget, \
-    QListWidgetItem, QApplication, QLabel, QToolTip
+from PyQt5.QtCore import Qt, pyqtSignal, QSize, QModelIndex
+from PyQt5.QtGui import QColor, QFont, QMouseEvent, QCursor, QPainter
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy, QListWidget, \
+    QListWidgetItem, QApplication, QLabel, QToolTip, QHBoxLayout, QPushButton, QLineEdit, QStyledItemDelegate, QStyle, QMenu
+from cached_property import cached_property
 
+from pyqt5utils.components.styles import StylesHelper
+from pyqt5utils.components.widgets.buttons import RotateIconButton
+from pyqt5utils.components.widgets.labels import InfoLabel, DotLabel
 from pyqt5utils.qsci.lexers.http_file import HttpFileLexer, CustomStyles
+from widgets.utils import ConfigProvider, ConfigKey
 from . import register, TabCodeWidget
+from ..signals import signal_manager
 
 
 class HttpFileStyles(CustomStyles):
@@ -100,7 +108,7 @@ class TabHttpLexer(HttpFileLexer):
     styles_class = HttpFileStyles
 
 
-def code_mouseMoveEvent(self, a0: QMouseEvent) -> None:
+def hook_code_mouseMoveEvent(self, a0: QMouseEvent) -> None:
     self.__class__.mouseMoveEvent(self, a0)
     point = a0.pos()
     position = self.positionFromPoint(point)
@@ -113,41 +121,78 @@ def code_mouseMoveEvent(self, a0: QMouseEvent) -> None:
 @register(file_types=['http'])
 class HTTPFileCodeWidget(TabCodeWidget):
     url_indicator_signal = pyqtSignal(int, int, int, int, str)  # line, index, position, value, text
+    listview: QListWidget  # type hint
+    listview_loading_btn: RotateIconButton  # type hint
+
+    item_value_role = Qt.UserRole
+    item_line_role = Qt.UserRole + 1
+    item_method_url_role = Qt.UserRole + 2
+    item_max_line_role = Qt.UserRole + 3
+
+    # class _ListViewItemDelegate(QStyledItemDelegate):
+    #     def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex) -> None:
+    #         line = index.data(HTTPFileCodeWidget.item_line_role)
+    #         method_url = index.data(HTTPFileCodeWidget.item_method_url_role)
+    #         max_line = index.data(HTTPFileCodeWidget.item_max_line_role)
+    #         painter.drawStaticText()
+    #         super().paint(painter, option, index)
+    #         if option.state & QStyle.State_HasFocus and data is None:
+    #             option.font.setBold(True)
+    #         if data is None:  # and option.state & QStyle.State_MouseOver:
+    #             dt = index.data(ModifyFlag)
+    #             if dt:
+    #                 painter.setPen(Qt.darkGray)
+    #                 text = NetWorkFileSystemTreeView.format_time(dt)
+    #                 fm_width = option.fontMetrics.width(text)
+    #                 display = index.data(FileNameFlag)
+    #                 display_width = option.fontMetrics.width(display)
+    #                 rect = option.rect
+    #                 if fm_width + display_width > rect.width():
+    #                     fm_width = rect.width() - display_width - 30
+    #                     text = option.fontMetrics.elidedText(text, Qt.ElideRight, rect.width() - display_width - 30,
+    #                                                          Qt.AlignRight)
+    #                 painter.drawText(QRectF(rect.width() - fm_width, rect.y(), fm_width, rect.height()), text,
+    #                                  QTextOption())
 
     def __init__(self):
         super(HTTPFileCodeWidget, self).__init__()
         self.code.setMouseTracking(True)
-        self.code.mouseMoveEvent = MethodType(code_mouseMoveEvent, self.code)
+        self.code.mouseMoveEvent = MethodType(hook_code_mouseMoveEvent, self.code)
 
     def set_lexer(self) -> Any:
         return TabHttpLexer(self)
 
-    def add_url_item(self, line, col, position, value, text):
+    def add_url_item(self, line, col, position, value, text, max_lines: int = None):
         content = text.split(' ')
         method = content[0]
         url = ' '.join(content[1:]).strip()
-        print('get value ', line, value)
         if value not in self.listview._item_values:
             listview = self.listview
             item = QListWidgetItem()
-            item.setData(Qt.UserRole, value)
-            item.setData(Qt.UserRole + 1, line)
-            item.setSizeHint(QSize(24, 50))
+            item.setForeground(Qt.transparent)
+            item.setText(f'{method} {url}')
+            item.setData(self.item_value_role, value)
+            item.setData(self.item_line_role, line)
             label = QLabel()
             label.setIndent(4)
+            line_number = f'{line + 1}'.zfill(max_lines or 2)
             label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-            label.setText(f'<font weight="bold">{line + 1}. </font><font color="red"><b>{method}</font></b> {url}')
+            label.setText(f'{line_number}. <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline">{url}</font>', )
+            # raw_text=f'{line_number}. {method} {url}')
             listview.addItem(item)
             listview.setItemWidget(item, label)
             listview._item_values.add(value)
+            item.setSizeHint(QSize(40, label.fontMetrics().height() * 2))
         else:
             for i in range(self.listview.count()):
                 QApplication.processEvents()
                 item = self.listview.item(i)
                 if item.data(Qt.UserRole) == value:
                     label = self.listview.itemWidget(item)
-                    label.setText(
-                        f'<font weight="bold">{line + 1}. </font><font color="red"><b>{method}</font></b> {url}')
+                    label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+                    line_number = f'{line + 1}'.zfill(max_lines or 2)
+                    label.setText(f'{line_number}. <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline">{url}</font>', )
+                    # raw_text=f'{line_number}. {method} {url}')
                     return
 
     def go_to_indicator(self, item: QListWidgetItem):
@@ -155,14 +200,126 @@ class HTTPFileCodeWidget(TabCodeWidget):
         col = 0
         self.move_to(line, col)
 
+    def set_code_widgets(self) -> List[QWidget]:
+        def _create_current_path():
+            current_file_path_dir = Path(self.file_path())
+            file_name = current_file_path_dir.name
+            create_file_path = current_file_path_dir.parent / f'{file_name}.env.json'
+            return create_file_path.__str__()
+
+        def _create_panel():
+            handle_width = ConfigProvider.default(ConfigKey.general, 'vertical_width').value
+            container = QWidget()
+            container.setStyleSheet('QWidget{background: #F2F2F2;border:1px solid lightgray}'
+                                    'QPushButton{border:none;color:#0083D8;font-family:微软雅黑}'
+                                    'QPushButton:hover{color:darkorange}')
+            lay = QHBoxLayout(container)
+            lay.setSpacing(6)
+            lay.setContentsMargins(8, 0, handle_width, 0)
+            run_all_btn = QPushButton('运行文件中的所有请求')
+            add_request_btn = QPushButton('添加请求')
+            add_env_btn = QPushButton('添加环境变量')
+            load_btn = QPushButton('从文件中导入')
+            menu = QMenu()
+            menu.addAction('txt中导入')
+            load_btn.setMenu(menu)
+            run_all_btn.setCursor(Qt.PointingHandCursor)
+            add_request_btn.setCursor(Qt.PointingHandCursor)
+            add_env_btn.setCursor(Qt.PointingHandCursor)
+            load_btn.setCursor(Qt.PointingHandCursor)
+            lay.addWidget(run_all_btn)
+            lay.addSpacerItem(QSpacerItem(20, 20, hPolicy=QSizePolicy.Expanding))
+            lay.addWidget(load_btn)
+            lay.addWidget(add_request_btn)
+            lay.addWidget(add_env_btn)
+            add_env_btn.clicked.connect(lambda e: signal_manager.emit(signal_manager.createFileAndOpen,
+                                                                      _create_current_path(),
+                                                                      '{}'))
+            container.setFixedHeight(add_env_btn.fontMetrics().height() * 2.4)
+            return container
+
+        if self.is_remote:
+            return []
+        return [_create_panel()]
+
     def set_splitter_widgets(self) -> List[QWidget]:
-        self.listview = listview = QListWidget()
+        def _fresh_indicators(loading):
+            if loading:
+                pass
+            else:
+                self.fresh_search_panel()
+
+        def _panel_search():
+            text = self.sender().text().strip()
+            if text:
+                for i in range(self.listview.count()):
+                    QApplication.processEvents()
+                    item = self.listview.item(i)
+                    label = self.listview.itemWidget(item)
+                    txt = label.text()
+                    if text in txt:
+                        self.listview.setRowHidden(i, False)
+                    else:
+                        self.listview.setRowHidden(i, True)
+
+        def _line_blank(st):
+            txt = self.sender().text().strip()
+            if not txt:
+                for i in range(self.listview.count()):
+                    QApplication.processEvents()
+                    self.listview.setRowHidden(i, False)
+
+        def _create_search_panel():
+            container = QWidget()
+            container.setStyleSheet('QPushButton{border:none;background:transparent;padding:2px}'
+                                    'QPushButton:hover{background:lightgray}'
+                                    'QLineEdit{font-family:微软雅黑}')
+            lay = QVBoxLayout(container)
+            lay.setContentsMargins(0, 0, 0, 0)
+            lay.setSpacing(1)
+
+            top_container = QWidget()
+            top_lay = QHBoxLayout(top_container)
+            top_lay.setContentsMargins(0, 0, 0, 0)
+            top_lay.setSpacing(0)
+            line = QLineEdit()
+            line.setPlaceholderText(' 查找')
+            line.setClearButtonEnabled(True)
+            line.returnPressed.connect(_panel_search)
+            line.textChanged.connect(_line_blank)
+            top_lay.addWidget(line)
+            top_lay.addSpacerItem(QSpacerItem(20, 20, hPolicy=QSizePolicy.Expanding))
+
+            btn = RotateIconButton()
+            btn.setIcon(':/icon/icon-refresh.svg')
+            btn.clicked.connect(_fresh_indicators)
+            top_lay.addWidget(btn)
+
+            lay.addWidget(top_container)
+            listview = QListWidget()
+            container.listview = listview
+            container.btn = btn
+            lay.addWidget(listview)
+            return container
+
+        handler_color = ConfigProvider.default(ConfigKey.general, 'handler_color').value
+        handler_background = ConfigProvider.default(ConfigKey.general, 'handler_background').value
+        search_panel = _create_search_panel()
+        self.listview_loading_btn = search_panel.btn
+        self.listview = search_panel.listview
         self.listview._item_values = set()
         self.url_indicator_signal.connect(self.add_url_item)
         self.listview.itemClicked.connect(self.go_to_indicator)
-        return [
-            listview
-        ]
+        StylesHelper.set_v_history_style_dynamic(self.listview, color=handler_color, background=handler_background)
+        StylesHelper.set_h_history_style_dynamic(self.listview, color=handler_color, background=handler_background)
+        return [search_panel]
+
+    def set_splitter_factor(self, index):
+        if index == 0:
+            return 200
+        if index == 1:
+            self.splitter.setStretchFactor(1, 0)
+            return 100
 
     def set_splitter_handle(self, index):
         if index == 1:
@@ -181,11 +338,8 @@ class HTTPFileCodeWidget(TabCodeWidget):
         super(HTTPFileCodeWidget, self).when_modify(position, modificationType, text, length, linesAdded, line,
                                                     foldLevelNow, foldLevelPrev, token, annotationLinesAdded)
         full = self.code.SC_MOD_INSERTTEXT | self.code.SC_MOD_DELETETEXT
-        if (~modificationType & full == full):
+        if ~modificationType & full == full:
             return
-        # print('linesadded , ', linesAdded, 'len,', length, 'line, ', token)
-        # from PyQt5 import QsciScintilla
-        # code: QsciScintilla
         code = self.code
         lexer = code.lexer()
         cline, col = self.code.lineIndexFromPosition(position)
@@ -197,3 +351,41 @@ class HTTPFileCodeWidget(TabCodeWidget):
         else:
             if linesAdded:
                 pass
+
+    @cached_property
+    def analyse_worker(self):
+        return self.code.get_or_create_worker('analyse_worker')
+
+    def fresh_search_panel(self, content: str = None):
+        def run_in_worker():
+            pattern = r'(?:get|post|header|delete|patch|options)(?:\s+?http[s]?://.*)'
+            ret = []
+            lexer = self.code.lexer()
+            line_count = self.code.lines()
+            for line in range(line_count):
+                line_text = self.code.text(line)
+                if re.findall(pattern, line_text, re.I):
+                    position = self.code.positionFromLineIndex(line, 0)
+                    end_position = self.code.lineEndPosition(line) - 1
+                    value = self.code.getIndicatorValue(lexer.url_indicator, end_position)
+                    ret.append((line, 0, position, value, line_text.strip()))
+            return ret, line_count
+
+        def call_back(ret):
+            values, line_count = ret
+            if values:
+                self.listview.clear()
+                self.listview._item_values.clear()
+            for info in values:
+                line, col, position, value, line_text = info
+                self.add_url_item(line, col, position, value, line_text, len(f'{line_count}'))
+            self.listview_loading_btn.stop()
+
+        def err_back(error):
+            self.listview_loading_btn.stop()
+
+        self.analyse_worker.add_task(run_in_worker, call_back=call_back, err_back=err_back)
+
+    def load_file(self, file_path, content: str = None):
+        super().load_file(file_path, content)
+        self.fresh_search_panel()

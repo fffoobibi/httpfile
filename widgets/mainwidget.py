@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from PyQt5.QtCore import QModelIndex, QPoint, QSize
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction
 from pydantic import BaseModel, Field
 
@@ -13,7 +13,7 @@ from widgets.base import PluginBaseMixIn
 from widgets.collect import collect_plugins, Collections
 from widgets.components import FileSystemModel
 from widgets.signals import app_exit, app_start_up
-from widgets.utils import ConfigProvider, ConfigKey
+from widgets.utils import ConfigProvider, ConfigKey, get_file_type_and_name
 
 
 class AppRunTime(BaseModel):
@@ -38,6 +38,10 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         self.load_bottom()
         self.load_status()
         self.init_signal_manager()
+
+    def render_style_sheet(self):
+        self.tabWidget.setFont(QFont('微软雅黑'))
+        self.tabWidget_2.setFont(QFont('微软雅黑'))
 
     def init_run_time(self):
         self.r_run_time: AppRunTime = AppRunTime()
@@ -87,6 +91,19 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         def _show_message(msg: str, timeout: int = 0):
             self.statusbar.showMessage(msg, timeout)
 
+        def _create_file(file_path: str, file_content: str):
+            # path = self.r_run_time.current / file_path
+            path = Path(file_path)
+            path.write_text(file_content, encoding='utf-8')
+
+        def _create_file_and_open(file_path: str, file_content: str):
+            path = Path(file_path)
+            if not path.exists():
+                path.touch()
+                path.write_text(file_content, encoding='utf-8')
+            file_type, file_name = get_file_type_and_name(file_path)
+            self.add_tab_widget(file_type, file_name, file_path)
+
         from widgets.signals import signal_manager
         signal_manager.add_event(signal_manager.openUrlFile, None,
                                  call_back=lambda url, content: self.add_tab_widget(None, None, None, url,
@@ -99,6 +116,8 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                                  call_back=lambda err, dura=1500: Message.warn(f'{err}', self, dura))
         signal_manager.add_event(signal_manager.statusReadOnly, None, call_back=_change_read_state)
         signal_manager.add_event(signal_manager.statusMsg, None, call_back=_show_message)
+        signal_manager.add_event(signal_manager.createFile, None, call_back=_create_file)
+        signal_manager.add_event(signal_manager.createFileAndOpen, None, call_back=_create_file_and_open)
         self.sm = signal_manager
 
     def init_project(self):

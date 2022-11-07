@@ -1098,6 +1098,11 @@ class QsciScintillaCompat(QsciScintilla):
             return self.text(start, end)
         return ''
 
+    def getIndicatorValue(self, indicator: int, pos):
+        value = self.SendScintilla(QsciScintilla.SCI_INDICATORVALUEAT,
+                                   indicator, pos)
+        return value
+
     def setIndicatorRange(self, indicator, spos, length):
         """
         Public method to set an indicator for the given range.

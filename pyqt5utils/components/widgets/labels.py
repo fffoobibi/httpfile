@@ -81,6 +81,36 @@ class InfoLabel(QLabel):
         super().setToolTip(text)
 
 
+class DotLabel(QLabel):
+
+    def mousePressEvent(self, ev: QMouseEvent) -> None:
+        super(DotLabel, self).mousePressEvent(ev)
+
+    def __init__(self, *a, **kw):
+        super(DotLabel, self).__init__(*a, **kw)
+        self._text = ''
+
+    @property
+    def raw_text(self):
+        return self._text
+
+    def setText(self, a0: str, raw_text: str = None) -> None:
+        super().setText(a0)
+        self._text = raw_text or a0
+
+    def clear(self) -> None:
+        super(DotLabel, self).clear()
+        self._text = ''
+
+    def resizeEvent(self, a0) -> None:
+        super().resizeEvent(a0)
+        if self._text:
+            fm = self.fontMetrics()
+            text = fm.elidedText(self._text + '  ', Qt.ElideRight, self.width())
+            self.setText(text, self._text)
+
+
+
 class Downloader(object):
 
     @classmethod

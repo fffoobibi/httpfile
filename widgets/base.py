@@ -68,10 +68,11 @@ def _plugin_init_(self, *a, **kw):
     app_exit.connect(_app_exit, weak=False)
 
     self.after_init()
+    self.render_style_sheet()
 
 
 class PluginBaseMixIn(object):
-    worker_class = WorkerManager
+    worker_factory_class = WorkerManager
     worker_name = 'pluginbasemixin'
     __worker_instances__ = dict()
 
@@ -91,10 +92,16 @@ class PluginBaseMixIn(object):
     def after_init(self):
         pass
 
+    def render_style_sheet(self):
+        pass
+
+    def get_or_create_worker(self, worker_name: str) -> BackgroundWorker:
+        return self.worker_factory_class().get(worker_name)
+
     @property
     def worker(self) -> BackgroundWorker:
         if self.__worker_instances__.get(self.worker_name, None) is None:
-            self.__worker_instances__[self.worker_name] = self.worker_class().get(self.worker_name)
+            self.__worker_instances__[self.worker_name] = self.worker_factory_class().get(self.worker_name)
         return self.__worker_instances__.get(self.worker_name)
 
     def config_name(self, key_name: str) -> str:

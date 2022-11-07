@@ -1,3 +1,4 @@
+import typing
 from contextlib import suppress
 from pathlib import Path
 from typing import List
@@ -36,8 +37,8 @@ def load_tab_widgets():
     return tab_codes
 
 
-def _make_child(instance, target, lex_func, app_exit, app_start_up):
-    class BaseCodeChild(target, PluginBaseMixIn):
+def _make_child(instance, lex_func, app_exit, app_start_up):
+    class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn):
 
         def __getattr__(self, item):
             return getattr(instance, item)
@@ -76,6 +77,7 @@ class TabCodeWidget(QWidget):
 
     def load_file(self, file_path, content: str = None):
         if not self.is_remote:
+            print('load file', file_path)
             self._file = file_path
             self.code.load_file(file_path)
         else:
@@ -110,7 +112,7 @@ class TabCodeWidget(QWidget):
         self.lay.setContentsMargins(0, 0, 0, 0)
         self.lay.setSpacing(1)
 
-        self.code: BaseCodeWidget = _make_child(self, BaseCodeWidget, self.set_lexer, self.when_app_exit, self.when_app_start_up)()
+        self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up)()
         self.code.setStyleSheet('BaseCodeWidget{border:none}QToolTip{background:red;color:white}')
 
         StylesHelper.set_v_history_style_dynamic(self.code, color='#CFCFCF', background='transparent',
@@ -138,6 +140,8 @@ class TabCodeWidget(QWidget):
         self.__copy_action.triggered.connect(self.__copy_slot)
 
         self.lay.addWidget(self.__search_widget)
+        for w in self.set_code_widgets():
+            self.lay.addWidget(w)
         self.lay.addWidget(self.code)
 
         self.addAction(self.__search_action)
@@ -150,12 +154,20 @@ class TabCodeWidget(QWidget):
         # self.code.setReadOnly(True)
         self.__main_lay.addWidget(self.splitter)
         self.splitter.addWidget(self.__code_container)
+
         for widget in self.set_splitter_widgets():
             self.splitter.addWidget(widget)
-        self.splitter.setSizes([200, 100])
-        # self.__splitter.setStretchFactor(0, 2)
-        self.splitter.setStretchFactor(1, 0)
-        self.set_splitter_handle(1)
+
+        # self.splitter.setSizes([200, 100])
+        for i in range(1, self.splitter.count()):
+            self.set_splitter_handle(i)
+        splitter_size = []
+        for i in range(self.splitter.count()):
+            size = self.set_splitter_factor(i)
+            splitter_size.append(size)
+        self.splitter.setSizes(splitter_size)
+        # self.splitter.setStretchFactor(1, 0)
+        # self.set_splitter_handle(1)
 
     @cached_property
     def toast(self):
@@ -174,7 +186,7 @@ class TabCodeWidget(QWidget):
             self.toast.hide()
 
     def when_modify(self, position, modificationType, text, length, linesAdded,
-                 line, foldLevelNow, foldLevelPrev, token, annotationLinesAdded):
+                    line, foldLevelNow, foldLevelPrev, token, annotationLinesAdded):
         full = self.code.SC_MOD_INSERTTEXT | self.code.SC_MOD_DELETETEXT
         if (~modificationType & full == full):
             return
@@ -280,12 +292,19 @@ class TabCodeWidget(QWidget):
         w.setFixedHeight(QFontMetrics(QFont('微软雅黑', 10)).height() * 1.5)
         return w
 
+    def set_splitter_factor(self, index) -> int:
+        return 200
+
     def set_splitter_handle(self, index):
         pass
 
     def set_splitter_widgets(self) -> List[QWidget]:
         return []
 
+    def set_code_widgets(self) -> List[QWidget]:
+        return []
+
+    ###########################
     def set_lexer(self):
         pass
 

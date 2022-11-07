@@ -1,4 +1,5 @@
 from enum import Enum
+from pathlib import Path
 
 
 class ConfigKey(str, Enum):
@@ -31,4 +32,8 @@ class _Lazy(object):
         return self._func()
 
 
-
+def get_file_type_and_name(file_path: str):
+    path = Path(file_path)
+    file_type = path.suffix.replace('.', '') + ' File'
+    file_name = path.name
+    return file_type, file_name
