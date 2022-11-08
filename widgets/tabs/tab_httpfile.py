@@ -135,6 +135,12 @@ class HTTPFileCodeWidget(TabCodeWidget):
     item_method_url_role = Qt.UserRole + 2
     item_max_line_role = Qt.UserRole + 3
 
+    # configs
+    output_headers = ConfigProvider.default(ConfigKey.http_code_widget, 'output_headers')
+    output_response = ConfigProvider.default(ConfigKey.http_code_widget, 'output_response')
+    output_runinfo = ConfigProvider.default(ConfigKey.http_code_widget, 'output_runinfo')
+
+
     def __init__(self):
         super(HTTPFileCodeWidget, self).__init__()
         self.code.setMouseTracking(True)
@@ -145,6 +151,12 @@ class HTTPFileCodeWidget(TabCodeWidget):
     @cached_property
     def lexer(self) -> HttpFileLexer:
         return self.code.lexer()
+
+    @cached_property
+    def main_app(self):
+        from widgets.mainwidget import MainWidget
+        ret: MainWidget = self.code.get_app()
+        return ret
 
     def set_lexer(self) -> Any:
         return TabHttpLexer(self)
@@ -166,7 +178,6 @@ class HTTPFileCodeWidget(TabCodeWidget):
             label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
             label.setText(
                 f'{line_number}. <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline">{url}</font>', )
-            # raw_text=f'{line_number}. {method} {url}')
             listview.addItem(item)
             listview.setItemWidget(item, label)
             listview._item_values.add(value)
@@ -181,7 +192,6 @@ class HTTPFileCodeWidget(TabCodeWidget):
                     line_number = f'{line + 1}'.zfill(max_lines or 2)
                     label.setText(
                         f'{line_number}. <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline">{url}</font>', )
-                    # raw_text=f'{line_number}. {method} {url}')
                     return
 
     def go_to_indicator(self, item: QListWidgetItem):
@@ -237,6 +247,26 @@ class HTTPFileCodeWidget(TabCodeWidget):
             ac1.setCheckable(True)
             ac2.setCheckable(True)
             ac3.setCheckable(True)
+
+            a1k = self.code.config_name('output_runinfo', self.__class__)
+            a2k = self.code.config_name('output_headers', self.__class__)
+            a3k = self.code.config_name('output_response', self.__class__)
+
+            ac1_value = self.output_runinfo.value if self.code.settings.value(a1k) is None else self.code.settings.value(a1k)
+            ac2_value = self.output_headers.value if self.code.settings.value(a2k) is None else self.code.settings.value(a2k)
+            ac3_value = self.output_response.value if self.code.settings.value(a3k) is None else self.code.settings.value(a3k)
+
+            ac1.setChecked(ac1_value)
+            ac2.setChecked(ac2_value)
+            ac3.setChecked(ac3_value)
+
+            def action_trigger(key, ch):
+                self.code.settings.setValue(key, ch)
+
+            ac1.triggered.connect(lambda ch: action_trigger(a1k, ch))
+            ac2.triggered.connect(lambda ch: action_trigger(a2k, ch))
+            ac3.triggered.connect(lambda ch: action_trigger(a3k, ch))
+
             check_menu.addAction(action_group.addAction(ac1))
             check_menu.addAction(action_group.addAction(ac2))
             check_menu.addAction(action_group.addAction(ac3))
@@ -394,10 +424,17 @@ class HTTPFileCodeWidget(TabCodeWidget):
         url, method = self.lexer.runner._find_url_method(line)
         headers = self.lexer.runner._find_headers(line)
         ret = re.findall(r'{{.*?}}', url)
+        env = self.get_env()
         if ret:
-            real_url = url.replace('{{', '{').replace('}}', '}').strip().format(**self.get_env())
-            self.run_request_async(real_url, method, headers)
-        print('get ', url, method, headers)
+            try:
+                real_url = url.replace('{{', '{').replace('}}', '}').strip().format(**env)
+                self.run_request_async(real_url, method, headers)
+            except KeyError as e:
+                keys = ','.join(e.args)
+                msg = f'环境变量{keys}未设置!'
+                signal_manager.emit(signal_manager.warn, msg, 3000)
+        else:
+            self.run_request_async(url, method, headers)
 
     def run_request_async(self, url, method, headers, session: ClientSession = None):
         async def _run():
@@ -427,7 +464,7 @@ class HTTPFileCodeWidget(TabCodeWidget):
     def analyse_worker(self):
         return self.code.get_or_create_worker('analyse_worker')
 
-    def fresh_search_panel(self, content: str = None):
+    def fresh_search_panel(self):
         def run_in_worker():
             pattern = r'get|post|header|delete|patch|options(\s+?http[s]?://.*)'
             ret = []
@@ -463,21 +500,41 @@ class HTTPFileCodeWidget(TabCodeWidget):
 
     # utils
     def get_env(self) -> dict:
+        """
+        global env and self env
+        :return:
+        """
+
         def _current_env_path():
             current_file_path_dir = Path(self.file_path())
             file_name = current_file_path_dir.name
             file_path = current_file_path_dir.parent / f'{file_name}.env.json'
             return file_path
 
+        def _global_env_path():
+            return self.main_app.r_run_time.current
+
+        global_path = _global_env_path() / 'http.global.env.json'
+        if global_path.exists():
+            global_content = global_path.read_text('utf-8')
+            try:
+                global_env = json.loads(global_content)
+            except:
+                global_env = {}
+        else:
+            global_env = {}
         file_path = _current_env_path()
         if file_path.exists():
             content = file_path.read_text('utf-8')
             try:
-                ret = json.loads(content)
-                return ret
+                self_env = json.loads(content)
             except:
-                return {}
-        return {}
+                self_env = {}
+        else:
+            self_env = {}
+        coped = dict(**global_env)
+        coped.update(**self_env)
+        return coped
 
     # filter
     def eventFilter(self, a0: 'QObject', a1: QEvent) -> bool:
