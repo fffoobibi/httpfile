@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PyQt5.QtCore import QModelIndex, QPoint, QSize
 from PyQt5.QtGui import QIcon, QFont, QStandardItemModel
-from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction
+from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget
 from pydantic import BaseModel, Field
 
 from pyqt5utils.components import Message
@@ -169,6 +169,18 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         pass
 
     def load_bottom(self):
+        def _bottom_clicked():
+            sender = self.sender()
+            current = self.stackedWidget_3.currentWidget()
+            plugin: QWidget = sender._bind_bottom
+            if current != plugin:
+                self.stackedWidget_3.hide()
+            self.stackedWidget_3.setCurrentWidget(plugin)
+            if self.stackedWidget_3.isHidden():
+                self.stackedWidget_3.show()
+            else:
+                self.stackedWidget_3.hide()
+
         self.bottom_groups = QButtonGroup()
         i = 0
         cl = sorted(self.plugins.controls, key=lambda k: self.plugins.controls[k]['index'])
@@ -184,20 +196,31 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             btn.setText(name)
             if icon:
                 btn.setIcon(QIcon(icon))
-            length = self.horizontalLayout_3.count()
-            self.horizontalLayout_3.insertWidget(length - 1, btn)
+            length = self.horizontalLayout_2.count()
+            self.horizontalLayout_2.insertWidget(length - 1, btn)
             plugin_widget = k()
             plugin_widget.bottom_btn = btn
             plugin_widget.bottom_btn.clicked.connect(plugin_widget.bottom_clicked_slot)
             plugin_widget.check_state_signal.connect(plugin_widget.check_state_signal_slot)
             btn._bind_bottom = plugin_widget
-            btn.clicked.connect(lambda e: (
-                self.stackedWidget_3.show(),
-                self.stackedWidget_3.setCurrentWidget(self.sender()._bind_bottom)))
+            btn.clicked.connect(_bottom_clicked)
             self.stackedWidget_3.addWidget(plugin_widget)
 
-            self.bottom_groups.addButton(btn)
+            self.bottom_groups.addButton(btn, i - 1)
+
         self.stackedWidget_3.hide()
+
+    def show_bottom_panel(self, index: int):
+        btn = self.bottom_groups.button(index)
+        widget = self.stackedWidget_3.widget(index)
+        if widget.isHidden():
+            btn.click()
+
+    def hide_bottom_panel(self, index: int):
+        btn = self.bottom_groups.button(index)
+        widget = self.stackedWidget_3.widget(index)
+        if not widget.isHidden():
+            btn.click()
 
     def load_dir_path(self, path: str):
         p = Path(path)

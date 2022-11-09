@@ -2,7 +2,7 @@ POST http://{{host}}
 Content-Type: application/x-www-form-urlencoded
 
 
-### 啊啊啊啊你们在干什么
+###
 GET http://www.baidu.com
 Content-Type: application/x-www-form-urlencoded
 
@@ -28,17 +28,8 @@ GET http://localhost:80/api/item?id=99
 Content-Type: application/json
 asdfasdf
 
-{
-"a":1,
-"b":[1,2,3]
-}
 
+out
+
+end out
 ###
-asdf
-asdfasdf
-12 13123123123
-sdfasdf: 123123
-
-asdfsdf: 1312
-
-r'###.*\n(\S+\n)(\S+\n)+'

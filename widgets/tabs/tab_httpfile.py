@@ -1,16 +1,17 @@
 import json
 import re
 import time
+from datetime import datetime
 from pathlib import Path
 from types import MethodType
 from typing import Any, Dict, List
 
 import aiohttp
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, pyqtSlot, QEvent
-from PyQt5.QtGui import QColor, QFont, QMouseEvent, QCursor, QIcon
+from PyQt5.QtGui import QColor, QFont, QMouseEvent, QCursor, QIcon, QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy, QListWidget, \
     QListWidgetItem, QApplication, QLabel, QToolTip, QHBoxLayout, QPushButton, QLineEdit, QMenu, QActionGroup, QAction
-from aiohttp import ClientResponseError, ClientSession
+from aiohttp import ClientResponseError, ClientSession, ClientConnectorError
 from cached_property import cached_property
 
 from pyqt5utils.components.styles import StylesHelper
@@ -121,6 +122,14 @@ def hook_code_mouseMoveEvent(self, a0: QMouseEvent) -> None:
         QToolTip.hideText()
 
 
+class _RunError(Exception):
+    def __init__(self, line, raw, status, *args):
+        super().__init__(*args)
+        self.line = line
+        self.raw = raw
+        self.status = status
+
+
 @register(file_types=['http'])
 class HTTPFileCodeWidget(TabCodeWidget):
     url_indicator_signal = pyqtSignal(int, int, int, int, str)  # line, index, position, value, text
@@ -140,12 +149,79 @@ class HTTPFileCodeWidget(TabCodeWidget):
     output_response = ConfigProvider.default(ConfigKey.http_code_widget, 'output_response')
     output_runinfo = ConfigProvider.default(ConfigKey.http_code_widget, 'output_runinfo')
 
+    # markers 0, 1, 2
+    # margin_type 1, 2
+
+    run_margin_type = 1
+    run_margin_handle = 0
+    run_margin_icon = ':/icon/运行，调试.svg'
+
+    info_margin_type = 2
+    success_marker_handle = 1
+    success_marker_icon = ':/icon/成功.svg'
+
+    fail_marker_handle = 2
+    fail_marker_icon = ':/icon/感叹号.svg'
+
     def __init__(self):
         super(HTTPFileCodeWidget, self).__init__()
         self.code.setMouseTracking(True)
         self.code.mouseMoveEvent = MethodType(hook_code_mouseMoveEvent, self.code)
         self.code.file_styled.connect(self._file_styled)
         self.code.run_margin_signal.connect(self._run_request)
+        self.define_code_markers()
+
+    def define_code_markers(self):
+        editor = self.code
+
+        editor.setMarginType(self.run_margin_type, editor.SymbolMargin)
+        run_handle = editor.markerDefine(
+            QPixmap(self.run_margin_icon).scaled(16, 16, transformMode=Qt.SmoothTransformation),
+            self.run_margin_handle)
+        editor.setMarginWidth(self.run_margin_type, 24)
+        editor.setMarginSensitivity(self.run_margin_type, True)
+        editor.setMarginMarkerMask(self.run_margin_type, 0b001)
+
+        editor.setMarginType(self.info_margin_type, editor.SymbolMargin)
+        success_handler = editor.markerDefine(
+            QPixmap(self.success_marker_icon).scaled(16, 16, transformMode=Qt.SmoothTransformation),
+            self.success_marker_handle)
+        fail_handler = editor.markerDefine(
+            QPixmap(self.fail_marker_icon).scaled(16, 16, transformMode=Qt.SmoothTransformation),
+            self.fail_marker_handle)
+
+        editor.setMarginWidth(self.info_margin_type, 24)
+        editor.setMarginSensitivity(self.info_margin_type, True)
+        editor.setMarginMarkerMask(self.info_margin_type, 0b110)
+
+        # from PyQt5 import QsciScintilla
+        # editor: QsciScintilla
+        # fold margin
+        editor.setFolding(editor.SC_FOLDDISPLAYTEXT_STANDARD, 3)
+        editor.setMarginType(3, editor.SymbolMargin)
+        # editor.setFoldMarginColors(Qt.red, Qt.red)
+        # editor.setMarginsForegroundColor(Qt.red)
+        # editor.setMarginsBackgroundColor(Qt.blue)
+        # editor.setMarginWidth(3, '00')
+
+        editor.marginClicked.connect(self.margin_slot)
+        print('define ', run_handle, success_handler, fail_handler)
+
+    def margin_slot(self, margin_lr, line, state):
+        # from PyQt5 import QsciScintilla
+        editor = self.code
+        margin_type = editor.markersAtLine(line)
+        print('margin_type: ', bin(margin_type))
+        if margin_lr == self.run_margin_type and (margin_type & 0b001 == 0b001):
+            editor.run_margin_signal.emit(line)
+        elif margin_lr == self.info_margin_type and (margin_type & 0b010 == 0b010):  # 1 0b010
+            print('success')
+        elif margin_lr == self.info_margin_type and (margin_type & 0b100 == 0b100):  # 2 0b100
+            print('fail')
+        # print('margin type:', margin_lr, margin_type, state)
+        # position = editor.positionFromLineIndex(line, 0)
+        # style = editor.styleAt(position)
+        # print('style: ', style)
 
     @cached_property
     def lexer(self) -> HttpFileLexer:
@@ -251,9 +327,12 @@ class HTTPFileCodeWidget(TabCodeWidget):
             a2k = self.code.config_name('output_headers', self.__class__)
             a3k = self.code.config_name('output_response', self.__class__)
 
-            ac1_value = self.output_runinfo.value if self.code.settings.value(a1k) is None else self.code.settings.value(a1k)
-            ac2_value = self.output_headers.value if self.code.settings.value(a2k) is None else self.code.settings.value(a2k)
-            ac3_value = self.output_response.value if self.code.settings.value(a3k) is None else self.code.settings.value(a3k)
+            ac1_value = self.output_runinfo.value if self.code.settings.value(
+                a1k) is None else self.code.settings.value(a1k)
+            ac2_value = self.output_headers.value if self.code.settings.value(
+                a2k) is None else self.code.settings.value(a2k)
+            ac3_value = self.output_response.value if self.code.settings.value(
+                a3k) is None else self.code.settings.value(a3k)
 
             ac1.setChecked(ac1_value)
             ac2.setChecked(ac2_value)
@@ -427,35 +506,67 @@ class HTTPFileCodeWidget(TabCodeWidget):
         if ret:
             try:
                 real_url = url.replace('{{', '{').replace('}}', '}').strip().format(**env)
-                self.run_request_async(real_url, method, headers)
+                self.run_request_async(real_url, method, headers, line)
             except KeyError as e:
                 keys = ','.join(e.args)
                 msg = f'环境变量{keys}未设置!'
                 signal_manager.emit(signal_manager.warn, msg, 3000)
         else:
-            self.run_request_async(url, method, headers)
+            self.run_request_async(url, method, headers, line)
 
-    def run_request_async(self, url, method, headers, session: ClientSession = None):
+    def run_request_async(self, url, method, headers, line, session: ClientSession = None, ):
         async def _run():
             async with aiohttp.ClientSession() as sess:
                 run_time = time.time()
-                async with sess.request(method, url, headers=headers) as resp:
-                    try:
+                try:
+                    async with sess.request(method, url, headers=headers) as resp:
                         resp.raise_for_status()
                         text = await resp.text()
                         end_time = time.time()
-                        return resp.headers, text, resp.status, end_time - run_time
-                    except ClientResponseError as e:
-                        raise e
+                        return dict(**resp.headers), text, resp.status, end_time - run_time, url, method, line
+                except Exception as e:
+                    try:
+                        status = resp.status
+                    except:
+                        status = None
+                    exc = _RunError(line, str(e), status)
+                    raise exc
 
         def call_back(ret):
-            headers, text, status, run_time = ret
-            print('headers: ', dict(**headers))
-            print('status: ', status)
-            print('run time', run_time)
+            headers, text, status, run_time, url, method, line = ret
+            headers_text = '\n'.join([f'{k}: {v}' for k, v in headers.items()])
 
-        def err_back(error: ClientResponseError):
-            print('request fail error')
+            # from PyQt5 import QsciScintilla
+            # self.code: QsciScintilla
+            # add success marker
+            # self.code.setMargins(3)
+            print('margins', self.code.margins())
+            self.code.markerAdd(line, self.success_marker_handle)
+
+            self.main_app.show_bottom_panel(1)
+            now = datetime.now().strftime('%H:%M:%S')
+            title_msg = f'<font style="text-decoration:underline">{self.file_path()}</font>  ' \
+                        f'<font color="red">{method.upper()}</font> <font style="color:blue">{url}</font> ' \
+                        f'<font color="red"><b>{status} OK</b></font> <font color="gray">({now}, cost: {run_time:.4f}s)</font>'
+            signal_manager.emit('api_server_clear')
+            signal_manager.emit('api_server_title', title_msg)
+            signal_manager.emit('api_server_out_put', method.upper() + ' ' + url + f' {status} OK\n')
+            signal_manager.emit('api_server_out_put', f'{headers_text}\n')
+            signal_manager.emit('api_server_out_put', f'耗时: {run_time}\n')
+            signal_manager.emit('api_server_out_put', text)
+            signal_manager.emit('api_server_fold_all')
+
+            # print('headers: ', dict(**headers))
+            # print('status: ', status)
+            # print('run time', run_time)
+
+        def err_back(error):
+            line = error.line
+            raw = error.raw
+            status = error.status
+            # print('request fail error: ', raw)
+            # add marker
+            self.code.markerAdd(line, self.fail_marker_handle)
 
         self.analyse_worker.add_coro(_run(), call_back, err_back)
 

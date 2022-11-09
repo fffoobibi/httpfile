@@ -1,14 +1,10 @@
 import re
 
-try:
-    from PyQt5 import QsciScintilla
-except:
-    from PyQt5.Qsci import QsciScintilla
-
 from enum import auto
 
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QColor, QFont, QDesktopServices
+from PyQt5.Qsci import QsciScintilla
 
 from pyqt5utils.qsci.custom_lexer import CustomStyles, CustomLexerCompat
 from pyqt5utils.qsci.scintillacompat import QsciScintillaCompat

@@ -543,6 +543,7 @@ class Toast(QDialog):
         self._cursor_h = 5
 
         self._keep = False
+        self._any_leave = True
 
         self.installEventFilter(self)
 
@@ -574,6 +575,17 @@ class Toast(QDialog):
                     except:
                         pass
                 self.close()
+                return True
+        if self._any_leave:
+            if a1.type() == QEvent.KeyPress:
+                if not self._keep:
+                    if self._target is not None:
+                        try:
+                            delattr(self._target, '__0xxxmake_text_from_toastxxx0__')
+                        except:
+                            pass
+                    self.close()
+                    return True
         return QDialog.eventFilter(self, a0, a1)
 
     def paintEvent(self, a0: 'QPaintEvent') -> None:
@@ -593,38 +605,35 @@ class Toast(QDialog):
 
         painter.fillPath(path, self._back_color)
 
-        # if self._text:
-        #     painter.setPen(self._text_color)
-        #     painter.setFont(self._font)
-        #     rect = QRect(self._padding, self._padding, self.width(
-        #     ) - 2 * self._padding, self.height() - 2 * self._padding - 5)
-        #     # painter.drawRect(QRectF(rect))
-        #     painter.drawText(rect, Qt.AlignLeft, self._text)
-
     def set_text(self, st: str):
         pass
 
     def set_keep(self, v: bool):
         self._keep = v
 
+    def set_any_release(self, v: bool):
+        self._any_leave = v
+
     @classmethod
     def make_text(cls, text: str, target: QWidget,
                   text_color=None, back_color=None,
-                  width=100, place: Literal['l', 'r', 't', 'b'] = 't',
+                  width: int = 100, place: Literal['l', 'r', 't', 'b'] = 't',
                   keep=False):
 
         self = cls()
         self._keep = keep
         self._max_width = width
         self._place = place
+        fm = QFontMetrics(self._font)
+
+        if self._max_width is None:
+            self._max_width = fm.width(text)
+        size, lines = self._text_height(text.strip())
 
         if text_color is not None:
             self._text_color = QColor(text_color)
         if back_color is not None:
             self._back_color = QColor(back_color)
-
-        fm = QFontMetrics(self._font)
-        size, lines = self._text_height(text.strip())
 
         self.label = QLabel(self)
         # self.label.setTextInteractionFlags(Qt.TextSelectableByMouse)

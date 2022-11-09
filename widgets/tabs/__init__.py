@@ -226,8 +226,8 @@ class TabCodeWidget(QWidget):
 
     @cached_property
     def toast(self):
-        t = Toast.make_text('只读模式', self.code, keep=False, width=50)
-        t.hide()
+        t = Toast.make_text('只读模式', self.code, keep=False, width=None)
+        # t.hide()
         return t
 
     def closeEvent(self, event) -> None:

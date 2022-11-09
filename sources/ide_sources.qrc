@@ -1,5 +1,9 @@
 <RCC>
   <qresource prefix="icon">
+    <file>折叠.svg</file>
+    <file>减号.svg</file>
+    <file>换行.svg</file>
+    <file>服务01.svg</file>
     <file>配置.svg</file>
     <file>成功.svg</file>
     <file>感叹号.svg</file>

@@ -207,6 +207,10 @@ class WebControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, Pro
     def set_slot(self):
         self.pushButton.clicked.connect(self.start_web_task)
         self.pushButton_2.clicked.connect(self.stop_web_task)
+        self.pushButton_5.clicked.connect(self.clear_output)
+
+    def clear_output(self):
+        self.textBrowser.clear()
 
     def start_web_task(self):
         try:

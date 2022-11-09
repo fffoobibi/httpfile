@@ -102,6 +102,7 @@ class HttpFileLexer(CustomLexerCompat):
     url_indicator = 10
 
     run_margin_type = 1
+    run_margin_type_handler = 0
     run_margin_pixmap = ':/icon/运行，调试.svg'
 
     header_fold_level = 5
@@ -115,13 +116,13 @@ class HttpFileLexer(CustomLexerCompat):
         self.define_hotspots(editor)
         self.define_indicators(editor)
         self.define_apis(editor)
-        self.define_markers(editor)
+        # self.define_markers(editor)
 
     def margin_slot(self, margin_lr, line, state):
         # from PyQt5 import QsciScintilla
         editor: QsciScintilla = self.parent()
         margin_type = editor.markersAtLine(line)
-        if margin_type == self.run_margin_type + 1:
+        if margin_type == self.run_margin_type_handler + 1:
             try:
                 editor.run_margin_signal.emit(line)
             except:
@@ -135,7 +136,7 @@ class HttpFileLexer(CustomLexerCompat):
         # from PyQt5 import QsciScintilla
         editor.setMarginType(self.run_margin_type, editor.SymbolMargin)
         editor.markerDefine(QPixmap(self.run_margin_pixmap).scaled(16, 16, transformMode=Qt.SmoothTransformation),
-                            self.run_margin_type)
+                            self.run_margin_type_handler)
         editor.setMarginWidth(self.run_margin_type, 24)
         editor.setMarginSensitivity(self.run_margin_type, True)
         editor.marginClicked.connect(self.margin_slot)
@@ -247,17 +248,13 @@ class HttpFileLexer(CustomLexerCompat):
             elif re.match(china, word):
                 self.setStyling(length, self.styles_class.chinese)
             elif re.match(key_word, word, re.IGNORECASE | re.MULTILINE):
-                # from PyQt5 import QsciScintilla
                 line, col = editor.lineIndexFromPosition(total_length)
-                # print('find line ,', line)
-                # print('---')
                 editor: QsciScintilla
-                editor.markerDelete(line, self.run_margin_type)
-                editor.markerAdd(line, self.run_margin_type)
+                editor.markerDelete(line, self.run_margin_type_handler)
+                editor.markerAdd(line, self.run_margin_type_handler)
                 self.setStyling(length, self.styles_class.key)
                 editor.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, 9)
                 editor.SendScintilla(QsciScintilla.SCI_INDICATORFILLRANGE, total_length, len(word))
-                # self.url_indicators.append((line, col, total_length, editor.text(line)))
 
             elif re.match(http_path, word, re.IGNORECASE | re.MULTILINE):
                 ret = re.findall('(.*?)({{)(.*?)(}})(.*)', word)
@@ -282,7 +279,6 @@ class HttpFileLexer(CustomLexerCompat):
                 if not value:
                     editor.SendScintilla(QsciScintilla.SCI_SETINDICATORVALUE, line + 1)
                 editor.SendScintilla(QsciScintilla.SCI_INDICATORFILLRANGE, total_length, len(word))
-
 
             elif re.match(splitter, word, re.IGNORECASE | re.MULTILINE):
                 self.setStyling(length, self.styles_class.splitter)
