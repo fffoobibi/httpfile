@@ -6,8 +6,7 @@ url = 'https://instagram.com/stories/battlerigs/2961784597757525872?utm_source=i
 # url= 'http://www.google.com'
 
 from selenium.webdriver import Chrome, ChromeOptions
-
-
+from selenium.webdriver.common.by import By
 def create_browser():
     chrome_options = ChromeOptions()
     # 屏蔽webdriver特征方法1,高版本
@@ -31,6 +30,7 @@ def login():
         acc = 'xxfffoopp'
         pwd_msg = 'qwer147258'
 
+        browser.find_element(By.CSS_SELECTOR, 'input[class="form_control"]')
 
         account_ele = browser.find_element_by_xpath(account)
         account_ele.send_keys(acc)

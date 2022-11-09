@@ -1,24 +1,23 @@
 import re
+import aiohttp
 
 from datetime import datetime
-from urllib.parse import urlparse
 from pathlib import Path
+from urllib.parse import urlparse
 
-import aiohttp
 from PyQt5.QtCore import QModelIndex, Qt, QRectF
-from PyQt5.QtGui import QStandardItem, QCursor, QStandardItemModel, QPainter, QTextOption, QColor
-from PyQt5.QtWidgets import QDialog, QWidget, QGridLayout, QLabel, QLineEdit, QMenu, QStyledItemDelegate, QStyle, \
-    QHBoxLayout, QPushButton, QScrollBar
+from PyQt5.QtGui import QStandardItem, QCursor, QStandardItemModel, QPainter, QTextOption
+from PyQt5.QtWidgets import (QWidget, QGridLayout, QLabel, QLineEdit, QMenu, QStyledItemDelegate, QStyle,
+                             QHBoxLayout, QPushButton)
 
-from pyqt5utils.components import Message, Confirm
-from pyqt5utils.components.helper import ObjectsHelper
+from pyqt5utils.components import Confirm
 from pyqt5utils.components.styles import StylesHelper
-from widgets.components import VirtualFileSystemTreeView, DirFlag, RootUriFlag, FileUriFlag, FileNameFlag, ModifyFlag, \
-    RootItemFlag
+
 from widgets.base import PluginBaseMixIn
+from widgets.components import (VirtualFileSystemTreeView, DirFlag, RootUriFlag, FileUriFlag, FileNameFlag, ModifyFlag,
+                                RootItemFlag)
 from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
-
 from . import register
 
 WorkPathFlag = Qt.UserRole + 10
@@ -64,7 +63,6 @@ class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn):
         self.verticalScrollBar().setSingleStep(self.single_step.value)
         self.setHorizontalScrollMode(self.ScrollPerPixel)
         self.horizontalScrollBar().setSingleStep(self.single_step.value)
-
 
     def init_header_bar(self):
         btn = self.add_header_item('', ':/icon/tianjia.svg', '添加新的地址')

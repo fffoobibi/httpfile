@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from PyQt5.QtCore import QModelIndex, QPoint, QSize
-from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtGui import QIcon, QFont, QStandardItemModel
 from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction
 from pydantic import BaseModel, Field
 
@@ -25,6 +25,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
     model: FileSystemModel = None
     plugins: Collections  # type hint
     single_step = ConfigProvider.default(ConfigKey.general, 'single_step')
+    app_name = 'FEditor'
 
     def __init__(self):
         super().__init__()
@@ -138,6 +139,9 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         self.tabWidget.tabCloseRequested.connect(remove_tab)
 
         work_path = Path.cwd().__str__()
+
+        # root_model = QStandardItemModel()
+
         self.model = FileSystemModel(work_path)
         self.treeView.setModel(self.model)
         self.treeView.doubleClicked.connect(click_file)
@@ -149,6 +153,8 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         self.splitter.setSizes([200, 500])
 
         self.tabWidget_2.setStyleSheet('QTabWidget{background:red}')
+        self.setWindowTitle(self.app_name)
+        self.setWindowIcon(QIcon(r'D:\work\httpfile\sources\编辑.svg'))
 
     def load_left(self):
         i = 0
@@ -194,13 +200,18 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         self.stackedWidget_3.hide()
 
     def load_dir_path(self, path: str):
+        p = Path(path)
         self.model.setRootPath(path)
+        # self.model.setFilter()
+        # self.model.setNameFilters(['httpfile'])
+        # self.model.setNameFilterDisables(False)
         self.treeView.setRootIndex(self.model.index(path))
         self.r_run_time.current = Path(path)
         self.model.work_path = Path(path)
 
     #### add tab ####
     def add_tab_widget(self, file_type, file_name, file_path: str, url: str = None, content: str = None):
+        print('add tab ', file_type, file_name, file_path)
         if url is None:
             def _create_tab_code_widget():
                 for k, v in self.plugins.tabs.items():
@@ -211,9 +222,10 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                         return code
 
             tab = _create_tab_code_widget()
-            tab.set_read_only(self.r_run_time.read_only)
-            self.tabWidget.addTab(tab, file_name)
-            self.tabWidget.setCurrentWidget(tab)
+            if tab:
+                tab.set_read_only(self.r_run_time.read_only)
+                self.tabWidget.addTab(tab, file_name)
+                self.tabWidget.setCurrentWidget(tab)
         else:
             file_type = url.split('.')[-1] + ' File'
 
@@ -226,9 +238,10 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                         return code
 
             tab = _create_tab_code_widget()
-            tab.set_read_only(self.r_run_time.read_only)
-            self.tabWidget.addTab(tab, url)
-            self.tabWidget.setCurrentWidget(tab)
+            if tab:
+                tab.set_read_only(self.r_run_time.read_only)
+                self.tabWidget.addTab(tab, url)
+                self.tabWidget.setCurrentWidget(tab)
 
     ### close
     def closeEvent(self, a0) -> None:

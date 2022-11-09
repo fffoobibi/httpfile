@@ -116,7 +116,7 @@ def hook_code_mouseMoveEvent(self, a0: QMouseEvent) -> None:
     point = a0.pos()
     position = self.positionFromPoint(point)
     if self.hasIndicator(self.lexer().url_indicator, position):
-        QToolTip.showText(QCursor.pos(), 'ctrl+点击跳转网页')
+        QToolTip.showText(QCursor.pos(), '跳转网页(ctrl + 点击)')
     else:
         QToolTip.hideText()
 
@@ -139,7 +139,6 @@ class HTTPFileCodeWidget(TabCodeWidget):
     output_headers = ConfigProvider.default(ConfigKey.http_code_widget, 'output_headers')
     output_response = ConfigProvider.default(ConfigKey.http_code_widget, 'output_response')
     output_runinfo = ConfigProvider.default(ConfigKey.http_code_widget, 'output_runinfo')
-
 
     def __init__(self):
         super(HTTPFileCodeWidget, self).__init__()

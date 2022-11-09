@@ -1,12 +1,13 @@
-import typing
+from collections import deque
 from contextlib import suppress
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtGui import QFont, QFontMetrics, QIcon
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QFont, QFontMetrics, QIcon, QColor
 from PyQt5.QtWidgets import (QAction, QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QSpacerItem,
-                             QSizePolicy, QFrame, QVBoxLayout, QSplitter)
+                             QSizePolicy, QFrame, QVBoxLayout, QSplitter, QLabel)
 from cached_property import cached_property
 
 from pyqt5utils.components import Toast
@@ -15,6 +16,8 @@ from pyqt5utils.qsci.base import BaseCodeWidget
 from widgets.base import PluginBaseMixIn
 from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
+
+__all__ = ('register', 'TabCodeWidget')
 
 tab_codes = {}
 
@@ -43,6 +46,14 @@ def _make_child(instance, lex_func, app_exit, app_start_up):
         file_styled = pyqtSignal()
         run_margin_signal = pyqtSignal(int)
 
+        def __init__(self):
+            super(BaseCodeChild, self).__init__()
+            self.setCaretLineAlwaysVisible(True)
+            self.setCaretForegroundColor(QColor('#FF6C37'))
+            self.enableMultiCursorSupport()
+            self.setAutoCompletionSource(self.AcsAPIs)
+            self.setStyleSheet('BaseCodeChild{border:none}QToolTip{background:red;color:white}')
+
         def __getattr__(self, item):
             return getattr(instance, item)
 
@@ -58,9 +69,47 @@ def _make_child(instance, lex_func, app_exit, app_start_up):
     return BaseCodeChild
 
 
+class _Queue(object):
+    def __init__(self):
+        self._queue = deque()
+        self._pos = 0
+        self._len = 0
+
+    def current_pos(self):
+        return self._pos
+
+    def is_empty(self):
+        return not bool(self._len)
+
+    def first(self):
+        return self._queue[0]
+
+    def clear(self):
+        self._queue.clear()
+        self._pos = 0
+        self._len = 0
+
+    def append(self, v):
+        self._queue.append(v)
+        self._len += 1
+
+    def next(self):
+        self._pos += 1
+        self._pos %= self._len
+        return self._queue[self._pos]
+
+    def previous(self):
+        self._pos -= 1
+        self._pos %= self._len
+        return self._queue[self._pos]
+
+
 class TabCodeWidget(QWidget):
     vertical = ConfigProvider.default(ConfigKey.general, 'vertical_width')
     horizontal = ConfigProvider.default(ConfigKey.general, 'horizontal_height')
+
+    search_result_indicator = 20
+    search_result_active_indicator = 21
 
     @property
     def is_remote(self):
@@ -89,10 +138,11 @@ class TabCodeWidget(QWidget):
     def file_path(self) -> str:
         return getattr(self, '_file', '')
 
-    def move_to(self, line, col):
+    def move_to(self, line, col, focus=True):
         if line >= self.code.lines() - 1:
             line = self.code.lines()
-        self.code.setFocus()
+        if focus:
+            self.code.setFocus()
         self.code.ensureLineVisible(line)
         self.code.setCursorPosition(line, col)
         self.code.update()
@@ -115,7 +165,6 @@ class TabCodeWidget(QWidget):
         self.lay.setSpacing(1)
 
         self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up)()
-        self.code.setStyleSheet('BaseCodeWidget{border:none}QToolTip{background:red;color:white}')
 
         StylesHelper.set_v_history_style_dynamic(self.code, color='#CFCFCF', background='transparent',
                                                  width=self.vertical.value)
@@ -123,10 +172,13 @@ class TabCodeWidget(QWidget):
                                                  height=self.horizontal.value)
         self._is_remote = False
         self._update_time = None
+        self.__search = False
+        self.__search_count = 0
+        self.__search_results = _Queue()
         self.__search_action = QAction()
         self.__search_action.setShortcut('ctrl+f')
         self.__search_action.triggered.connect(self.__search_action_slot)
-        self.__search_widget = self.__create_search_widget()
+        self.__search_widget, self.__search_line, self.__search_display = self.__create_search_widget()
         self.__search_widget.hide()
 
         self.__save_action = QAction()
@@ -153,7 +205,7 @@ class TabCodeWidget(QWidget):
         self.code.cursor_signal.connect(self.__update_line_col)
         self.code.SCN_MODIFIED.connect(self.when_modify)
         self.code.SCN_MODIFYATTEMPTRO.connect(self.__show_information)
-        # self.code.setReadOnly(True)
+
         self.__main_lay.addWidget(self.splitter)
         self.splitter.addWidget(self.__code_container)
 
@@ -168,8 +220,9 @@ class TabCodeWidget(QWidget):
             size = self.set_splitter_factor(i)
             splitter_size.append(size)
         self.splitter.setSizes(splitter_size)
-        # self.splitter.setStretchFactor(1, 0)
-        # self.set_splitter_handle(1)
+
+        # define search indicator
+        self.__define_search_indicator()
 
     @cached_property
     def toast(self):
@@ -190,13 +243,8 @@ class TabCodeWidget(QWidget):
     def when_modify(self, position, modificationType, text, length, linesAdded,
                     line, foldLevelNow, foldLevelPrev, token, annotationLinesAdded):
         full = self.code.SC_MOD_INSERTTEXT | self.code.SC_MOD_DELETETEXT
-        if (~modificationType & full == full):
+        if ~modificationType & full == full:
             return
-        # point = self.code.getGlobalCursorPosition()
-        # point = self.code.mapToGlobal(point)
-        # point.setY(point.y() - 40)
-        # self.toast.move(point)
-        # self.toast.show()
 
     def __show_information(self):
         point = self.code.getGlobalCursorPosition()
@@ -226,17 +274,59 @@ class TabCodeWidget(QWidget):
             self.code.copy()
 
     def __auto_save_slot(self):
-        if self.file_path():
+        if self.file_path() and not self.is_remote:
             try:
                 Path(self._file).write_text(self.code.text(), encoding='utf-8')
+                save_time = datetime.now()
+                msg = f'{self.file_path()} 已保存, {save_time.strftime("%H:%M:%S")}'
+                signal_manager.emit(signal_manager.statusMsg, msg, 3)
             except:
                 pass
+
+    def __define_search_indicator(self):
+        self.code.indicatorDefine(self.code.INDIC_FULLBOX, self.search_result_indicator)
+        self.code.setIndicatorForegroundColor(QColor(255, 95, 0, 80), self.search_result_indicator)
+
+        self.code.indicatorDefine(self.code.INDIC_FULLBOX, self.search_result_active_indicator)
+        self.code.setIndicatorForegroundColor(QColor(241, 26, 5, 70), self.search_result_active_indicator)
+        # self.code.setIndicatorOutlineColor(QColor('#FF5F00'))
+
+    def __search_file(self, st):
+        if self.__search is False:
+            self.code.clearAllIndicators(self.search_result_indicator)
+            self.code.clearAllIndicators(self.search_result_active_indicator)
+            self.__search_count = 0
+            self.__search = True
+            self.__search_results.clear()
+            text: str = self.sender().text().strip()
+            if text:
+                flag = self.code.findFirstTarget(text, False, False, False, 0, 0)
+                if flag:
+                    self.__search_count += 1
+                    founded = self.code.getFoundTarget()  # position, len
+                    self.code.setIndicatorRange(self.search_result_indicator, *founded)
+                    self.__search_results.append(founded)
+                while flag:
+                    flag = self.code.findNextTarget()
+                    if flag:
+                        self.__search_count += 1
+                        founded = self.code.getFoundTarget()
+                        self.code.setIndicatorRange(self.search_result_indicator, *founded)
+                        self.__search_results.append(founded)
+            self.__search_display.setText(f'{self.__search_count}项结果')
+            if self.__search_count:
+                first = self.__search_results.first()
+                line, col = self.code.lineIndexFromPosition(first[0])
+                self.move_to(line, col, focus=False)
+            self.__search = False
 
     def __search_action_slot(self):
         if self.__search_widget.isHidden():
             self.__search_widget.show()
+            self.__search_line.setFocus()
         else:
             self.__search_widget.hide()
+            self.__search_line.setFocus(False)
 
     def __create_search_widget(self):
         def _close_policy():
@@ -245,6 +335,37 @@ class TabCodeWidget(QWidget):
             else:
                 w.hide()
 
+        def _next():
+            if not self.__search_results.is_empty():
+                self.code.clearAllIndicators(self.search_result_active_indicator)
+                founded = self.__search_results.next()
+                line, col = self.code.lineIndexFromPosition(founded[0])
+                self.move_to(line, col)
+                count = self.__search_count
+                current = self.__search_results.current_pos()
+                self.__search_display.setText(f'{current + 1} / {count}')
+                self.code.setFirstVisibleLine(line)
+                self.code.setIndicatorRange(self.search_result_active_indicator, *founded)
+
+                search_line.setFocus(True)
+                search_line.deselect()
+
+        def _pre():
+            if not self.__search_results.is_empty():
+                self.code.clearAllIndicators(self.search_result_active_indicator)
+                founded = self.__search_results.previous()
+                line, col = self.code.lineIndexFromPosition(founded[0])
+                self.move_to(line, col)
+                count = self.__search_count
+                current = self.__search_results.current_pos()
+                self.__search_display.setText(f'{current + 1} / {count}')
+                self.code.setFirstVisibleLine(line)
+                self.code.setIndicatorRange(self.search_result_active_indicator, *founded)
+
+                search_line.setFocus(True)
+                search_line.deselect()
+
+        base_font = QFont('微软雅黑', 9)
         w = QWidget(self)
         w.setObjectName('CodeSearch')
         w.setStyleSheet('#CodeSearch{background: white;border:1px solid lightgray}'
@@ -253,8 +374,15 @@ class TabCodeWidget(QWidget):
                         'QPushButton:hover{background: lightgray;border:none}')
         lay = QHBoxLayout(w)
         lay.setContentsMargins(2, 0, 2, 0)
+
         search_line = QLineEdit()
         search_line.setClearButtonEnabled(True)
+        search_line.textChanged.connect(self.__search_file)
+        search_line.setStyleSheet('font-family:微软雅黑')
+        search_line.returnPressed.connect(_next)
+        search_line.setFocusPolicy(Qt.ClickFocus)
+        search_line.setMinimumWidth(search_line.fontMetrics().width('a' * 30))
+
         lay.addWidget(search_line)
         groups = QButtonGroup()
 
@@ -265,16 +393,28 @@ class TabCodeWidget(QWidget):
 
         p_btn = QPushButton()
         p_btn.setIcon(QIcon(':/icon/jiantou_liebiaoshouqi.svg'))
+        p_btn.clicked.connect(_pre)
+        p_btn.setFocusProxy(search_line)
+
         n_btn = QPushButton()
         n_btn.setIcon(QIcon(':/icon/jiantou_liebiaozhankai.svg'))
+        n_btn.clicked.connect(_next)
+        n_btn.setFocusProxy(search_line)
 
         groups.addButton(c_btn)
         groups.addButton(r_btn)
-        update_btn = QPushButton()
+
         lay.addWidget(c_btn)
         lay.addWidget(r_btn)
         lay.addWidget(p_btn)
         lay.addWidget(n_btn)
+
+        display_label = QLabel()
+        display_label.setFont(base_font)
+        display_label.setText('0项结果')
+        display_label.setStyleSheet('color:gray')
+        lay.addWidget(display_label)
+
         lay.addSpacerItem(QSpacerItem(20, 20, hPolicy=QSizePolicy.Expanding))
 
         frame = QFrame()
@@ -288,11 +428,8 @@ class TabCodeWidget(QWidget):
         close_btn.clicked.connect(_close_policy)
         frame_lay.addWidget(close_btn)
         lay.addWidget(frame)
-
-        w.search_line = search_line
-        w.search_line.setMinimumWidth(search_line.fontMetrics().width('a' * 30))
         w.setFixedHeight(QFontMetrics(QFont('微软雅黑', 10)).height() * 1.5)
-        return w
+        return w, search_line, display_label
 
     def set_splitter_factor(self, index) -> int:
         return 200
