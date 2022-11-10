@@ -48,6 +48,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up):
 
         def __init__(self):
             super(BaseCodeChild, self).__init__()
+            self.code_container = instance
             self.setCaretLineAlwaysVisible(True)
             self.setCaretForegroundColor(QColor('#FF6C37'))
             self.enableMultiCursorSupport()

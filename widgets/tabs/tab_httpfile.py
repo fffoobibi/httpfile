@@ -1,25 +1,30 @@
 import json
 import re
 import time
+import aiohttp
+
 from datetime import datetime
 from pathlib import Path
 from types import MethodType
 from typing import Any, Dict, List
 
-import aiohttp
-from PyQt5.QtCore import Qt, pyqtSignal, QSize, pyqtSlot, QEvent
+from PyQt5.QtCore import Qt, pyqtSignal, QSize, pyqtSlot, QEvent, QPoint
 from PyQt5.QtGui import QColor, QFont, QMouseEvent, QCursor, QIcon, QPixmap
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy, QListWidget, \
-    QListWidgetItem, QApplication, QLabel, QToolTip, QHBoxLayout, QPushButton, QLineEdit, QMenu, QActionGroup, QAction
-from aiohttp import ClientResponseError, ClientSession, ClientConnectorError
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy, QListWidget,
+                             QListWidgetItem, QApplication, QLabel, QToolTip, QHBoxLayout, QPushButton, QLineEdit, QMenu, QActionGroup, QAction)
+from aiohttp import ClientSession
 from cached_property import cached_property
 
 from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.components.widgets.buttons import RotateIconButton
+from pyqt5utils.components.feedback import Tips
+from pyqt5utils.qsci.base import BaseCodeWidget
 from pyqt5utils.qsci.lexers.http_file import HttpFileLexer, CustomStyles
+
 from widgets.utils import ConfigProvider, ConfigKey
+from widgets.signals import signal_manager
+
 from . import register, TabCodeWidget
-from ..signals import signal_manager
 
 
 class HttpFileStyles(CustomStyles):
@@ -113,9 +118,38 @@ class TabHttpLexer(HttpFileLexer):
 
 
 def hook_code_mouseMoveEvent(self, a0: QMouseEvent) -> None:
-    self.__class__.mouseMoveEvent(self, a0)
-    point = a0.pos()
-    position = self.positionFromPoint(point)
+    pos = a0.pos()
+    self: BaseCodeWidget
+    parent: HTTPFileCodeWidget = self.code_container
+    margin_0 = self.marginWidth(0)
+    margin_1 = self.marginWidth(parent.run_margin_type)
+    margin_2 = self.marginWidth(parent.info_margin_type)
+    margin_3 = self.marginWidth(3)
+    viewport = self.viewport()
+
+    if pos.x() <= margin_0:
+        if viewport.cursor().shape() != Qt.ArrowCursor:
+            viewport.setCursor(Qt.ArrowCursor)
+    elif margin_0 + margin_1 + margin_2 >= pos.x() > margin_0:
+        if parent.line_has_marker(parent.run_margin_type, parent.run_margin_handle, pos):
+            if viewport.cursor().shape() != Qt.PointingHandCursor:
+                viewport.setCursor(Qt.PointingHandCursor)
+        elif parent.line_has_marker(parent.info_margin_type, parent.success_marker_handle, pos):
+            if viewport.cursor().shape() != Qt.PointingHandCursor:
+                viewport.setCursor(Qt.PointingHandCursor)
+        elif parent.line_has_marker(parent.info_margin_type, parent.fail_marker_handle, pos):
+            if viewport.cursor().shape() != Qt.PointingHandCursor:
+                viewport.setCursor(Qt.PointingHandCursor)
+            # QToolTip.showText(pos, '请求失败', self)
+            # Tips.pop('请求失败', self, place='t', dxy=pos)
+        else:
+            viewport.setCursor(Qt.ArrowCursor)
+    elif margin_0 + margin_1 + margin_2 + margin_3 >= pos.x() > margin_0 + margin_1 + margin_2:
+        if viewport.cursor().shape() != Qt.ArrowCursor:
+            viewport.setCursor(Qt.ArrowCursor)
+    else:
+        self.__class__.mouseMoveEvent(self, a0)  # Qt.IBeamCursor
+    position = self.positionFromPoint(pos)
     if self.hasIndicator(self.lexer().url_indicator, position):
         QToolTip.showText(QCursor.pos(), '跳转网页(ctrl + 点击)')
     else:
@@ -178,7 +212,7 @@ class HTTPFileCodeWidget(TabCodeWidget):
         run_handle = editor.markerDefine(
             QPixmap(self.run_margin_icon).scaled(16, 16, transformMode=Qt.SmoothTransformation),
             self.run_margin_handle)
-        editor.setMarginWidth(self.run_margin_type, 24)
+        editor.setMarginWidth(self.run_margin_type, 18)
         editor.setMarginSensitivity(self.run_margin_type, True)
         editor.setMarginMarkerMask(self.run_margin_type, 0b001)
 
@@ -190,7 +224,7 @@ class HTTPFileCodeWidget(TabCodeWidget):
             QPixmap(self.fail_marker_icon).scaled(16, 16, transformMode=Qt.SmoothTransformation),
             self.fail_marker_handle)
 
-        editor.setMarginWidth(self.info_margin_type, 24)
+        editor.setMarginWidth(self.info_margin_type, 18)
         editor.setMarginSensitivity(self.info_margin_type, True)
         editor.setMarginMarkerMask(self.info_margin_type, 0b110)
 
@@ -206,6 +240,25 @@ class HTTPFileCodeWidget(TabCodeWidget):
 
         editor.marginClicked.connect(self.margin_slot)
         print('define ', run_handle, success_handler, fail_handler)
+
+    def line_has_marker(self, margin_type: int, marker_handler: int, pos: QPoint):
+        margin_0 = self.code.marginWidth(0)
+        margin_1 = self.code.marginWidth(self.run_margin_type)
+        margin_2 = self.code.marginWidth(self.info_margin_type)
+        current_line = self.code.lineAt(pos)
+        if current_line > -1:
+            markers = self.code.markersAtLine(current_line)
+            margin_lr = -1
+            if pos.x() <= margin_0:
+                return False
+            elif margin_0 + margin_1 >= pos.x() > margin_0:  # marker 1
+                margin_lr = 1
+            elif margin_0 + margin_1 + margin_2 >= pos.x() > margin_0 + margin_1:  # marker 2
+                margin_lr = 2
+            print('margin type: ', margin_type, 'handler: ', marker_handler, 'margin_lr: ', margin_lr)
+            if margin_lr == margin_type and (markers & (1 << marker_handler) == 1 << marker_handler):
+                return True
+        return False
 
     def margin_slot(self, margin_lr, line, state):
         # from PyQt5 import QsciScintilla

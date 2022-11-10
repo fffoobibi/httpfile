@@ -266,6 +266,9 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                 self.tabWidget.addTab(tab, url)
                 self.tabWidget.setCurrentWidget(tab)
 
+    def open_file(self, file_path: str):
+        pass
+
     ### close
     def closeEvent(self, a0) -> None:
         app_exit.send(self)

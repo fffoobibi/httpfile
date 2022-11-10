@@ -60,6 +60,7 @@ class Tips(QDialog):
         self._text_color = text_color or Qt.lightGray
         self._bk_color = bk_color or QColor('#1B1A19')
         self._place = place
+        self._tooltip = False
         self.set_size()
         self.installEventFilter(self)
 
@@ -114,21 +115,28 @@ class Tips(QDialog):
                 painter.setPen(self._text_color)
                 painter.drawText(QRectF(rect.adjusted(0, self._spacing, 0, -self._spacing)), self._text)
 
-    def _show(self, target: QWidget):
+    def _show(self, target: QWidget, target_point: QPoint):
         w, h = target.width(), target.height()
         point = target.mapToGlobal(QPoint(0, h))
         if self._place == 'b':
-            p = point + QPoint(-self._spacing, 2)
+            p = point + QPoint(-self._spacing, 2) + target_point
         elif self._place == 't':
-            p = point + QPoint(-self._spacing, -self.height() - 2 - h)
+            p = point + QPoint(-self._spacing, -self.height() - 2 - h) + target_point
 
         self.move(p)
         self.show()
 
     @classmethod
-    def pop(cls, content: str, target: QWidget, text_color=None, bk_color=None, place='b', spacing=5):
+    def pop(cls, content: str, target: QWidget, text_color=None, bk_color=None, place='b', spacing=5, dxy: QPoint = QPoint(0, 0)):
         t = cls(content, target, text_color, bk_color, place, spacing)
-        t._show(target)
+        t._show(target, dxy)
+
+
+    @classmethod
+    def tooltip(cls, content: str, target: QWidget, text_color=None, bk_color=None, place='b', spacing=5, dxy: QPoint = QPoint(0, 0)):
+        t = cls(content, target, text_color, bk_color, place, spacing)
+        t._tooltip = True
+        t._show(target, dxy)
 
 
 class Loading(GifLabel):
