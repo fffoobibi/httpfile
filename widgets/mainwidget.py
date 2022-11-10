@@ -102,8 +102,18 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             if not path.exists():
                 path.touch()
                 path.write_text(file_content, encoding='utf-8')
-            file_type, file_name = get_file_type_and_name(file_path)
-            self.add_tab_widget(file_type, file_name, file_path)
+            self.open_file(file_path)
+            # file_type, file_name = get_file_type_and_name(file_path)
+            # self.add_tab_widget(file_type, file_name, file_path)
+
+        def _create_hook_file_and_open(file_path: str, file_content: str):
+            path = Path(file_path)
+            if not path.exists():
+                path.touch()
+                path.write_text(file_content, encoding='utf-8')
+            self.open_file(file_path)
+            # file_type, file_name = get_file_type_and_name(file_path)
+            # self.add_tab_widget(file_type, file_name, file_path)
 
         from widgets.signals import signal_manager
         signal_manager.add_event(signal_manager.openUrlFile, None,
@@ -119,6 +129,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         signal_manager.add_event(signal_manager.statusMsg, None, call_back=_show_message)
         signal_manager.add_event(signal_manager.createFile, None, call_back=_create_file)
         signal_manager.add_event(signal_manager.createFileAndOpen, None, call_back=_create_file_and_open)
+        signal_manager.add_event(signal_manager.createHookFileAndOpen, None, call_back=_create_hook_file_and_open)
         self.sm = signal_manager
 
     def init_project(self):
@@ -234,7 +245,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     #### add tab ####
     def add_tab_widget(self, file_type, file_name, file_path: str, url: str = None, content: str = None):
-        print('add tab ', file_type, file_name, file_path)
+        # print('add tab ', file_type, file_name, file_path)
         if url is None:
             def _create_tab_code_widget():
                 for k, v in self.plugins.tabs.items():
@@ -249,6 +260,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                 tab.set_read_only(self.r_run_time.read_only)
                 self.tabWidget.addTab(tab, file_name)
                 self.tabWidget.setCurrentWidget(tab)
+            return tab
         else:
             file_type = url.split('.')[-1] + ' File'
 
@@ -265,9 +277,24 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                 tab.set_read_only(self.r_run_time.read_only)
                 self.tabWidget.addTab(tab, url)
                 self.tabWidget.setCurrentWidget(tab)
+            return tab
 
-    def open_file(self, file_path: str):
-        pass
+    def open_file(self, file_path: str, line: int = None, col: int = None):
+        path = Path(file_path)
+        file_name = path.name
+        file_type = path.suffix.replace('.', '', 1) + ' File'
+        print('open file ', file_path, file_name, file_type)
+        for i in range(self.tabWidget.count()):
+            widget = self.tabWidget.widget(i)
+            if widget.file_path() == file_path:
+                self.tabWidget.setCurrentWidget(widget)
+                if line is not None and col is not None:
+                    widget.move_to(line, col)
+                return
+        tab = self.add_tab_widget(file_type, file_name, file_path)
+        if tab:
+            if line is not None and col is not None:
+                tab.move_to(line, col)
 
     ### close
     def closeEvent(self, a0) -> None:

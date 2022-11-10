@@ -11,7 +11,8 @@ from typing import Any, Dict, List
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, pyqtSlot, QEvent, QPoint
 from PyQt5.QtGui import QColor, QFont, QMouseEvent, QCursor, QIcon, QPixmap
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy, QListWidget,
-                             QListWidgetItem, QApplication, QLabel, QToolTip, QHBoxLayout, QPushButton, QLineEdit, QMenu, QActionGroup, QAction)
+                             QListWidgetItem, QApplication, QLabel, QToolTip, QHBoxLayout, QPushButton, QLineEdit,
+                             QMenu, QActionGroup, QAction)
 from aiohttp import ClientSession
 from cached_property import cached_property
 
@@ -25,6 +26,8 @@ from widgets.utils import ConfigProvider, ConfigKey
 from widgets.signals import signal_manager
 
 from . import register, TabCodeWidget
+from ..hooks import http_hooks
+from ..types import Request
 
 
 class HttpFileStyles(CustomStyles):
@@ -157,11 +160,12 @@ def hook_code_mouseMoveEvent(self, a0: QMouseEvent) -> None:
 
 
 class _RunError(Exception):
-    def __init__(self, line, raw, status, *args):
+    def __init__(self, line, raw, status, run_time, *args):
         super().__init__(*args)
         self.line = line
         self.raw = raw
         self.status = status
+        self.run_time = run_time
 
 
 @register(file_types=['http'])
@@ -204,6 +208,32 @@ class HTTPFileCodeWidget(TabCodeWidget):
         self.code.file_styled.connect(self._file_styled)
         self.code.run_margin_signal.connect(self._run_request)
         self.define_code_markers()
+        self.define_menus()
+
+    def define_menus(self):
+        def _menu_policy(pos):
+            m0 = self.code.marginWidth(0)
+            m1 = self.code.marginWidth(self.run_margin_type)
+            m2 = self.code.marginWidth(self.info_margin_type)
+
+            menu = QMenu()
+            StylesHelper.add_menu_style(menu)
+            if self.line_has_marker(self.run_margin_type, self.run_margin_handle, pos) and m0 <= pos.x() <= m0 + m1:
+                url, method = self.run_marker_url_info(pos)
+                action = menu.addAction(f'运行 {url}')
+                act = menu.exec_(QCursor.pos())
+                if act == action:
+                    line = self.code.lineAt(pos)
+                    self.run_request_async_at_line(line)
+
+            elif self.line_has_marker(self.info_margin_type, self.success_marker_handle, pos):
+                pass
+            elif self.line_has_marker(self.info_margin_type, self.fail_marker_handle, pos):
+                pass
+
+        self.code: QWidget
+        self.code.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.code.customContextMenuRequested.connect(_menu_policy)
 
     def define_code_markers(self):
         editor = self.code
@@ -239,13 +269,12 @@ class HTTPFileCodeWidget(TabCodeWidget):
         # editor.setMarginWidth(3, '00')
 
         editor.marginClicked.connect(self.margin_slot)
-        print('define ', run_handle, success_handler, fail_handler)
 
-    def line_has_marker(self, margin_type: int, marker_handler: int, pos: QPoint):
+    def line_has_marker(self, margin_type: int, marker_handler: int, pos: QPoint, line: int = None):
         margin_0 = self.code.marginWidth(0)
         margin_1 = self.code.marginWidth(self.run_margin_type)
         margin_2 = self.code.marginWidth(self.info_margin_type)
-        current_line = self.code.lineAt(pos)
+        current_line = line if line is not None else self.code.lineAt(pos)
         if current_line > -1:
             markers = self.code.markersAtLine(current_line)
             margin_lr = -1
@@ -255,7 +284,6 @@ class HTTPFileCodeWidget(TabCodeWidget):
                 margin_lr = 1
             elif margin_0 + margin_1 + margin_2 >= pos.x() > margin_0 + margin_1:  # marker 2
                 margin_lr = 2
-            print('margin type: ', margin_type, 'handler: ', marker_handler, 'margin_lr: ', margin_lr)
             if margin_lr == margin_type and (markers & (1 << marker_handler) == 1 << marker_handler):
                 return True
         return False
@@ -264,7 +292,6 @@ class HTTPFileCodeWidget(TabCodeWidget):
         # from PyQt5 import QsciScintilla
         editor = self.code
         margin_type = editor.markersAtLine(line)
-        print('margin_type: ', bin(margin_type))
         if margin_lr == self.run_margin_type and (margin_type & 0b001 == 0b001):
             editor.run_margin_signal.emit(line)
         elif margin_lr == self.info_margin_type and (margin_type & 0b010 == 0b010):  # 1 0b010
@@ -334,6 +361,12 @@ class HTTPFileCodeWidget(TabCodeWidget):
             create_file_path = current_file_path_dir.parent / f'{file_name}.env.json'
             return create_file_path.__str__()
 
+        def _create_current_hook_path():
+            current_file_path_dir = Path(self.file_path())
+            file_name = current_file_path_dir.name
+            create_file_path = current_file_path_dir.parent / f'{file_name}.hook.py'
+            return create_file_path.__str__()
+
         def _create_panel():
             handle_width = ConfigProvider.default(ConfigKey.general, 'vertical_width').value
             container = QWidget()
@@ -341,17 +374,31 @@ class HTTPFileCodeWidget(TabCodeWidget):
                                     'QPushButton{border:none;color:#0083D8;font-family:微软雅黑}'
                                     'QPushButton:hover{color:darkorange}')
             lay = QHBoxLayout(container)
-            lay.setSpacing(6)
+            lay.setSpacing(10)
             lay.setContentsMargins(8, 0, handle_width, 0)
             run_all_btn = QPushButton('运行文件中的所有请求')
             add_request_btn = QPushButton('添加请求')
-            add_env_btn = QPushButton('添加环境变量')
+
+            add_env_btn = QPushButton('添加其他')
+            menu = QMenu()
+            env_action = menu.addAction('添加环境变量')
+            hook_action = menu.addAction('添加hook')
+            StylesHelper.add_menu_style(menu)
+            add_env_btn.setMenu(menu)
+            env_action.triggered.connect(lambda e: signal_manager.emit(signal_manager.createFileAndOpen,
+                                                                       _create_current_path(),
+                                                                       '{}'))
+            hook_action.triggered.connect(lambda e: signal_manager.emit(signal_manager.createHookFileAndOpen,
+                                                                        _create_current_hook_path(),
+                                                                        http_hooks
+                                                                        ))
+
             load_btn = QPushButton('从文件中导入')
             menu = QMenu()
             menu.addAction('txt中导入')
             StylesHelper.add_menu_style(menu)
-
             load_btn.setMenu(menu)
+
             run_all_btn.setCursor(Qt.PointingHandCursor)
             add_request_btn.setCursor(Qt.PointingHandCursor)
             add_env_btn.setCursor(Qt.PointingHandCursor)
@@ -405,9 +452,6 @@ class HTTPFileCodeWidget(TabCodeWidget):
             check.setMenu(check_menu)
             lay.addWidget(check)
 
-            add_env_btn.clicked.connect(lambda e: signal_manager.emit(signal_manager.createFileAndOpen,
-                                                                      _create_current_path(),
-                                                                      '{}'))
             container.setFixedHeight(add_env_btn.fontMetrics().height() * 2.4)
             return container
 
@@ -556,18 +600,23 @@ class HTTPFileCodeWidget(TabCodeWidget):
         headers = self.lexer.runner._find_headers(line)
         ret = re.findall(r'{{.*?}}', url)
         env = self.get_env()
+        end_position = self.code.lineEndPosition(line) - 2
+        url_value = self.code.getIndicatorValue(self.lexer.url_indicator, end_position)
         if ret:
             try:
                 real_url = url.replace('{{', '{').replace('}}', '}').strip().format(**env)
-                self.run_request_async(real_url, method, headers, line)
+                self.run_request_async(real_url, method, headers, line, url_value)
             except KeyError as e:
                 keys = ','.join(e.args)
                 msg = f'环境变量{keys}未设置!'
                 signal_manager.emit(signal_manager.warn, msg, 3000)
         else:
-            self.run_request_async(url, method, headers, line)
+            self.run_request_async(url, method, headers, line, url_value)
 
-    def run_request_async(self, url, method, headers, line, session: ClientSession = None, ):
+    def run_request_async_at_line(self, line: int):
+        self._run_request(line)
+
+    def run_request_async(self, url, method, headers, line, url_value, session: ClientSession = None):
         async def _run():
             async with aiohttp.ClientSession() as sess:
                 run_time = time.time()
@@ -582,18 +631,15 @@ class HTTPFileCodeWidget(TabCodeWidget):
                         status = resp.status
                     except:
                         status = None
-                    exc = _RunError(line, str(e), status)
+                    end_time = time.time()
+                    exc = _RunError(line, str(e), status, end_time - run_time)
                     raise exc
 
         def call_back(ret):
             headers, text, status, run_time, url, method, line = ret
             headers_text = '\n'.join([f'{k}: {v}' for k, v in headers.items()])
-
-            # from PyQt5 import QsciScintilla
-            # self.code: QsciScintilla
+            request.status = status
             # add success marker
-            # self.code.setMargins(3)
-            print('margins', self.code.margins())
             self.code.markerAdd(line, self.success_marker_handle)
 
             self.main_app.show_bottom_panel(1)
@@ -601,6 +647,7 @@ class HTTPFileCodeWidget(TabCodeWidget):
             title_msg = f'<font style="text-decoration:underline">{self.file_path()}</font>  ' \
                         f'<font color="red">{method.upper()}</font> <font style="color:blue">{url}</font> ' \
                         f'<font color="red"><b>{status} OK</b></font> <font color="gray">({now}, cost: {run_time:.4f}s)</font>'
+            signal_manager.emit('api_server_update_request')
             signal_manager.emit('api_server_clear')
             signal_manager.emit('api_server_title', title_msg)
             signal_manager.emit('api_server_out_put', method.upper() + ' ' + url + f' {status} OK\n')
@@ -609,18 +656,22 @@ class HTTPFileCodeWidget(TabCodeWidget):
             signal_manager.emit('api_server_out_put', text)
             signal_manager.emit('api_server_fold_all')
 
-            # print('headers: ', dict(**headers))
-            # print('status: ', status)
-            # print('run time', run_time)
-
-        def err_back(error):
+        def err_back(error: _RunError):
             line = error.line
             raw = error.raw
             status = error.status
-            # print('request fail error: ', raw)
+
             # add marker
             self.code.markerAdd(line, self.fail_marker_handle)
+            request.status = status
+            signal_manager.emit('api_server_update_request')
+            signal_manager.emit('api_server_clear')
+            signal_manager.emit('api_server_out_put', method.upper() + ' ' + url + f' {status} FAIL\n')
+            signal_manager.emit('api_server_out_put', f'{error.raw}\n')
+            signal_manager.emit('api_server_out_put', f'耗时: {error.run_time:.4f}s\n')
 
+        request = Request(url=url, method=method, headers=headers, )
+        signal_manager.emit('api_server_add_request', self.file_path(), url_value, request)
         self.analyse_worker.add_coro(_run(), call_back, err_back)
 
     @cached_property
@@ -698,6 +749,25 @@ class HTTPFileCodeWidget(TabCodeWidget):
         coped = dict(**global_env)
         coped.update(**self_env)
         return coped
+
+    def line_content(self, pos: QPoint) -> str:
+        line = self.code.lineAt(pos)
+        if line > 0:
+            return self.code.text(line)
+        return ''
+
+    def run_marker_url_info(self, pos) -> tuple:
+        line = self.code.lineAt(pos)
+        if self.line_has_marker(self.run_margin_type, self.run_margin_handle, pos):
+            url, method = self.lexer.runner._find_url_method(line)
+            env = self.get_env()
+            if url.find('{{'):
+                try:
+                    true_url = url.replace('{{', '{').replace('}}', '}').format(**env)
+                except:
+                    true_url = url
+                return true_url, method
+            return url, method
 
     # filter
     def eventFilter(self, a0: 'QObject', a1: QEvent) -> bool:

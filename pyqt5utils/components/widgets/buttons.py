@@ -120,8 +120,6 @@ class RotateIconButton(QWidget):
             print('start click')
             self.__time_id = self.startTimer(35)
             self.clicked.emit(True)
-        # else:
-        #     self.clicked.emit(False)
 
     def paintEvent(self, a0: QPaintEvent) -> None:
         if self._enter:

@@ -87,6 +87,7 @@ class ProcessSignalMixInHelper(object):
 class SignalManager(object):
     createFile = 'createFile'
     createFileAndOpen = 'createFileAndOpen'
+    createHookFileAndOpen = 'createHookFileAndOpen'
     openUrlFile = 'openUrlFile'
     changeSplitSize = 'changeSplitSize'
     changeVSplitSize = 'changeVSplitSize'

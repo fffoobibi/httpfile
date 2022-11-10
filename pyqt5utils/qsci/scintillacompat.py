@@ -1092,7 +1092,6 @@ class QsciScintillaCompat(QsciScintilla):
 
     def getIndicatorText(self, indicator, pos):
         if self.hasIndicator(indicator, pos):
-            print('has indicaotr')
             start = self.getIndicatorStartPos(indicator, pos)
             end = self.getIndicatorEndPos(indicator, pos)
             return self.text(start, end)
