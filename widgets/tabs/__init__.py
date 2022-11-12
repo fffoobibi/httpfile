@@ -41,35 +41,6 @@ def load_tab_widgets():
     return tab_codes
 
 
-def _make_child(instance, lex_func, app_exit, app_start_up):
-    class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn):
-        file_styled = pyqtSignal()
-        run_margin_signal = pyqtSignal(int)
-
-        def __init__(self):
-            super(BaseCodeChild, self).__init__()
-            self.code_container = instance
-            self.setCaretLineAlwaysVisible(True)
-            self.setCaretForegroundColor(QColor('#FF6C37'))
-            self.enableMultiCursorSupport()
-            self.setAutoCompletionSource(self.AcsAPIs)
-            self.setStyleSheet('BaseCodeChild{border:none}QToolTip{background:red;color:white}')
-
-        def __getattr__(self, item):
-            return getattr(instance, item)
-
-        def set_lexer(self):
-            return lex_func.__func__(self)
-
-        def when_app_exit(self, main_app):
-            return app_exit.__func__(self, main_app)
-
-        def when_app_start_up(self, main_app):
-            return app_start_up.__func__(self, main_app)
-
-    return BaseCodeChild
-
-
 class _Queue(object):
     def __init__(self):
         self._queue = deque()
@@ -105,12 +76,67 @@ class _Queue(object):
         return self._queue[self._pos]
 
 
+def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support, custom_menu_policy):
+    from widgets.mainwidget import MainWidget
+    class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn):
+        file_styled = pyqtSignal()
+        run_margin_signal = pyqtSignal(int)
+
+        def __init__(self):
+            super(BaseCodeChild, self).__init__()
+            self.code_container = instance
+            self.setCaretLineAlwaysVisible(True)
+            self.setCaretForegroundColor(QColor('#FF6C37'))
+            self.enableMultiCursorSupport()
+            self.setAutoCompletionSource(self.AcsAPIs)
+            self.setStyleSheet('BaseCodeChild{border:none}QToolTip{background:red;color:white}')
+            out = custom_menu_support()
+            if out:
+                self.setContextMenuPolicy(Qt.CustomContextMenu)
+                self.customContextMenuRequested.connect(custom_menu_policy)
+
+        def __getattr__(self, item):
+            return getattr(instance, item)
+
+        def get_app(self) -> MainWidget:
+            return super(BaseCodeChild, self).get_app()
+
+        def set_lexer(self):
+            return lex_func.__func__(self)
+
+        def when_app_exit(self, main_app):
+            return app_exit.__func__(self, main_app)
+
+        def when_app_start_up(self, main_app):
+            return app_start_up.__func__(self, main_app)
+
+    return BaseCodeChild
+
+
 class TabCodeWidget(QWidget):
     vertical = ConfigProvider.default(ConfigKey.general, 'vertical_width')
     horizontal = ConfigProvider.default(ConfigKey.general, 'horizontal_height')
 
     search_result_indicator = 20
     search_result_active_indicator = 21
+
+    def after_init(self):
+        pass
+
+    def custom_menu_support(self):
+        return False
+
+    def custom_menu_policy(self, pos):
+        pass
+
+    def set_lexer(self):
+        pass
+
+    def when_app_exit(self, main_app):
+        pass
+
+    def when_app_start_up(self, main_app):
+        pass
 
     @property
     def is_remote(self):
@@ -165,7 +191,7 @@ class TabCodeWidget(QWidget):
         self.lay.setContentsMargins(0, 0, 0, 0)
         self.lay.setSpacing(1)
 
-        self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up)()
+        self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up, self.custom_menu_support, self.custom_menu_policy)()
 
         StylesHelper.set_v_history_style_dynamic(self.code, color='#CFCFCF', background='transparent',
                                                  width=self.vertical.value)
@@ -224,11 +250,15 @@ class TabCodeWidget(QWidget):
 
         # define search indicator
         self.__define_search_indicator()
+        self.after_init()
+
+    @cached_property
+    def main_app(self):
+        return self.code.get_app()
 
     @cached_property
     def toast(self):
         t = Toast.make_text('只读模式', self.code, keep=False, width=None)
-        # t.hide()
         return t
 
     def closeEvent(self, event) -> None:
@@ -443,13 +473,3 @@ class TabCodeWidget(QWidget):
 
     def set_code_widgets(self) -> List[QWidget]:
         return []
-
-    ###########################
-    def set_lexer(self):
-        pass
-
-    def when_app_exit(self, main_app):
-        pass
-
-    def when_app_start_up(self, main_app):
-        pass

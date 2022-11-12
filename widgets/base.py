@@ -87,6 +87,7 @@ class PluginBaseMixIn(object):
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__()
+        print('PluginBaseMixIn hook ', cls)
         cls.__init__ = _after(cls, '__init__')(_plugin_init_)
 
     def after_init(self):

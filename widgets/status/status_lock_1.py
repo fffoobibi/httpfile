@@ -37,9 +37,6 @@ class LockBtn(QPushButton, PluginBaseMixIn):
             self.setIcon(QIcon(self._un_lock))
             lock = False
         signal_manager.emit(signal_manager.statusReadOnly, lock)
-        # if main_app.tabWidget.count():
-        # current = main_app.tabWidget.currentWidget()
-        # current.set_read_only(lock)
         for index in range(main_app.tabWidget.count()):
             try:
                 QApplication.processEvents()

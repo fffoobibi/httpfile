@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from typing import Optional
 
 from PyQt5.QtCore import QModelIndex, QPoint, QSize
 from PyQt5.QtGui import QIcon, QFont, QStandardItemModel
@@ -318,6 +319,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         w, h = self.width(), self.height()
         self.settings.setValue(key, [pos.x(), pos.y()])
         self.settings.setValue(size_key, [w, h])
+
+    ### interface
+    def current_file_path(self) -> Optional[Path]:
+        widget = self.tabWidget.currentWidget()
+        if widget:
+            return widget.file_path()
 
     @classmethod
     def run(cls):

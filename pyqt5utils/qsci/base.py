@@ -1,11 +1,12 @@
 import keyword
 import pathlib
+import subprocess
 import tempfile
 from enum import IntEnum, Enum
 from typing import List, Any
 
 from PyQt5.Qsci import QsciAPIs, QsciScintilla, QsciCommand
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QDir
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QDir, QThread
 from PyQt5.QtGui import QColor, QFont, QKeySequence
 from PyQt5.QtWidgets import QAction, QMenu
 
@@ -136,6 +137,28 @@ class BaseCodeWidget(QsciScintillaCompat):
     }
 
     word_indicator_show = False
+
+    class _RunThread(QThread):
+
+        signal = pyqtSignal(str)
+
+        def __init__(self, cmd):
+            super().__init__()
+            self.cmd = cmd
+
+        def run(self) -> None:
+            popen = subprocess.Popen(self.cmd, shell=True,
+                                     stdout=subprocess.PIPE,
+                                     stdin=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT)
+            self.signal.emit(self.cmd + '\n')
+            while True:
+                msg = popen.stdout.readline()
+                if msg == b'':
+                    break
+                self.signal.emit(msg.decode('utf8').strip())
+            popen.wait()
+            self.signal.emit(f'\n进程已结束,退出代码 {popen.returncode}')
 
     def after_init(self):
         pass
@@ -431,14 +454,15 @@ class BaseCodeWidget(QsciScintillaCompat):
         count = len(str(self.lines()))
         self.setMarginWidth(0, '0' * count + '0')
 
-    def _run(self):
-        assert self.output is not None
-        file_ = pathlib.Path(tempfile.gettempdir()) / self.file_name
-        file_.write_text(self.text(), encoding='utf8')
-        cmd = self.set_run_cmd(QDir.toNativeSeparators(file_.__str__()))
-        self.output.clear()
+    def _run(self, cmd):
+        # assert self.output is not None
+        # file_ = pathlib.Path(tempfile.gettempdir()) / self.file_name
+        # file_.write_text(self.text(), encoding='utf8')
+        # cmd = self.set_run_cmd(QDir.toNativeSeparators(file_.__str__()))
+        # self.output.clear()
         self.run_content.clear()
-        self._run_thread = self._RunThread(cmd, self.output, self)
+        self._run_thread = self._RunThread(cmd)  # self.output, self)
+        self._run_thread.signal.connect(self.run_content.append)
         self._run_thread.start()
 
     def mousePressEvent(self, event):
