@@ -88,13 +88,18 @@ class SignalManager(object):
     createFile = 'createFile'
     createFileAndOpen = 'createFileAndOpen'
     createHookFileAndOpen = 'createHookFileAndOpen'
+
     openUrlFile = 'openUrlFile'
+
     changeSplitSize = 'changeSplitSize'
     changeVSplitSize = 'changeVSplitSize'
+
     leftTabClicked = 'leftTabClicked'
     bottomButtonClicked = 'bottomButtonClicked'
+
     info = 'info'
     warn = 'warn'
+
     titleInfo = 'titleInfo'
 
     statusInfo = 'statusInfo'  # message warn

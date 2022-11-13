@@ -76,7 +76,7 @@ class _Queue(object):
         return self._queue[self._pos]
 
 
-def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support, custom_menu_policy):
+def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support, custom_menu_policy, set_apis):
     from widgets.mainwidget import MainWidget
     class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn):
         file_styled = pyqtSignal()
@@ -110,6 +110,9 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
         def when_app_start_up(self, main_app):
             return app_start_up.__func__(self, main_app)
 
+        def set_apis(self):
+            return set_apis.__func__(self)
+
     return BaseCodeChild
 
 
@@ -131,6 +134,9 @@ class TabCodeWidget(QWidget):
 
     def set_lexer(self):
         pass
+
+    def set_apis(self) -> List[str]:
+        return []
 
     def when_app_exit(self, main_app):
         pass
@@ -155,12 +161,15 @@ class TabCodeWidget(QWidget):
         self._update_time = v
 
     def load_file(self, file_path, content: str = None):
-        if not self.is_remote:
-            self._file = file_path
-            return self.code.load_file(file_path)
-        else:
-            self._file = file_path
-            return self.code.load_content(content)
+        try:
+            if not self.is_remote:
+                self._file = file_path
+                return self.code.load_file(file_path)
+            else:
+                self._file = file_path
+                return self.code.load_content(content)
+        finally:
+            self._file_loaded = True
 
     def file_path(self) -> str:
         return getattr(self, '_file', '')
@@ -191,7 +200,8 @@ class TabCodeWidget(QWidget):
         self.lay.setContentsMargins(0, 0, 0, 0)
         self.lay.setSpacing(1)
 
-        self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up, self.custom_menu_support, self.custom_menu_policy)()
+        self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
+                                self.custom_menu_support, self.custom_menu_policy, self.set_apis)()
 
         StylesHelper.set_v_history_style_dynamic(self.code, color='#CFCFCF', background='transparent',
                                                  width=self.vertical.value)
@@ -199,6 +209,7 @@ class TabCodeWidget(QWidget):
                                                  height=self.horizontal.value)
         self._is_remote = False
         self._update_time = None
+        self._file_loaded = False
         self.__search = False
         self.__search_count = 0
         self.__search_results = _Queue()

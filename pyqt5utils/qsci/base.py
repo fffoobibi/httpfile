@@ -3,7 +3,7 @@ import pathlib
 import subprocess
 import tempfile
 from enum import IntEnum, Enum
-from typing import List, Any
+from typing import List, Any, Tuple
 
 from PyQt5.Qsci import QsciAPIs, QsciScintilla, QsciCommand
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QDir, QThread
@@ -351,7 +351,7 @@ class BaseCodeWidget(QsciScintillaCompat):
         self.setTabIndents(True)
 
         # 边栏字体
-        self._margin_font = QFont('Consolas', 9)
+        self._margin_font = QFont('Consolas', 10)
         self.setMarginsFont(self._margin_font)
 
         # 行号显示
@@ -359,12 +359,6 @@ class BaseCodeWidget(QsciScintillaCompat):
         self.setMarginLineNumbers(0, True)
         self.setMarginWidth(0, '00')  # 边栏宽度
         # self.setMarginsBackgroundColor(QColor('#2D2B29'))  # 边栏背景颜色
-
-        # symbol
-        # self.setMarginType(1, self.SymbolMargin)
-        # self.setMarginWidth(1, 16)
-
-        # self.setMarginsForegroundColor(Qt.red)
 
         self.setAutoIndent(True)  # 换行后自动缩进, 括号自动补全
         self.setIndentationGuides(True)  # 设置虚线
@@ -402,21 +396,7 @@ class BaseCodeWidget(QsciScintillaCompat):
         self.setIndicatorForegroundColor(QColor('#00D5F5'), 10)
 
     def set_markers(self):
-        """
-        self.append('base text\n')
-        self.append('base text2\n')
-        symbol = QsciScintilla.Circle
-        symbol = QImage('exco_logo.png').scaled(QSize(16, 16), transformMode=Qt.SmoothTransformation)
-        # self.setMarginType(1, QsciScintilla.SymbolMargin)
-        self.setMarginType(1, self.SymbolMargin)
-        # self.setMarginWidth(1, '000')
-        self.setMarginWidth(1, 20)
-        self.markerDefine(symbol, 0)
-        self.markerDefine(self.Circle, 1)
-        self.setMarginMarkerMask(1, 0b11)
-        self.markerAdd(1, 0)
-        self.markerAdd(0, 1)
-        """
+        pass
 
     def set_slots(self):
         self.setMarginSensitivity(1, True)
@@ -425,6 +405,11 @@ class BaseCodeWidget(QsciScintillaCompat):
 
     def set_default_custom_context_show(self) -> bool:
         return True
+
+    @property
+    def current_line_col(self) -> Tuple:
+        pos = self.currentPosition()
+        return self.lineIndexFromPosition(pos)
 
     def _margin_clicked(self, margin_nr, line_nr, state):
         pass
@@ -452,14 +437,9 @@ class BaseCodeWidget(QsciScintillaCompat):
 
     def set_line_width_slot(self):
         count = len(str(self.lines()))
-        self.setMarginWidth(0, '0' * count + '0')
+        self.setMarginWidth(0, '0' * count + '00')
 
     def _run(self, cmd):
-        # assert self.output is not None
-        # file_ = pathlib.Path(tempfile.gettempdir()) / self.file_name
-        # file_.write_text(self.text(), encoding='utf8')
-        # cmd = self.set_run_cmd(QDir.toNativeSeparators(file_.__str__()))
-        # self.output.clear()
         self.run_content.clear()
         self._run_thread = self._RunThread(cmd)  # self.output, self)
         self._run_thread.signal.connect(self.run_content.append)
@@ -470,25 +450,27 @@ class BaseCodeWidget(QsciScintillaCompat):
         if event.button() == Qt.LeftButton:
             self.click_signal.emit()
 
-    def keyReleaseEvent(self, event):
-        if event.key() == Qt.Key_Control:
-            self._repeat_key = Qt.Key_Control
-            if not self._repeat_timer.isActive():
-                self._repeat_timer.start(400)
-            self._repeat_count += 1
-            if self._repeat_count == 2:
-                self._repeat_timer.stop()
-                self._repeat_count = 0
-                self.key2_signal.emit(Qt.Key_Control)
-                self._code_state = CodeState.multi_line
-        else:
-            self._repeat_key = None
-            self._code_state = CodeState.normal
-        # if event.modifiers() & Qt.Key_Control and event.key() == Qt.Key_X:
-        #     print('ctrl+x ---')
-        # else:
-        #     pass
-        super().keyReleaseEvent(event)
+    # def keyReleaseEvent(self, event):
+    #
+    #     if event.key() == Qt.Key_Control:
+    #         self._repeat_key = Qt.Key_Control
+    #         if not self._repeat_timer.isActive():
+    #             self._repeat_timer.start(400)
+    #         self._repeat_count += 1
+    #         if self._repeat_count == 2:
+    #             self._repeat_timer.stop()
+    #             self._repeat_count = 0
+    #             self.key2_signal.emit(Qt.Key_Control)
+    #             self._code_state = CodeState.multi_line
+    #     else:
+    #         self._repeat_key = None
+    #         self._code_state = CodeState.normal
+    #
+    #     # if event.modifiers() & Qt.Key_Control and event.key() == Qt.Key_X:
+    #     #     print('ctrl+x ---')
+    #     # else:
+    #     #     pass
+    #     super().keyReleaseEvent(event)
 
     def _repeat_timeout(self):
         if self._repeat_key == Qt.Key_Control:

@@ -480,6 +480,13 @@ class QsciScintillaCompat(QsciScintilla):
         """
         self.SendScintilla(QsciScintilla.SCI_WORDRIGHT)
 
+    def replaceRange(self, position: int, length: int, word: str):
+        self.deleteRange(position, length)
+        pos = self.currentPosition()
+        line, col = self.lineIndexFromPosition(pos)
+        self.insertAt(word, line, col)
+        # self.SendScintilla(QsciScintilla.SCI_ADDTEXT, self._encodeString(word))
+
     def newLineBelow(self):
         """
         Public method to insert a new line below the current one.
@@ -498,6 +505,9 @@ class QsciScintillaCompat(QsciScintilla):
         Public method to delete the character to the right of the cursor.
         """
         self.SendScintilla(QsciScintilla.SCI_CLEAR)
+
+    def deleteRange(self, position: int, length: int):
+        self.SendScintilla(QsciScintilla.SCI_DELETERANGE, position, length)
 
     def deleteWordLeft(self):
         """
