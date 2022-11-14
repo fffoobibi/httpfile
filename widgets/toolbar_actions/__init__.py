@@ -32,3 +32,6 @@ class ToolBarActionMixIn(object):
 
     def action_slot(self):
         pass
+
+    def make_widget(self):
+        return

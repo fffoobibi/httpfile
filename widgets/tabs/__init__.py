@@ -116,12 +116,26 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
     return BaseCodeChild
 
 
+class TabInterface(object):
+    def load_file(self, file_path, content: str = None):
+        pass
+
+    def is_remote(self):
+        pass
+
+    def file_path(self):
+        pass
+
+
 class TabCodeWidget(QWidget):
     vertical = ConfigProvider.default(ConfigKey.general, 'vertical_width')
     horizontal = ConfigProvider.default(ConfigKey.general, 'horizontal_height')
 
     search_result_indicator = 20
     search_result_active_indicator = 21
+
+    after_saved: pyqtSignal
+    file_loaded: pyqtSignal
 
     def after_init(self):
         pass
@@ -170,6 +184,8 @@ class TabCodeWidget(QWidget):
                 return self.code.load_content(content)
         finally:
             self._file_loaded = True
+            with suppress(Exception):
+                self.file_loaded.emit()
 
     def file_path(self) -> str:
         return getattr(self, '_file', '')
@@ -221,7 +237,7 @@ class TabCodeWidget(QWidget):
 
         self.__save_action = QAction()
         self.__save_action.setShortcut('ctrl+s')
-        self.__save_action.triggered.connect(self.__auto_save_slot)
+        self.__save_action.triggered.connect(self.__save_slot)
 
         self.__cut_action = QAction()
         self.__cut_action.setShortcut('ctrl+x')
@@ -315,13 +331,15 @@ class TabCodeWidget(QWidget):
         else:
             self.code.copy()
 
-    def __auto_save_slot(self):
+    def __save_slot(self):
         if self.file_path() and not self.is_remote:
             try:
                 Path(self._file).write_text(self.code.text(), encoding='utf-8')
                 save_time = datetime.now()
                 msg = f'{self.file_path()} 已保存, {save_time.strftime("%H:%M:%S")}'
-                signal_manager.emit(signal_manager.statusMsg, msg, 3)
+                signal_manager.emit(signal_manager.statusMsg, msg, 3000)
+                with suppress(Exception):
+                    self.after_saved.emit()
             except:
                 pass
 

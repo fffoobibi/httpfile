@@ -4,7 +4,7 @@ import threading
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from .decorators import singleton
 
-__all__ = ('BackgroundWorker',)
+__all__ = ('BackgroundWorker', 'WorkerManager')
 
 
 class BackgroundWorker(QObject):

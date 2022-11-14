@@ -13,6 +13,5 @@ class OpenAction(ToolBarActionMixIn):
     def action_slot(self):
         current = Path.cwd()
         out = QFileDialog.getExistingDirectory(self.app, '打开文件夹', current.__str__())
-        print('get out ', out)
         if out:
             self.app.load_dir_path(out)

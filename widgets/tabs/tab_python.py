@@ -1,14 +1,14 @@
 import difflib
 import keyword
 import subprocess
-import jedi
-
+from abc import abstractmethod
 from typing import Any, List
 
-from PyQt5.Qsci import QsciLexerPython
-from PyQt5.QtCore import Qt, QDir, QTimer
+import jedi
+from PyQt5.Qsci import QsciLexerPython, QsciScintilla
+from PyQt5.QtCore import Qt, QDir, QTimer, pyqtSignal
 from PyQt5.QtGui import QCursor, QKeySequence, QColor
-from PyQt5.QtWidgets import QMenu, QAction, QWidget, QTextEdit
+from PyQt5.QtWidgets import QMenu, QAction, QTextEdit
 from cached_property import cached_property
 from jedi.api.classes import Completion
 from jedi.api.environment import SameEnvironment
@@ -17,25 +17,30 @@ from pyqt5utils.workers import WorkerManager
 from widgets.factorys import make_styled
 from . import register, TabCodeWidget
 
-from abc import ABC, abstractmethod
-
 
 class FileTracerMixIn(object):
     def init_file_tracer(self):
         self.__hasChangeMarkers = False
-        self.__oldText = self.monitor_text()
-        self.__lastSavedText = self.monitor_text()
+        self.__old_text = self.monitor_text()
+        self.__last_saved_text = self.monitor_text()
         self.__onlineChangeTraceTimer = QTimer(self)
         self.__onlineChangeTraceTimer.setSingleShot(True)
-        self.__onlineChangeTraceTimer.setInterval(100)
-        self.__onlineChangeTraceTimer.timeout.connect(
-            self.__onlineChangeTraceTimerTimeout
-        )
+        self.__onlineChangeTraceTimer.setInterval(300)
+        self.__onlineChangeTraceTimer.timeout.connect(self.__online_change_trace_timer_timeout)
         monitor_widget = self.monitor_widget()
-        monitor_widget.textChanged.connect(self.__resetOnlineChangeTraceTimer)
+        monitor_widget.textChanged.connect(self.__reset_online_change_trace_timer)
+        self.define_file_trace_margins()
 
     def change_old_text(self, txt):
-        self.__oldText = txt
+        self.__old_text = txt
+
+    def reset_file_tracer(self):
+        self.__old_text = self.monitor_text()
+        self.delete_all_changer_markers()
+
+    @abstractmethod
+    def define_file_trace_margins(self):
+        ...
 
     @abstractmethod
     def monitor_text(self) -> str:
@@ -60,36 +65,37 @@ class FileTracerMixIn(object):
     def tracer_file_name(self):
         return 'test.py'
 
-    def __onlineChangeTraceTimerTimeout(self):
+    def __online_change_trace_timer_timeout(self):
         if self.should_update_changed():
             self.delete_all_changer_markers()
-            # step 1: mark saved changes
-            oldL = self.__oldText.splitlines()
-            newL = self.monitor_text().splitlines()
-
-            file_name = self.tracer_file_name()
-
-            lines = list(difflib.unified_diff(oldL, newL, fromfile=f'original', tofile=f'current'))
+            old_lines = self.__old_text.splitlines(True)
+            new_lines = self.monitor_text().splitlines(True)
+            lines = list(difflib.unified_diff(old_lines, new_lines, fromfile=f'original', tofile=f'current'))
             if lines:
                 import sys
                 sys.stdout.writelines(lines)
                 change_info = lines[2]
                 change_contents = lines[3:]
-                change_logs = []
                 change_added = []
                 change_subs = []
-                starts = int(
-                    change_info.replace('@', '').strip().split(' ')[0].split(',')[0].strip('-'))  # @@ -1,6 +1,7 @@
-                print('\nstarts ', starts)
-                print('change: ', change_contents)
-                for index, content in enumerate(change_contents, starts - 1):
-                    if '+' in content[:2]:
-                        # if content.startswith('+'):
-                        change_added.append([index, content])
-                    elif '-' in content[:2]:
-                        # elif  content.startswith('-'):
-                        change_subs.append([index, content])
-                print('change add', change_added)
+                line_start = int(change_info.replace('@', '').strip().split(' ')[0].split(',')[0].strip('-'))  # @@ -1,6 +1,7 @@
+                print('\nstarts ', line_start)
+                add_line = line_start - 1
+                subs_line = line_start - 1
+                i = line_start - 1
+                for index, content in enumerate(change_contents, line_start - 1):
+                    i += 1
+                    if content.startswith('+'):  # file new
+                        add_line += 1
+                        change_added.append([add_line, content])
+                    elif content.startswith('-'):  # file old
+                        subs_line += 1
+                        change_subs.append([subs_line, content])
+                    elif content[0] == ' ':  # and index != 0:  # no change
+                        add_line += 1
+                        subs_line += 1
+                print('added: ', change_added)
+                print('delete: ', change_subs)
                 self.add_change_markers(change_added)
             # for line in lines[:3]
             # matcher = difflib.SequenceMatcher(None, oldL, newL)
@@ -115,13 +121,37 @@ class FileTracerMixIn(object):
             #     self.changeMarkersUpdated.emit(self)
             #     self.__markerMap.update()
 
-    def __resetOnlineChangeTraceTimer(self):
+    def __reset_online_change_trace_timer(self):
         self.__onlineChangeTraceTimer.stop()
         self.__onlineChangeTraceTimer.start()
 
 
 @register(file_types=['py', 'pyw'])
 class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
+    save_changed_margin_line_type = 1
+    save_changed_marker_number = 0
+    save_deleted_marker_number = 1
+    save_changed_marker_handler: int  # type hint
+    after_saved = pyqtSignal()
+
+    def define_file_trace_margins(self):
+        editor: QsciScintilla
+        editor = self.code
+
+        editor.markerDefine(editor.MarkerSymbol.FullRectangle, self.save_changed_marker_number)  # add
+        editor.setMarkerBackgroundColor(QColor('darkgreen'), self.save_changed_marker_number)
+        editor.setMarkerForegroundColor(QColor('red'), self.save_changed_marker_number)
+
+        editor.markerDefine(editor.MarkerSymbol.ThreeDots, self.save_deleted_marker_number)  # deleted
+        editor.setMarkerForegroundColor(QColor('red'), self.save_deleted_marker_number)
+
+        editor.setMarginLineNumbers(0, True)
+        editor.setMarginSensitivity(0, True)
+        editor.setMarginWidth(0, '00')
+
+        editor.setMarginType(self.save_changed_margin_line_type, editor.MarginType.SymbolMargin)
+        editor.setMarginWidth(self.save_changed_margin_line_type, '0')
+
     def should_update_changed(self) -> bool:
         return self._file_loaded
 
@@ -136,11 +166,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
 
     def add_change_markers(self, marker_infos: list):
         for line, content in marker_infos:
-            self.code.markerAdd(line, self.save_changed_marker_number)
-
-    save_changed_margin_line_type = 1
-    save_changed_marker_number = 0
-    save_changed_marker_handler: int  # type hint
+            self.code.markerAdd(line - 1, self.save_changed_marker_number)
 
     def when_modify(self, position, modificationType, text, length, linesAdded,
                     line, foldLevelNow, foldLevelPrev, token, annotationLinesAdded):
@@ -153,8 +179,8 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
 
     def after_init(self):
         self.set_commands()
-        self.define_margins()
         self.init_file_tracer()
+        self.after_saved.connect(self.reset_file_tracer)
 
     def __format_code(self):
         pass
@@ -200,25 +226,6 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     def load_file(self, file_path, content: str = None):
         super(PythonCodeWidget, self).load_file(file_path, content)
         self.change_old_text(self.monitor_text())
-
-    def define_margins(self):
-        editor = self.code
-
-        try:
-            from PyQt5 import QsciScintilla
-        except:
-            from PyQt5.Qsci import QsciScintilla
-
-        editor.markerDefine(editor.MarkerSymbol.FullRectangle, self.save_changed_marker_number)
-        editor.setMarkerBackgroundColor(QColor('darkgreen'), self.save_changed_marker_number)
-
-        editor: QsciScintilla
-        editor.setMarginLineNumbers(0, True)
-        editor.setMarginSensitivity(0, True)
-        editor.setMarginWidth(0, '00')
-
-        editor.setMarginType(self.save_changed_margin_line_type, editor.MarginType.SymbolMargin)
-        editor.setMarginWidth(self.save_changed_margin_line_type, '0')
 
     @cached_property
     def jedi_worker(self):
@@ -275,9 +282,10 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
                 print(cmd)
                 self.auto_complete()
         elif ac == ac3:
-            self._new = self.code.text().splitlines(True)
-            lines = list(difflib.unified_diff(self._old, self._new, fromfile='a.py', tofile='b.py'))
-            import sys
-            sys.stdout.writelines(lines)
-            # print(len(self._old), len(lines))
-            print(lines)
+            print(repr(self.monitor_text()))
+            # self._new = self.code.text().splitlines(True)
+            # lines = list(difflib.unified_diff(self._old, self._new, fromfile='a.py', tofile='b.py'))
+            # import sys
+            # sys.stdout.writelines(lines)
+            # # print(len(self._old), len(lines))
+            # print(lines)
