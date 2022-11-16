@@ -107,6 +107,8 @@ class SignalManager(object):
     statusLineInfo = 'statusLineInfo'
     statusReadOnly = 'statusReadOnly'
 
+    themeChange = 'themeChange'
+
     def __init__(self):
         self._signals = {}
 

@@ -128,6 +128,7 @@ class FileTracerMixIn(object):
 
 @register(file_types=['py', 'pyw'])
 class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
+    file_type = 'python'
     save_changed_margin_line_type = 1
     save_changed_marker_number = 0
     save_deleted_marker_number = 1

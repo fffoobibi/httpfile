@@ -1,13 +1,12 @@
 import json
 import re
 import time
-import aiohttp
-
 from datetime import datetime
 from pathlib import Path
 from types import MethodType
 from typing import Any, Dict, List
 
+import aiohttp
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, pyqtSlot, QEvent, QPoint
 from PyQt5.QtGui import QColor, QFont, QMouseEvent, QCursor, QIcon, QPixmap
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy, QListWidget,
@@ -18,13 +17,10 @@ from cached_property import cached_property
 
 from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.components.widgets.buttons import RotateIconButton
-from pyqt5utils.components.feedback import Tips
 from pyqt5utils.qsci.base import BaseCodeWidget
 from pyqt5utils.qsci.lexers.http_file import HttpFileLexer, CustomStyles
-
-from widgets.utils import ConfigProvider, ConfigKey
 from widgets.signals import signal_manager
-
+from widgets.utils import ConfigProvider, ConfigKey
 from . import register, TabCodeWidget
 from ..hooks import http_hooks
 from ..types import Request
@@ -170,6 +166,8 @@ class _RunError(Exception):
 
 @register(file_types=['http'])
 class HTTPFileCodeWidget(TabCodeWidget):
+    file_type = 'http'
+
     url_indicator_signal = pyqtSignal(int, int, int, int, str)  # line, index, position, value, text
     file_loaded_flag = False
 

@@ -6,6 +6,7 @@ from PyQt5.QtCore import QModelIndex, QPoint, QSize
 from PyQt5.QtGui import QIcon, QFont, QStandardItemModel
 from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget
 from pydantic import BaseModel, Field
+from zope.interface import verify
 
 from pyqt5utils.components import Message
 from pyqt5utils.components.styles import StylesHelper
@@ -13,6 +14,7 @@ from ui.main2ui import Ui_MainWindow
 from widgets.base import PluginBaseMixIn
 from widgets.collect import collect_plugins, Collections
 from widgets.components import FileSystemModel
+from widgets.interfaces import ITabInterFace
 from widgets.signals import app_exit, app_start_up
 from widgets.utils import ConfigProvider, ConfigKey, get_file_type_and_name
 
@@ -246,17 +248,17 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     #### add tab ####
     def add_tab_widget(self, file_type, file_name, file_path: str, url: str = None, content: str = None):
-        # print('add tab ', file_type, file_name, file_path)
         if url is None:
             def _create_tab_code_widget():
                 for k, v in self.plugins.tabs.items():
+                    # print('imp by: ', ITabInterFace.implementedBy(k))
                     if file_type in v:
                         code = k()
                         code.is_remote = False
                         code.load_file(file_path)
                         return code
 
-            tab = _create_tab_code_widget()
+            tab: ITabInterFace = _create_tab_code_widget()
             if tab:
                 tab.set_read_only(self.r_run_time.read_only)
                 self.tabWidget.addTab(tab, file_name)
@@ -273,7 +275,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                         code.load_file(url, content)
                         return code
 
-            tab = _create_tab_code_widget()
+            tab: ITabInterFace = _create_tab_code_widget()
             if tab:
                 tab.set_read_only(self.r_run_time.read_only)
                 self.tabWidget.addTab(tab, url)

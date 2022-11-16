@@ -12,4 +12,3 @@ from . import register, TabCodeWidget
 class TextCodeWidget(TabCodeWidget):
     def set_lexer(self) -> Any:
         return QsciLexerTeX(self)
-

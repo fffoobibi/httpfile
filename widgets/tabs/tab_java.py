@@ -7,6 +7,7 @@ from . import register, TabCodeWidget
 
 @register(file_types=['java'])
 class JavaCodeWidget(TabCodeWidget):
+    file_type = 'java'
+
     def set_lexer(self) -> Any:
         return QsciLexerJava(self)
-

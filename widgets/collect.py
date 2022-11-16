@@ -6,6 +6,7 @@ from widgets.left_control import load_left_control_widgets
 from widgets.tabs import load_tab_widgets
 from widgets.toolbar_actions import load_toolbar_actions
 from widgets.status import load_status_control_widgets
+from widgets.styles import load_style_clz
 
 from widgets.utils import ConfigProvider
 from configs import configs
@@ -21,5 +22,6 @@ def collect_plugins() -> Collections:
     left_controls = load_left_control_widgets()
     toolbar_actions = load_toolbar_actions()
     status_widgets = load_status_control_widgets()
+    styles = load_style_clz()
     return Collections(folder=folder, tabs=tabs, controls=controls, left_controls=left_controls, toolbar_actions=toolbar_actions,
                        status=status_widgets)

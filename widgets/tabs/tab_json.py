@@ -5,6 +5,7 @@ from . import register, TabCodeWidget
 
 @register(file_types=['json'])
 class JsonCodeWidget(TabCodeWidget):
+    file_type = 'json'
+
     def set_lexer(self):
         return QsciLexerJSON(self)
-

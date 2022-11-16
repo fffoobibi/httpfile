@@ -7,6 +7,7 @@ from . import register, TabCodeWidget
 
 @register(file_types=['js'])
 class JsCodeWidget(TabCodeWidget):
+    file_type = 'javascript'
+
     def set_lexer(self) -> Any:
         return QsciLexerJavaScript(self)
-

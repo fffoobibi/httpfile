@@ -9,6 +9,8 @@ from PyQt5.QtCore import QSettings
 from pyqt5utils.workers import WorkerManager, BackgroundWorker
 from widgets.signals import app_exit, app_start_up
 
+__all__ = ('get_app_settings', 'PluginBaseMixIn')
+
 
 def _after(clz, func_name):
     def decorator(func):
@@ -61,7 +63,7 @@ def _plugin_init_(self, *a, **kw):
     def _app_exit(args):
         self.when_app_exit(args)
 
-    self.settings = self.settings_class(self.settings_name, QSettings.IniFormat)
+    self.settings = self.settings_class(self.settings_path, QSettings.IniFormat)
     self.settings.setIniCodec('UTF-8')
     self.settings.set_serializer(self.settings_serializers)
     app_start_up.connect(_app_start, weak=False)
@@ -71,13 +73,21 @@ def _plugin_init_(self, *a, **kw):
     self.render_style_sheet()
 
 
+def get_app_settings() -> _Settings:
+    self = PluginBaseMixIn
+    settings = self.settings_class(self.settings_path, QSettings.IniFormat)
+    settings.setIniCodec('UTF-8')
+    settings.set_serializer(self.settings_serializers)
+    return settings
+
+
 class PluginBaseMixIn(object):
     worker_factory_class = WorkerManager
     worker_name = 'pluginbasemixin'
     __worker_instances__ = dict()
 
     settings_class = _Settings
-    settings_name = './config.ini'
+    settings_path = './config.ini'
     settings_serializers = [_settings_dump, _settings_load]
 
     settings: _Settings = None  # type hint bad but necessary
@@ -87,7 +97,7 @@ class PluginBaseMixIn(object):
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__()
-        print('PluginBaseMixIn hook ', cls)
+        # print('PluginBaseMixIn hook ', cls)
         cls.__init__ = _after(cls, '__init__')(_plugin_init_)
 
     def after_init(self):

@@ -285,10 +285,6 @@ class CodeTabWidget(QTabWidget):
 
     def _tab_menu(self, pos):
         index = self.tabBar().tabAt(pos)
-        # if self.ide._current_theme == Themes.dark:
-        #     style = dark_menu_style
-        # else:
-        #     style = ''
         style = dark_menu_style
         if index >= 0:
             flags = CodeTabFlags

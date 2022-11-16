@@ -2,6 +2,7 @@ import keyword
 import pathlib
 import subprocess
 import tempfile
+from contextlib import suppress
 from enum import IntEnum, Enum
 from typing import List, Any, Tuple
 
@@ -530,9 +531,10 @@ class BaseCodeWidget(QsciScintillaCompat):
 
     ### load file ###
     def load_file(self, file_path):
-        from pathlib import Path
-        self.setText(Path(file_path).read_text(encoding='utf-8'))
-        return self.lines()
+        with suppress(Exception):
+            from pathlib import Path
+            self.setText(Path(file_path).read_text(encoding='utf-8'))
+            return self.lines()
 
     def load_content(self, content: str):
         self.setText(content)

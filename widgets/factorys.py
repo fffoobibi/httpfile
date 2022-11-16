@@ -1,13 +1,12 @@
 import typing as t
-
 from functools import wraps
 
-from pyqt5utils.components.styles import StylesHelper
+from widgets.styles import current_styles
 
 
 def _styled_policy(t, policy):
     if policy == 'menu':
-        StylesHelper.add_menu_style(t)
+        t.setStyleSheet(current_styles.menu)
     elif policy == 'bottom_button':
         t.setStyleSheet('QPushButton{background: transparent; border:none; padding:3px 3px; font-family:微软雅黑}'
                         'QPushButton:hover{background: lightgray}')
@@ -27,10 +26,14 @@ def styled_factory(policy):
 
         return decorator
 
+    def after_init(self, *a, **kw):
+        current_styles.add_trace(self, _styled_policy, policy)
+        _styled_policy(self, policy)
+
     class StyledFactory(object):
         def __init_subclass__(cls, **kwargs):
             super().__init_subclass__()
-            cls.__init__ = _after(cls, '__init__')(lambda this: _styled_policy(this, policy))
+            cls.__init__ = _after(cls, '__init__')(after_init)
 
     return StyledFactory
 
@@ -40,5 +43,6 @@ T = t.TypeVar('T')
 
 def make_styled(widget_clz: t.Type[T], policy, *a, **kw) -> T:
     obj = widget_clz(*a, **kw)
+    current_styles.add_trace(obj, _styled_policy, policy)
     _styled_policy(obj, policy)
     return obj
