@@ -20,3 +20,4 @@ class LightStyle(BaseStyle):
             QMenu::item:selected{
               background-color:rgb(236,236,237);
             }"""
+    editor_http_file = dict(font={}, color={}, paper={})

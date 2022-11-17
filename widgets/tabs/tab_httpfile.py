@@ -23,6 +23,7 @@ from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
 from . import register, TabCodeWidget
 from ..hooks import http_hooks
+from ..styles import current_styles
 from ..types import Request
 
 
@@ -54,40 +55,44 @@ class HttpFileStyles(CustomStyles):
 
     @classmethod
     def defaultColor(cls, style: int):
+        styles = current_styles.editor_http_file
         if style == cls.request:
-            return QColor('#000000')
+            return QColor(styles['color'].get('request') or '#000000')
         elif style == cls.header:
-            return QColor('#7F0C82')  # 紫色
+            return QColor(styles['color'].get('header') or '#7F0C82')  # 紫色
         elif style == cls.section:
-            return QColor('#CC6600')
+            return QColor(styles['color'].get('section') or '#CC6600')
         elif style == cls.data:
-            return QColor('#CC0000')
+            return QColor(styles['color'].get('data') or '#CC0000')
         elif style == cls.response:
-            return QColor(Qt.black)
+            return QColor(styles['color'].get('response') or '#7F0C82') #紫色
         elif style == cls.key:  # request keyword
-            return QColor('red')
+            return QColor(styles['color'].get('key') or 'red')
         elif style == cls.request_url:  # request url
-            return QColor('blue')  # 橘色
+            return QColor(styles['color'].get('request_url') or 'blue')  # 橘色
         elif style == cls.splitter:  # splitter ###
-            return QColor(Qt.gray)
+            return QColor(styles['color'].get('splitter') or Qt.gray)
         elif style == cls.black:
-            return QColor(Qt.black)
+            return QColor(styles['color'].get('black') or Qt.black)
         elif style == cls.output:
-            return QColor('#2D8C00')
+            return QColor(styles['color'].get('output') or '#2D8C00')
         elif style == cls.variable:
-            return QColor(Qt.darkBlue)
+            return QColor(styles['color'].get('variable') or Qt.darkBlue)
 
     @classmethod
     def defaultPaper(cls, style: int):
+        styles = current_styles.editor_http_file
         if style == cls.request:
-            return QColor('#FFEECC')
+            return QColor(styles['paper'].get('request') or '#FFEECC')
         elif style == cls.black:
-            return QColor(Qt.white)
+            return QColor(styles['paper'].get('black') or Qt.white)
         elif style == cls.output:
-            return QColor('#EDFCED')
+            return QColor(styles['paper'].get('output') or '#EDFCED')
+        return QColor(styles['paper'].get('request'))
 
     @classmethod
     def defaultFont(cls, style: int, font: QFont):
+        styles = current_styles.editor_http_file
         if style == cls.underline:
             font.setUnderline(True)
         if style == cls.bold:
@@ -207,6 +212,8 @@ class HTTPFileCodeWidget(TabCodeWidget):
         self.code.run_margin_signal.connect(self._run_request)
         self.define_code_markers()
         self.define_menus()
+        if current_styles.editor_http_file.get('margin_color', None):
+            self.code.setMarkerBackgroundColor(current_styles.editor_http_file.get('margin_color' or ))
 
     def define_menus(self):
         def _menu_policy(pos):

@@ -86,3 +86,5 @@ class BaseStyle(object):
         return list(map(lambda e: e[0], ret))
 
     menu = ''
+
+    editor_http_file: dict = None

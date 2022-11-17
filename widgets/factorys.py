@@ -10,6 +10,10 @@ def _styled_policy(t, policy):
     elif policy == 'bottom_button':
         t.setStyleSheet('QPushButton{background: transparent; border:none; padding:3px 3px; font-family:微软雅黑}'
                         'QPushButton:hover{background: lightgray}')
+    elif policy == 'code_widget':
+        t.update()
+        print('update ------- ', t)
+        t.viewport().update()
 
 
 def styled_factory(policy):
