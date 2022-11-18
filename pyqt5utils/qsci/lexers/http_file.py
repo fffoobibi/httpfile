@@ -181,9 +181,9 @@ class HttpFileLexer(CustomLexerCompat):
         editor.setIndicatorHoverStyle(QsciScintilla.INDIC_FULLBOX, indicator_num)
 
         editor.indicatorDefine(QsciScintilla.INDIC_HIDDEN, self.url_indicator)
-        editor.setIndicatorForegroundColor(QColor(Qt.blue), self.url_indicator)
+        editor.setIndicatorForegroundColor(QColor(Qt.red), self.url_indicator)
         editor.setIndicatorHoverStyle(QsciScintilla.INDIC_COMPOSITIONTHICK, self.url_indicator)
-        editor.setIndicatorHoverForegroundColor(QColor(Qt.blue), self.url_indicator)
+        editor.setIndicatorHoverForegroundColor(QColor('orange'), self.url_indicator)
         editor.setIndicatorDrawUnder(False, self.url_indicator)
 
         editor.indicatorClicked.connect(indicator_clicked)

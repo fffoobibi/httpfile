@@ -13,6 +13,7 @@ from ui.web_serverui import Ui_Form
 from widgets.base import PluginBaseMixIn
 from widgets.bottom_control import BottomWidgetMixIn
 from widgets.bottom_control import register
+from widgets.factorys import add_styled
 from widgets.net_utils import get_host_ip
 from widgets.signals import ProcessSignalMixIn, ProcessSignalMixInHelper
 from widgets.utils import ConfigProvider, ConfigKey
@@ -203,6 +204,7 @@ class WebControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, Pro
                                                  width=self.vertical.value)
         StylesHelper.set_h_history_style_dynamic(self.textBrowser, color='#CFCFCF', background='transparent',
                                                  height=self.horizontal.value)
+
 
     def set_slot(self):
         self.pushButton.clicked.connect(self.start_web_task)

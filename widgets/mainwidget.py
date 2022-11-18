@@ -14,6 +14,7 @@ from ui.main2ui import Ui_MainWindow
 from widgets.base import PluginBaseMixIn
 from widgets.collect import collect_plugins, Collections
 from widgets.components import FileSystemModel
+from widgets.factorys import add_styled
 from widgets.interfaces import ITabInterFace
 from widgets.signals import app_exit, app_start_up
 from widgets.utils import ConfigProvider, ConfigKey, get_file_type_and_name
@@ -154,8 +155,6 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
         work_path = Path.cwd().__str__()
 
-        # root_model = QStandardItemModel()
-
         self.model = FileSystemModel(work_path)
         self.treeView.setModel(self.model)
         self.treeView.doubleClicked.connect(click_file)
@@ -169,6 +168,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         self.tabWidget_2.setStyleSheet('QTabWidget{background:red}')
         self.setWindowTitle(self.app_name)
         self.setWindowIcon(QIcon(r'D:\work\httpfile\sources\编辑.svg'))
+
+        # style
+        add_styled(self.tabWidget, 'tab')
+        add_styled(self.tabWidget_2, 'tab')
+        add_styled(self, 'background-darker')
+        add_styled(self.treeView, 'background-darker')
 
     def load_left(self):
         i = 0
@@ -204,9 +209,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             name, icon = v['name'], v['icon']
             btn = QPushButton()
             btn.setCheckable(True)
-            btn.setStyleSheet('QPushButton{background: transparent;border:none;padding:4px;font-family:微软雅黑}'
-                              'QPushButton:hover{background: lightgray;}'
-                              'QPushButton:checked{background: lightgray}')
+            add_styled(btn, 'bottom-button')
             btn.setText(name)
             if icon:
                 btn.setIcon(QIcon(icon))

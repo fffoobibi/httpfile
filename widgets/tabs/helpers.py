@@ -10,7 +10,7 @@ from widgets.factorys import styled_factory
 
 def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support, custom_menu_policy, set_apis):
     from widgets.mainwidget import MainWidget
-    class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn, styled_factory('code_widget')):
+    class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn):
         file_styled = pyqtSignal()
         run_margin_signal = pyqtSignal(int)
 

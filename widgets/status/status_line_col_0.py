@@ -6,10 +6,11 @@ from widgets.signals import signal_manager
 from widgets.base import PluginBaseMixIn
 
 from . import register
+from ..factorys import styled_factory
 
 
 @register(name='', index=0)
-class LineCol(QPushButton, PluginBaseMixIn):
+class LineCol(QPushButton, PluginBaseMixIn, styled_factory('bottom-button')):
     def __init__(self):
         super(LineCol, self).__init__()
         ## padding 5px 5px (top, bottom  left,right)

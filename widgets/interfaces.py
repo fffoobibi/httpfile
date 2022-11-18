@@ -1,7 +1,12 @@
 from zope.interface import Interface, Attribute
 
 
-class ITabInterFace(Interface):
+class IRenderStyle(Interface):
+    def render_custom_style(self):
+        """颜色渲染"""
+
+
+class ITabInterFace(IRenderStyle):
     is_remote = Attribute('是否是远程文件')
     file_loaded = Attribute('加载完成信号')
 

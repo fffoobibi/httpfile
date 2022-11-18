@@ -21,6 +21,8 @@ from .helpers import _Queue, _make_child
 
 __all__ = ('register', 'TabCodeWidget')
 
+from ..factorys import add_styled
+
 tab_codes = {}
 
 
@@ -122,6 +124,9 @@ class TabCodeWidget(QWidget):
         if self.support_code:
             self.code.setReadOnly(v)
 
+    def render_custom_style(self):
+        pass
+
     def __init__(self):
         super(TabCodeWidget, self).__init__()
         self.__main_lay = QHBoxLayout(self)
@@ -134,11 +139,11 @@ class TabCodeWidget(QWidget):
         self.__code_container = QWidget(self)
         self.lay = QVBoxLayout(self.__code_container)
         self.lay.setContentsMargins(0, 0, 0, 0)
-        self.lay.setSpacing(1)
+        self.lay.setSpacing(0)
         if self.support_code:
             self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
                                     self.custom_menu_support, self.custom_menu_policy, self.set_apis)()
-
+            add_styled(self, 'code_widget')
             StylesHelper.set_v_history_style_dynamic(self.code, color='#CFCFCF', background='transparent',
                                                      width=self.vertical.value)
             StylesHelper.set_h_history_style_dynamic(self.code, color='#CFCFCF', background='transparent',

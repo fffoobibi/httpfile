@@ -22,6 +22,7 @@ from pyqt5utils.qsci.lexers.http_file import HttpFileLexer, CustomStyles
 from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
 from . import register, TabCodeWidget
+from ..factorys import make_styled, add_styled
 from ..hooks import http_hooks
 from ..styles import current_styles
 from ..types import Request
@@ -65,7 +66,7 @@ class HttpFileStyles(CustomStyles):
         elif style == cls.data:
             return QColor(styles['color'].get('data') or '#CC0000')
         elif style == cls.response:
-            return QColor(styles['color'].get('response') or '#7F0C82') #紫色
+            return QColor(styles['color'].get('response') or '#7F0C82')  # 紫色
         elif style == cls.key:  # request keyword
             return QColor(styles['color'].get('key') or 'red')
         elif style == cls.request_url:  # request url
@@ -155,7 +156,7 @@ def hook_code_mouseMoveEvent(self, a0: QMouseEvent) -> None:
         self.__class__.mouseMoveEvent(self, a0)  # Qt.IBeamCursor
     position = self.positionFromPoint(pos)
     if self.hasIndicator(self.lexer().url_indicator, position):
-        QToolTip.showText(QCursor.pos(), '跳转网页(ctrl + 点击)')
+        QToolTip.showText(QCursor.pos(), '跳转网页(ctrl + 点击)', parent)
     else:
         QToolTip.hideText()
 
@@ -212,31 +213,50 @@ class HTTPFileCodeWidget(TabCodeWidget):
         self.code.run_margin_signal.connect(self._run_request)
         self.define_code_markers()
         self.define_menus()
-        if current_styles.editor_http_file.get('margin_color', None):
-            self.code.setMarkerBackgroundColor(current_styles.editor_http_file.get('margin_color' or ))
+        self.render_custom_style()
+
+    def render_custom_style(self):
+        tooltip = current_styles.editor_http_file['tooltip']
+        if tooltip:
+            style = 'QToolTip{border:1px solid gray; background-color:%s;color:%s;padding:4px}' % (
+                tooltip.get('background'), tooltip.get('foreground'))
+            self.setStyleSheet(style)
+        if current_styles.editor_http_file['margin'].get('background', None):
+            color = current_styles.editor_http_file['margin'].get('background')
+            self.code.setMarginsBackgroundColor(QColor(current_styles.editor_http_file['margin'].get('background')))
+            self.code.setFoldMarginColors(QColor(color), QColor(color))
+        if current_styles.editor_http_file['margin'].get('foreground', None):
+            self.code.setMarginsForegroundColor(QColor(current_styles.editor_http_file['margin'].get('foreground')))
+        if current_styles.editor_http_file['caret'].get('foreground', None):
+            self.code.setCaretLineBackgroundColor(QColor(current_styles.editor_http_file['caret'].get('foreground')))
+        if current_styles.editor_http_file['caret'].get('background', None):
+            self.code.setCaretForegroundColor(QColor(current_styles.editor_http_file['caret'].get('background')))
+        if current_styles.editor_http_file['selection'].get('background', None):
+            self.code.setSelectionBackgroundColor(
+                QColor(current_styles.editor_http_file['selection'].get('background')))
+            self.code.resetSelectionForegroundColor()
+        self.setStyleSheet('QWidget{border:1px solid %s}' % current_styles.border)
 
     def define_menus(self):
         def _menu_policy(pos):
-            m0 = self.code.marginWidth(0)
-            m1 = self.code.marginWidth(self.run_margin_type)
-            m2 = self.code.marginWidth(self.info_margin_type)
-
-            menu = QMenu()
-            StylesHelper.add_menu_style(menu)
-            if self.line_has_marker(self.run_margin_type, self.run_margin_handle, pos) and m0 <= pos.x() <= m0 + m1:
-                url, method = self.run_marker_url_info(pos)
-                action = menu.addAction(f'运行 {url}')
-                act = menu.exec_(QCursor.pos())
-                if act == action:
-                    line = self.code.lineAt(pos)
-                    self.run_request_async_at_line(line)
-
-            elif self.line_has_marker(self.info_margin_type, self.success_marker_handle, pos):
+            menu: QMenu = make_styled(QMenu, 'menu')
+            ac1 = menu.addAction('格式化')
+            action_list = current_styles.theme_list()
+            if action_list:
+                actions = []
+                for action in action_list:
+                    actions.append(menu.addAction(action))
+            act = menu.exec_(QCursor.pos())
+            if act == ac1:
                 pass
-            elif self.line_has_marker(self.info_margin_type, self.fail_marker_handle, pos):
-                pass
+            else:
+                if act in actions:
+                    current_styles.change(act.text())
 
-        self.code: QWidget
+        # from PyQt5 import QsciScintilla
+        # self.code: QsciScintilla
+        # self.code.lexer().styleText()
+
         self.code.setContextMenuPolicy(Qt.CustomContextMenu)
         self.code.customContextMenuRequested.connect(_menu_policy)
 
@@ -294,7 +314,6 @@ class HTTPFileCodeWidget(TabCodeWidget):
         return False
 
     def margin_slot(self, margin_lr, line, state):
-        # from PyQt5 import QsciScintilla
         editor = self.code
         margin_type = editor.markersAtLine(line)
         if margin_lr == self.run_margin_type and (margin_type & 0b001 == 0b001):
@@ -303,10 +322,6 @@ class HTTPFileCodeWidget(TabCodeWidget):
             print('success')
         elif margin_lr == self.info_margin_type and (margin_type & 0b100 == 0b100):  # 2 0b100
             print('fail')
-        # print('margin type:', margin_lr, margin_type, state)
-        # position = editor.positionFromLineIndex(line, 0)
-        # style = editor.styleAt(position)
-        # print('style: ', style)
 
     @cached_property
     def lexer(self) -> HttpFileLexer:
@@ -335,9 +350,10 @@ class HTTPFileCodeWidget(TabCodeWidget):
             label = QLabel()
             label.setIndent(4)
             line_number = f'{line + 1}'.zfill(max_lines or 2)
+            label.setFont(QFont('微软雅黑'))
             label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
             label.setText(
-                f'{line_number}. <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline">{url}</font>', )
+                f'<font color="{current_styles.foreground}"> {line_number}.</font> <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline;color:{current_styles.foreground}">{url}</font>', )
             listview.addItem(item)
             listview.setItemWidget(item, label)
             listview._item_values.add(value)
@@ -350,8 +366,9 @@ class HTTPFileCodeWidget(TabCodeWidget):
                     label = self.listview.itemWidget(item)
                     label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
                     line_number = f'{line + 1}'.zfill(max_lines or 2)
+                    label.setFont(QFont('微软雅黑'))
                     label.setText(
-                        f'{line_number}. <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline">{url}</font>', )
+                        f'<font color="{current_styles.foreground}"> {line_number}.</font> <font color="red" ><b>{method}</font></b> <font style="text-decoration:underline;color:{current_styles.foreground}">{url}</font>', )
                     return
 
     def go_to_indicator(self, item: QListWidgetItem):
@@ -373,11 +390,15 @@ class HTTPFileCodeWidget(TabCodeWidget):
             return create_file_path.__str__()
 
         def _create_panel():
+            def render_custom_style():
+                container.setStyleSheet('QWidget{background: %s ;border:0px solid lightgray}'
+                                        'QPushButton{border:none;color:#0083D8;font-family:微软雅黑}'
+                                        'QPushButton:hover{color:darkorange}' % current_styles.background_darker)
+
             handle_width = ConfigProvider.default(ConfigKey.general, 'vertical_width').value
             container = QWidget()
-            container.setStyleSheet('QWidget{background: #F2F2F2;border:1px solid lightgray}'
-                                    'QPushButton{border:none;color:#0083D8;font-family:微软雅黑}'
-                                    'QPushButton:hover{color:darkorange}')
+            render_custom_style()
+            add_styled(container, 'background-darker')
             lay = QHBoxLayout(container)
             lay.setSpacing(10)
             lay.setContentsMargins(8, 0, handle_width, 0)
@@ -385,10 +406,9 @@ class HTTPFileCodeWidget(TabCodeWidget):
             add_request_btn = QPushButton('添加请求')
 
             add_env_btn = QPushButton('添加其他')
-            menu = QMenu()
+            menu = make_styled(QMenu, 'menu')
             env_action = menu.addAction('添加环境变量')
             hook_action = menu.addAction('添加hook')
-            StylesHelper.add_menu_style(menu)
             add_env_btn.setMenu(menu)
             env_action.triggered.connect(lambda e: signal_manager.emit(signal_manager.createFileAndOpen,
                                                                        _create_current_path(),
@@ -399,9 +419,8 @@ class HTTPFileCodeWidget(TabCodeWidget):
                                                                         ))
 
             load_btn = QPushButton('从文件中导入')
-            menu = QMenu()
+            menu = make_styled(QMenu, 'menu')
             menu.addAction('txt中导入')
-            StylesHelper.add_menu_style(menu)
             load_btn.setMenu(menu)
 
             run_all_btn.setCursor(Qt.PointingHandCursor)
@@ -417,7 +436,7 @@ class HTTPFileCodeWidget(TabCodeWidget):
 
             check = QPushButton()
             check.setText('输出内容')
-            check_menu = QMenu()
+            check_menu = make_styled(QMenu, 'menu')
             check_menu.installEventFilter(self)
             action_group = QActionGroup(self)
             action_group.setExclusive(False)
@@ -453,7 +472,6 @@ class HTTPFileCodeWidget(TabCodeWidget):
             check_menu.addAction(action_group.addAction(ac1))
             check_menu.addAction(action_group.addAction(ac2))
             check_menu.addAction(action_group.addAction(ac3))
-            StylesHelper.add_menu_style(check_menu)
             check.setMenu(check_menu)
             lay.addWidget(check)
 
@@ -493,19 +511,29 @@ class HTTPFileCodeWidget(TabCodeWidget):
                 self.listview_ret_label.clear()
 
         def _create_search_panel():
+            def render_custom_style(this):
+                container.setStyleSheet('QWidget{background: %s ;border:0px solid lightgray}'
+                                        'QPushButton{border:none;color:#0083D8;font-family:微软雅黑}'
+                                        'QLabel, QLineEdit{color:%s;font-family:微软雅黑}' % (
+                                            current_styles.background_darker, current_styles.foreground))
+                line.setStyleSheet('QLineEdit{background-color: %s;padding: 2px; color:%s}' % (
+                    current_styles.background_lighter, current_styles.foreground
+                ))
+
             container = QWidget()
-            container.setStyleSheet('QPushButton{border:none;background:transparent;padding:2px}'
-                                    'QPushButton:hover{background:lightgray}'
-                                    'QLabel, QLineEdit{font-family:微软雅黑}')
+            add_styled(container, 'background-darker')
+            container.render_custom_style = render_custom_style
             lay = QVBoxLayout(container)
             lay.setContentsMargins(0, 0, 0, 0)
             lay.setSpacing(1)
 
             top_container = QWidget()
+            top_container.setStyleSheet('QWidget{border:0px solid red}')
             top_lay = QHBoxLayout(top_container)
             top_lay.setContentsMargins(0, 0, 0, 0)
             top_lay.setSpacing(0)
             line = QLineEdit()
+            line.setFont(QFont('微软雅黑'))
             line.setPlaceholderText(' 查找')
             line.setClearButtonEnabled(True)
             line.returnPressed.connect(_panel_search)
@@ -514,7 +542,7 @@ class HTTPFileCodeWidget(TabCodeWidget):
             top_lay.addSpacing(10)
             ret_label = QLabel()
             top_lay.addWidget(ret_label)
-            top_lay.addSpacerItem(QSpacerItem(20, 20, hPolicy=QSizePolicy.Expanding))
+            # top_lay.addSpacerItem(QSpacerItem(20, 20, hPolicy=QSizePolicy.Expanding))
 
             run_all_btn = QPushButton()
             run_all_btn.setIcon(QIcon(':/icon/icons_next.svg'))
@@ -535,10 +563,12 @@ class HTTPFileCodeWidget(TabCodeWidget):
 
             lay.addWidget(top_container)
             listview = QListWidget()
+            listview.setStyleSheet('background:transparent')
             container.listview = listview
             container.btn = btn
             container.ret_label = ret_label
             lay.addWidget(listview)
+            render_custom_style(None)
             return container
 
         handler_color = ConfigProvider.default(ConfigKey.general, 'handler_color').value

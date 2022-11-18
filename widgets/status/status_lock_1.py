@@ -4,10 +4,11 @@ from PyQt5.QtWidgets import QPushButton, QApplication
 from widgets.base import PluginBaseMixIn
 from widgets.signals import signal_manager
 from . import register
+from ..factorys import styled_factory
 
 
 @register(name='', index=1)
-class LockBtn(QPushButton, PluginBaseMixIn):
+class LockBtn(QPushButton, PluginBaseMixIn, styled_factory('bottom-button')):
     def __init__(self):
         super(LockBtn, self).__init__()
         self.setCheckable(True)

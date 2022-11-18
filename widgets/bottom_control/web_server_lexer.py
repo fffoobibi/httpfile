@@ -11,6 +11,8 @@ from pyqt5utils.qsci.scintillacompat import QsciScintillaCompat
 
 from contextlib import suppress
 
+from widgets.styles import current_styles
+
 
 class WebServerStyles(CustomStyles):
     http = 1
@@ -22,20 +24,24 @@ class WebServerStyles(CustomStyles):
 
     @classmethod
     def defaultColor(cls, style):
+        styles = current_styles.editor_web_console['color']
         if style == cls.http:
-            return QColor('blue')
+            return QColor(styles['http'] or 'blue')
         elif style == cls.info_http:
-            return QColor('red')
+            return QColor(styles['info_http'] or 'red')
         elif style == cls.info_time:
-            return QColor('green')
+            return QColor(styles['info_time'] or 'green')
         elif style == cls.info_status:
-            return QColor('red')
-        elif style == cls.fold_info or style == cls.normal:
-            return QColor('black')
+            return QColor(styles['info_status'] or 'red')
+        elif style == cls.fold_info:
+            return QColor(styles['fold_info'] or 'black')
+        elif style == cls.normal:
+            return QColor(styles['normal'] or 'black')
 
     @classmethod
     def defaultPaper(cls, style):
-        return QColor('white')
+        color = current_styles.editor_web_console['paper']['background']
+        return QColor(color)
 
     @classmethod
     def defaultFont(cls, style, font: QFont):
@@ -73,13 +79,6 @@ class WebServerConsoleLexer(CustomLexerCompat):
                 QDesktopServices.openUrl(QUrl(text))
             else:
                 QDesktopServices.openUrl(QUrl.fromLocalFile(f'file:///{text}'))
-            # Retrieve absolute position
-            # position = editor.positionFromLineIndex(line, index)
-            # Retrieve given value
-            # value = editor.SendScintilla(QsciScintilla.SCI_INDICATORVALUEAT,
-            #                              indicator_num, position)
-            # start = editor.SendScintilla(QsciScintilla.SCI_INDICATORSTART, indicator_num, position)
-            # end = editor.SendScintilla(QsciScintilla.SCI_INDICATOREND, indicator_num, position)
 
         editor.indicatorDefine(QsciScintilla.INDIC_COMPOSITIONTHIN, self.url_ind)
         editor.setIndicatorForegroundColor(QColor(Qt.blue))

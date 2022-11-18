@@ -85,6 +85,19 @@ class BaseStyle(object):
         ret.sort(key=lambda e: e[1]['index'])
         return list(map(lambda e: e[0], ret))
 
-    menu = ''
+    menu: str = None
+    tab: str = None
+
+    border: str = None
+
+    background_darker: str = None
+    background_lighter: str = None
+    foreground: str = None
+
+    handler: str = None
+
+    bottom_button: dict = None
 
     editor_http_file: dict = None
+
+    editor_web_console: dict = None

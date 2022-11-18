@@ -26,7 +26,7 @@ class JediHelper(object):
 
 
 @register(name='', index=2)
-class LockBtn(QPushButton, PluginBaseMixIn, styled_factory('bottom_button')):
+class LockBtn(QPushButton, PluginBaseMixIn, styled_factory('bottom-button')):
 
     def __init__(self):
         super(LockBtn, self).__init__()
