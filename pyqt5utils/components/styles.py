@@ -724,7 +724,7 @@ class StylesHelper(object):
             t.horizontalScrollBar().setStyleSheet(Sh.history_h_scroll_style)
 
     @classmethod
-    def set_v_history_style_dynamic(cls, *target: QListView, color: str, background: str, width: int = 8):
+    def set_v_history_style_dynamic(cls, *target, color: str, background: str, width: int = 8):
         for t in target:
             t.verticalScrollBar().setStyleSheet(
                 Sh.history_v_scroll_style_dynamic % (background, width, color, color, color))

@@ -96,8 +96,10 @@ class BaseStyle(object):
 
     handler: str = None
 
-    bottom_button: dict = None
+    bottom_button: dict = None  # 底部按钮
+    left_button: dict = None  # 左侧按钮
 
     editor_http_file: dict = None
 
     editor_web_console: dict = None
+    editor_run_console: dict = None

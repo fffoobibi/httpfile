@@ -13,7 +13,6 @@ from ui.web_serverui import Ui_Form
 from widgets.base import PluginBaseMixIn
 from widgets.bottom_control import BottomWidgetMixIn
 from widgets.bottom_control import register
-from widgets.factorys import add_styled
 from widgets.net_utils import get_host_ip
 from widgets.signals import ProcessSignalMixIn, ProcessSignalMixInHelper
 from widgets.utils import ConfigProvider, ConfigKey
@@ -175,7 +174,7 @@ class WebTextBrowserHighlighter(QSyntaxHighlighter):
                 self.setFormat(start, length, self.formatters[name])
 
 
-@register(name='web服务', icon=':/icon/API.svg', index=1)
+@register(name='WEB服务', icon=':/icon/API.svg', index=1)
 class WebControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, ProcessSignalMixInHelper):
     check_state_signal = pyqtSignal(bool)
     append_signal = pyqtSignal(str)

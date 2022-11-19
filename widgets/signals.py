@@ -1,4 +1,6 @@
+import subprocess
 import typing
+from abc import abstractmethod
 from multiprocessing import Queue, Process
 from threading import Thread, Event
 
@@ -16,9 +18,14 @@ class ProcessSignalMixIn(object):
         process.start()
         return process, queue
 
+    def subprocess(self, event: str, *a):
+        queue = Queue()
+        process = subprocess.Popen()
+
     def _process_task(self, event, queue, *a):
         self.fork_func(queue, *a)
 
+    @abstractmethod
     def fork_func(self, queue, *a):
         pass
 
@@ -32,6 +39,9 @@ class ProcessSignalMixInHelper(object):
     _process_signal_mixin_current_thread_stop_flag = '_process_signal_mixin_current_thread_stop_flag'
     _process_signal_mixin_current_thread_queue = None
     _wait_flag = None
+
+    process_id = None
+    process_queue = None
 
     class _LoopThread(Thread):
         def __init__(self, func, *args):
@@ -85,11 +95,15 @@ class ProcessSignalMixInHelper(object):
 
 @singleton
 class SignalManager(object):
-    createFile = 'createFile'
-    createFileAndOpen = 'createFileAndOpen'
-    createHookFileAndOpen = 'createHookFileAndOpen'
+    createFile = 'createFile'  # 创建文件
+    createFileAndOpen = 'createFileAndOpen'  # 创建文件并打卡
+    createHookFileAndOpen = 'createHookFileAndOpen'  # 创建hook文件并打开
 
-    openUrlFile = 'openUrlFile'
+    loadProject = 'loadProject'  # 加载文件夹
+    openProjectFile = 'openProjectFile'  # 打开文件
+    openUrlFile = 'openUrlFile'  # 打开远程文件
+
+    openFileAndMoveCursor = 'openFileAndMoveCursor'  # 打开文件并跳转指定位置
 
     changeSplitSize = 'changeSplitSize'
     changeVSplitSize = 'changeVSplitSize'

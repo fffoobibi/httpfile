@@ -1,6 +1,8 @@
-from PyQt5.QtWidgets import QDialog, QFileDialog
 from pathlib import Path
 
+from PyQt5.QtWidgets import QFileDialog
+
+from widgets.signals import signal_manager
 from . import register, ToolBarActionMixIn
 
 index = 1
@@ -14,4 +16,5 @@ class OpenAction(ToolBarActionMixIn):
         current = Path.cwd()
         out = QFileDialog.getExistingDirectory(self.app, '打开文件夹', current.__str__())
         if out:
-            self.app.load_dir_path(out)
+            signal_manager.emit(signal_manager.loadProject, out)
+            # self.app.load_dir_path(out)

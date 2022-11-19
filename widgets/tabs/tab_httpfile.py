@@ -93,7 +93,6 @@ class HttpFileStyles(CustomStyles):
 
     @classmethod
     def defaultFont(cls, style: int, font: QFont):
-        styles = current_styles.editor_http_file
         if style == cls.underline:
             font.setUnderline(True)
         if style == cls.bold:
@@ -103,7 +102,7 @@ class HttpFileStyles(CustomStyles):
         if style == cls.chinese:
             font = QFont('宋体', 10)
         if style == cls.request_url:
-            font.setItalic(True)
+            font.setItalic(False)
         elif style == cls.key:
             font.setBold(True)
         elif style == cls.header:
@@ -216,15 +215,17 @@ class HTTPFileCodeWidget(TabCodeWidget):
         self.render_custom_style()
 
     def render_custom_style(self):
+        handler = current_styles.handler
+        StylesHelper.set_v_history_style_dynamic(self.code, color=handler, background='transparent', width=10)
+        StylesHelper.set_h_history_style_dynamic(self.code, color=handler, background='transparent', height=10)
         tooltip = current_styles.editor_http_file['tooltip']
         if tooltip:
             style = 'QToolTip{border:1px solid gray; background-color:%s;color:%s;padding:4px}' % (
                 tooltip.get('background'), tooltip.get('foreground'))
-            self.setStyleSheet(style)
+            self.setStyleSheet(style + 'HTTPFileCodeWidget > QWidget{border:1px solid %s}' % current_styles.border)
         if current_styles.editor_http_file['margin'].get('background', None):
-            color = current_styles.editor_http_file['margin'].get('background')
             self.code.setMarginsBackgroundColor(QColor(current_styles.editor_http_file['margin'].get('background')))
-            self.code.setFoldMarginColors(QColor(color), QColor(color))
+            self.code.setFoldMarginColors(QColor('#404040'), QColor('#404040'))
         if current_styles.editor_http_file['margin'].get('foreground', None):
             self.code.setMarginsForegroundColor(QColor(current_styles.editor_http_file['margin'].get('foreground')))
         if current_styles.editor_http_file['caret'].get('foreground', None):
@@ -235,7 +236,6 @@ class HTTPFileCodeWidget(TabCodeWidget):
             self.code.setSelectionBackgroundColor(
                 QColor(current_styles.editor_http_file['selection'].get('background')))
             self.code.resetSelectionForegroundColor()
-        self.setStyleSheet('QWidget{border:1px solid %s}' % current_styles.border)
 
     def define_menus(self):
         def _menu_policy(pos):

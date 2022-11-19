@@ -39,6 +39,7 @@ class LockBtn(QPushButton, PluginBaseMixIn, styled_factory('bottom-button')):
     def click_slot(self):
         from widgets.mainwidget import MainWidget
         main_app: MainWidget = self.get_app()
+        print(main_app.get_python_info().__class__)
         # if self.isChecked():
         #     self.setIcon(QIcon(self._lock))
         #     lock = True

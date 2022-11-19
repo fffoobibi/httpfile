@@ -2,14 +2,13 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from PyQt5.QtCore import QModelIndex, QPoint, QSize
-from PyQt5.QtGui import QIcon, QFont, QStandardItemModel
+from PyQt5.QtCore import QPoint, QSize
+from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget
+from jedi.api.environment import SameEnvironment
 from pydantic import BaseModel, Field
-from zope.interface import verify
 
 from pyqt5utils.components import Message
-from pyqt5utils.components.styles import StylesHelper
 from ui.main2ui import Ui_MainWindow
 from widgets.base import PluginBaseMixIn
 from widgets.collect import collect_plugins, Collections
@@ -17,7 +16,7 @@ from widgets.components import FileSystemModel
 from widgets.factorys import add_styled
 from widgets.interfaces import ITabInterFace
 from widgets.signals import app_exit, app_start_up
-from widgets.utils import ConfigProvider, ConfigKey, get_file_type_and_name
+from widgets.utils import ConfigProvider, ConfigKey
 
 
 class AppRunTime(BaseModel):
@@ -46,7 +45,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     def render_style_sheet(self):
         self.tabWidget.setFont(QFont('微软雅黑'))
-        self.tabWidget_2.setFont(QFont('微软雅黑'))
+        # self.tabWidget_2.setFont(QFont('微软雅黑'))
 
     def init_run_time(self):
         self.r_run_time: AppRunTime = AppRunTime()
@@ -65,7 +64,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             action.triggered.connect(lambda e, ac=action_provider: ac.action_slot())
             self.toolbar.addAction(action)
 
-        self.toolbar.setIconSize(QSize(24, 24))
+        self.toolbar.setIconSize(QSize(20, 20))
 
     def load_status(self):
         cl = sorted(self.plugins.status, key=lambda k: self.plugins.status[k]['index'])
@@ -75,12 +74,6 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     def after_init(self):
         self.set_provider('main_app', self)
-        StylesHelper.set_v_history_style_dynamic(self.treeView, color='#CFCFCF', background='transparent', width=10)
-        StylesHelper.set_h_history_style_dynamic(self.treeView, color='#CFCFCF', background='transparent', height=10)
-        self.treeView.setVerticalScrollMode(self.treeView.ScrollPerPixel)
-        self.treeView.verticalScrollBar().setSingleStep(self.single_step.value)
-        self.treeView.setHorizontalScrollMode(self.treeView.ScrollPerPixel)
-        self.treeView.horizontalScrollBar().setSingleStep(self.single_step.value)
         app_start_up.send(self)
 
     def init_signal_manager(self):
@@ -119,6 +112,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             # file_type, file_name = get_file_type_and_name(file_path)
             # self.add_tab_widget(file_type, file_name, file_path)
 
+        def _open_project_file(file_path):
+            self.open_file(file_path)
+
+        def _open_file_and_move(file_path, line=None, col=None):
+            self.open_file(file_path, line, col)
+
         from widgets.signals import signal_manager
         signal_manager.add_event(signal_manager.openUrlFile, None,
                                  call_back=lambda url, content: self.add_tab_widget(None, None, None, url,
@@ -134,55 +133,73 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         signal_manager.add_event(signal_manager.createFile, None, call_back=_create_file)
         signal_manager.add_event(signal_manager.createFileAndOpen, None, call_back=_create_file_and_open)
         signal_manager.add_event(signal_manager.createHookFileAndOpen, None, call_back=_create_hook_file_and_open)
+        signal_manager.add_event(signal_manager.openProjectFile, None, call_back=_open_project_file)
+        signal_manager.add_event(signal_manager.openFileAndMoveCursor, None, call_back=_open_file_and_move)
         self.sm = signal_manager
 
     def init_project(self):
-        def click_file(index: QModelIndex):
-            file_type = self.model.type(index)
-            file_name = self.model.fileName(index)
-            file_path = self.model.filePath(index)
-            for i in range(self.tabWidget.count()):
-                widget = self.tabWidget.widget(i)
-                if widget.file_path() == file_path:
-                    self.tabWidget.setCurrentWidget(widget)
-                    return
-            self.add_tab_widget(file_type, file_name, file_path)
 
         def remove_tab(index):
             self.tabWidget.removeTab(index)
 
         self.tabWidget.tabCloseRequested.connect(remove_tab)
 
-        work_path = Path.cwd().__str__()
-
-        self.model = FileSystemModel(work_path)
-        self.treeView.setModel(self.model)
-        self.treeView.doubleClicked.connect(click_file)
-        self.treeView.setStyleSheet('QTreeView{border:none}')
-        self.load_dir_path(work_path)
-
-        # self.splitter.setStretchFactor(0, 0)
         self.splitter.setStretchFactor(1, 1)
         self.splitter.setSizes([200, 500])
 
-        self.tabWidget_2.setStyleSheet('QTabWidget{background:red}')
         self.setWindowTitle(self.app_name)
         self.setWindowIcon(QIcon(r'D:\work\httpfile\sources\编辑.svg'))
 
         # style
         add_styled(self.tabWidget, 'tab')
-        add_styled(self.tabWidget_2, 'tab')
         add_styled(self, 'background-darker')
-        add_styled(self.treeView, 'background-darker')
 
     def load_left(self):
-        i = 0
-        cl = sorted(self.plugins.left_controls, key=lambda k: self.plugins.left_controls[k]['index'])
-        for k in cl:
-            i += 1
+        self.left_buttons = QButtonGroup()
+
+        def _splitter_moved(pos, handle_index):
+            if handle_index == 1:
+                current = self.splitter.widget(0).currentWidget()
+                if not current.isVisible():
+                    current.show()
+
+        def switch_to(target: QWidget, index):
+            if target.isVisible():
+                target.hide()
+                self.splitter.setSizes([0, 1000])
+            else:
+                target.show()
+                sizes = self.splitter.sizes()
+                if sizes[0] <= 0:
+                    sizes = [200, 1000]
+                self.splitter.setSizes(sizes)
+            self.stackedWidget.setCurrentWidget(target)
+
+            # print(self.splitter.widget(0).widget(index) == target, index )
+
+        left_checked = self.config_name('left_checked')
+        checked_index = self.settings.value(left_checked)
+        if checked_index is None:
+            checked_index = 0
+        self.splitter.splitterMoved.connect(_splitter_moved)
+        cl = sorted(self.plugins.left_controls, key=lambda k_clz: self.plugins.left_controls[k_clz]['index'])
+        for i, k in enumerate(cl):
             v = self.plugins.left_controls[k]
             name = v['name']
-            self.tabWidget_2.addTab(k(), name)
+            btn = QPushButton()
+            btn.setIcon(QIcon(v['icon'] or ''))
+            btn.setToolTip(name)
+            btn.setIconSize(QSize(20, 20))
+            btn.setCheckable(True)
+            btn.index = i
+            add_styled(btn, 'left-button')
+            widget = k()
+            self.stackedWidget.addWidget(widget)
+            count = self.verticalLayout.count()
+            self.verticalLayout.insertWidget(count - 1, btn)
+            btn.clicked.connect(lambda checked, target=widget, index=i: switch_to(target, index))
+            self.left_buttons.addButton(btn, i)
+        self.left_buttons.button(checked_index).click()
 
     def load_right(self):
         pass
@@ -240,14 +257,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             btn.click()
 
     def load_dir_path(self, path: str):
-        p = Path(path)
-        self.model.setRootPath(path)
-        # self.model.setFilter()
-        # self.model.setNameFilters(['httpfile'])
-        # self.model.setNameFilterDisables(False)
-        self.treeView.setRootIndex(self.model.index(path))
-        self.r_run_time.current = Path(path)
-        self.model.work_path = Path(path)
+        pass
 
     #### add tab ####
     def add_tab_widget(self, file_type, file_name, file_path: str, url: str = None, content: str = None):
@@ -289,7 +299,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         path = Path(file_path)
         file_name = path.name
         file_type = path.suffix.replace('.', '', 1) + ' File'
-        print('open file ', file_path, file_name, file_type)
+        # print('open file ', file_path, file_name, file_type)
         for i in range(self.tabWidget.count()):
             widget = self.tabWidget.widget(i)
             if widget.file_path() == file_path:
@@ -321,15 +331,21 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         key = self.config_name('point')
         pos = self.pos()
         size_key = self.config_name('size')
+        left_checked = self.config_name('left_checked')
         w, h = self.width(), self.height()
         self.settings.setValue(key, [pos.x(), pos.y()])
         self.settings.setValue(size_key, [w, h])
+        checked_index = self.left_buttons.checkedButton().index
+        self.settings.setValue(left_checked, checked_index)
 
     ### interface
-    def current_file_path(self) -> Optional[Path]:
+    def current_file_path(self) -> Optional[str]:
         widget = self.tabWidget.currentWidget()
         if widget:
             return widget.file_path()
+
+    def get_python_info(self) -> SameEnvironment:
+        return self.get_provider('python_info')
 
     @classmethod
     def run(cls):

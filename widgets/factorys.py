@@ -2,34 +2,39 @@ import typing as t
 from functools import wraps
 
 from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtWidgets import QWidget
 
 from widgets.styles import current_styles
 
 
 def _styled_policy(t, policy, *a):
     if policy == 'menu':
-        t.setStyleSheet(current_styles.menu)
-    elif policy == 'code_widget':
-        t.render_custom_style()
-    elif policy == 'tab':
-        t.setStyleSheet(current_styles.tab)
-    elif policy == 'background-darker':
+        if hasattr(t, 'render_custom_style'):
+            t.render_custom_style()
+        else:
+            t.setStyleSheet(current_styles.menu)
+    elif policy == 'code_widget':  # editor wiget
+        if hasattr(t, 'render_custom_style'):
+            t.render_custom_style()
+    elif policy == 'tab':  # tabwidget
+        if hasattr(t, 'render_custom_style'):
+            t.render_custom_style()
+        else:
+            t.setStyleSheet(current_styles.tab)
+    elif policy == 'background-darker':  # widget background
         if hasattr(t, 'render_custom_style'):
             t.render_custom_style()
         else:
             t.setAutoFillBackground(True)
-            pala = t.palette()  # type: QPalette
-            pala.setColor(QPalette.Window, QColor(current_styles.background_darker))
-            pala.setColor(QPalette.Foreground, QColor(current_styles.foreground))
-            t.setPalette(pala)
+            palette = t.palette()  # type: QPalette
+            palette.setColor(QPalette.Window, QColor(current_styles.background_darker))
+            palette.setColor(QPalette.Foreground, QColor(current_styles.foreground))
+            t.setPalette(palette)
         t.update()
-    elif policy == 'background-lighter':
-        pala = t.palette()  # type: QPalette
-        pala.setColor(QPalette.Background, QColor(current_styles.background_lighter))
-    elif policy in ['bottom-button', 'status-button']:
+    elif policy == 'background-lighter':  # widget background
+        palette = t.palette()  # type: QPalette
+        palette.setColor(QPalette.Background, QColor(current_styles.background_lighter))
+    elif policy in ['bottom-button', 'status-button']:  # bottom buttons, status buttons
         color = current_styles.bottom_button.get('color')
-        checked = current_styles.bottom_button.get('checked')
         background = current_styles.bottom_button.get('background')
         background_checked = current_styles.bottom_button.get('background_checked')
         t.setStyleSheet('QPushButton{background: %s;border:none;padding:4px;font-family:微软雅黑;color:%s}'
@@ -37,6 +42,25 @@ def _styled_policy(t, policy, *a):
                         'QPushButton:checked{background: %s}' % (
                             background, color, background_checked, background_checked
                         ))
+    elif policy == 'left-button':  # left buttons
+        color = current_styles.left_button.get('color')
+        background = current_styles.left_button.get('background')
+        background_checked = current_styles.left_button.get('background_checked')
+        border_checked = current_styles.left_button.get('border_checked')
+        t.setStyleSheet('QPushButton{background: %s;border:none;font-family:微软雅黑;color:%s;padding:8px}'
+                        'QPushButton:hover{background: %s;}'
+                        'QPushButton:checked{background: %s;border-left:1px solid %s;border-right:1px solid %s}' % (
+                            background, color, background_checked, background_checked, border_checked, background_checked))
+    elif policy == 'run-button':
+        color = current_styles.left_button.get('color')
+        background = current_styles.left_button.get('background')
+        background_checked = current_styles.left_button.get('background_checked')
+        border_checked = current_styles.left_button.get('border_checked')
+        t.setStyleSheet('QPushButton{background: %s;border:none;font-family:微软雅黑;color:%s;padding:2px 10px}'
+                        'QPushButton:hover{background: %s;}'
+                        'QPushButton:checked{background: %s;border-bottom:1px solid %s;border-right:1px solid %s}' % (
+                            background, color, background_checked, background_checked, border_checked, background_checked))
+
 
 
 def styled_factory(policy):
@@ -57,12 +81,12 @@ def styled_factory(policy):
         current_styles.add_trace(self, _styled_policy, policy)
         _styled_policy(self, policy)
 
-    class StyledFactory(object):
+    class _StyledFactory(object):
         def __init_subclass__(cls, **kwargs):
             super().__init_subclass__()
             cls.__init__ = _after(cls, '__init__')(after_init)
 
-    return StyledFactory
+    return _StyledFactory
 
 
 T = t.TypeVar('T')

@@ -1108,9 +1108,14 @@ class QsciScintillaCompat(QsciScintilla):
         return ''
 
     def getIndicatorValue(self, indicator: int, pos):
+        # self.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, indicator)
         value = self.SendScintilla(QsciScintilla.SCI_INDICATORVALUEAT,
                                    indicator, pos)
         return value
+
+    def setIndicatorValue(self, indicator, value: int):
+        # self.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, indicator)
+        self.SendScintilla(QsciScintilla.SCI_SETINDICATORVALUE, value)
 
     def setIndicatorRange(self, indicator, spos, length):
         """
@@ -1123,6 +1128,12 @@ class QsciScintillaCompat(QsciScintilla):
         """
         self.setCurrentIndicator(indicator)
         self.SendScintilla(QsciScintilla.SCI_INDICATORFILLRANGE, spos, length)
+
+    def setIndicatorByPositionLength(self, indicator, position, length, value: int = None):
+        self.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, indicator)
+        if value is not None:
+            self.SendScintilla(QsciScintilla.SCI_SETINDICATORVALUE, value)
+        self.SendScintilla(QsciScintilla.SCI_INDICATORFILLRANGE, position, length)
 
     def setIndicator(self, indicator, sline, sindex, eline, eindex):
         """

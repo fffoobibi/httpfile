@@ -2,9 +2,9 @@ module_name = 'widgets.left_control'
 left_controls = {}
 
 
-def register(name: str, index: int = 0):
+def register(name: str, index: int = 0, icon: str = None):
     def wrapper(clz):
-        left_controls[clz] = {'name': name, 'index': index}
+        left_controls[clz] = {'name': name, 'index': index, 'icon': icon}
         return clz
 
     return wrapper

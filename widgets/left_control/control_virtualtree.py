@@ -23,7 +23,7 @@ from . import register
 WorkPathFlag = Qt.UserRole + 10
 
 
-@register('远程连接', index=0)
+@register('远程连接', index=1, icon=':/icon/远程管理.svg')
 class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn):
     default_work_path: str = ConfigProvider.default(ConfigKey.left_control_virtualtree, 'work_path')
     single_step = ConfigProvider.default(ConfigKey.general, 'single_step')

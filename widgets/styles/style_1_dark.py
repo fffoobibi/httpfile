@@ -29,7 +29,7 @@ class DarkStyle(BaseStyle):
                  border-top-right-radius: 4px;
                  min-height: 30px;
                  border-radius: 0px;
-                 padding: 3px;
+                 padding: 1px 10px;
              }
             QTabBar::tab:hover{background: #2D2B29;}
             QTabBar::tab:selected{
@@ -45,7 +45,7 @@ class DarkStyle(BaseStyle):
     background_lighter = '#434241'
     handler = '#4C4B4A'
     bottom_button = dict(color='lightgray', checked='orange', background='#333231', background_checked='#242220')
-    ## json format
+    left_button = dict(color='lightgray', checked='orange', background='#333231', background_checked='#242220', border_checked='orange')
     editor_http_file = {
         'tooltip': dict(background='#2D2B29', foreground='lightgray'),
         'selection': dict(background="#323341"),
@@ -101,3 +101,12 @@ class DarkStyle(BaseStyle):
             normal='lightgray',
         )
     }
+
+    editor_run_console = {'font': {},
+                          'paper': dict(background='#1B1A19'),
+                          'color': dict(
+                              normal='lightgray',
+                              file_info='#C6DBE9',
+                              line_info='#C6DBE9',
+                              file_trace='red'
+                          )}

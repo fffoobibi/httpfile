@@ -3,6 +3,7 @@ import threading
 import typing
 
 from functools import wraps
+from cached_property import cached_property
 
 from PyQt5.QtCore import QSettings
 
@@ -90,7 +91,7 @@ class PluginBaseMixIn(object):
     settings_path = './config.ini'
     settings_serializers = [_settings_dump, _settings_load]
 
-    settings: _Settings = None  # type hint bad but necessary
+    # settings: _Settings = None  # type hint bad but necessary
 
     __provider__ = dict()
     __provider_lock__ = threading.Lock()
@@ -99,6 +100,13 @@ class PluginBaseMixIn(object):
         super().__init_subclass__()
         # print('PluginBaseMixIn hook ', cls)
         cls.__init__ = _after(cls, '__init__')(_plugin_init_)
+
+    @cached_property
+    def settings(self) -> _Settings:
+        settings = self.settings_class(self.settings_path, QSettings.IniFormat)
+        settings.setIniCodec('UTF-8')
+        settings.set_serializer(self.settings_serializers)
+        return settings
 
     def after_init(self):
         pass

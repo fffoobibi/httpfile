@@ -28,6 +28,8 @@ class LightStyle(BaseStyle):
     background_lighter = 'white'
     handler = 'gray'
     bottom_button = dict(color='black', checked='black', background='transparent', background_checked='lightgray')
+    left_button = dict(color='lightgray', checked='orange', background='#333231', background_checked='#242220', border_checked='orange')
+
     editor_http_file = dict(font={}, color={}, paper={}, margin={}, caret={}, selection={}, tooltip={})
     editor_web_console = {
         'font': {},

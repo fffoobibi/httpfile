@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="icon">
+    <file>远程管理.svg</file>
     <file>网络配套服务.svg</file>
     <file>API管理.svg</file>
     <file>折叠.svg</file>

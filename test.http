@@ -29,8 +29,4 @@ GET http://localhost:80/api/item?id=99
 Content-Type: application/json
 asdfasdf
 
-
-out
-
-end out
 ###
