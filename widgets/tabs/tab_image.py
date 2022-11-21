@@ -54,6 +54,7 @@ class ImageCodeWidget(TabCodeWidget):
 
     def after_init(self):
         self.file_loaded.connect(self.when_file_loaded)
+        self.file_size = None
 
     def define_code_menu(self):
         menu: QMenu = make_styled(QMenu, 'menu')
@@ -72,7 +73,30 @@ class ImageCodeWidget(TabCodeWidget):
     def when_file_loaded(self):
         size = Path(self.file_path()).stat().st_size
         pixmap = QPixmap(f'{self.file_path()}')
+        pix_size = pixmap.size()
+        pw, ph = pix_size.width(), pix_size.height()
+        max_size = self.size()
+        mw, mh = max_size.width() - 20 * 2, max_size.height() - 20 * 2
+        self.file_size = pix_size
+        if pw >= mw or ph >= mh:
+            # f * pw = mw
+            f = mw / pw
+            scaled_h = ph * f
+            pixmap = pixmap.scaled(mw, scaled_h, transformMode=Qt.SmoothTransformation)
         self.label.setPixmap(pixmap)
         w, h = pixmap.width(), pixmap.height()
         msg = f'{w} x {h} {hum_convert(size)}'
         self.info_label.setText(msg)
+
+    def resizeEvent(self, a0: 'QResizeEvent') -> None:
+        super().resizeEvent(a0)
+        if self.file_size is not None:
+            pix_size = self.file_size
+            max_size = self.size()
+            pw, ph = pix_size.width(), pix_size.height()
+            mw, mh = max_size.width() - 20 * 2, max_size.height() - 20 * 2
+            if pw >= mw or ph >= mh:
+                f = mw / pw
+                scaled_h = ph * f
+                pixmap = QPixmap(self.file_path()).scaled(mw, scaled_h, transformMode=Qt.SmoothTransformation)
+                self.label.setPixmap(pixmap)
