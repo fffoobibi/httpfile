@@ -229,7 +229,7 @@ class CodeTabWidget(QTabWidget):
         self.customContextMenuRequested.connect(self._tab_menu)
         self.ide = ide
         self.tab_signal.connect(self._tab_slot)
-        self.run_signal.connect(lambda w: w._run())
+        # self.run_signal.connect(lambda w: w._run())
 
     def _get_tabs_files(self) -> List[str]:
         ret = []
@@ -333,9 +333,9 @@ class CodeTabWidget(QTabWidget):
             self.tabBar().setTabIcon(tab_index, icon)
             self.tabBar().moveTab(tab_index, 0)
 
-    def addTab(self, widget: QWidget, a1: str) -> int:
+    def addTab(self, widget: QWidget, icon: QIcon, a1: str) -> int:
         count = self.count()
-        super().addTab(widget, a1)
+        super().addTab(widget, icon, a1)
         # if widget.raw_file:
         #     self.setTabToolTip(count, widget.raw_file)
 

@@ -1,5 +1,9 @@
 <RCC>
   <qresource prefix="icon">
+    <file>新建文件.svg</file>
+    <file>新建文件夹.svg</file>
+    <file>关闭-tab.svg</file>
+    <file>关闭实心-tab.svg</file>
     <file>远程管理.svg</file>
     <file>网络配套服务.svg</file>
     <file>API管理.svg</file>

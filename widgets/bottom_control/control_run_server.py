@@ -1,21 +1,20 @@
 import subprocess
-import subprocess
 import threading
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
-from collections import namedtuple
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QStandardItem, QIcon
-from PyQt5.QtWidgets import QWidget, QPushButton, QButtonGroup
+
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtGui import QStandardItem, QFont, QFontMetrics
+from PyQt5.QtWidgets import QWidget, QButtonGroup, QTabBar
 from cached_property import cached_property
 
 from ui.run_serverui import Ui_Form
 from widgets.base import PluginBaseMixIn
 from widgets.bottom_control import register
 from widgets.types import Request
-from widgets.utils import ConfigProvider, ConfigKey
+from widgets.utils import ConfigProvider, ConfigKey, IconProvider
 from . import BottomWidgetMixIn
 from .run_server_lexer import RunServerConsole
 from ..factorys import add_styled, styled_factory
@@ -58,9 +57,11 @@ class ConsoleTasks(object):
         return ''.join(result.result)
 
     def dispatch_msg(self, file_path, msg, obj: 'RunControlWidget'):
-        btn = obj.button_groups.checkedButton()
-        if btn and btn.file_path == file_path:
-            obj.run_console.append(msg)
+        index = obj.tab_bar.currentIndex()
+        if index > -1:
+            tooltip = obj.tab_bar.tabToolTip(index)
+            if tooltip == file_path:
+                obj.run_console.append(msg)
 
 
 @register(name='运行', icon=':/icon/服务01.svg', index=3)
@@ -79,6 +80,10 @@ class RunControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, sty
     @cached_property
     def console_result(self):
         return self.console_container_class()
+
+    @cached_property
+    def run_console(self):
+        return RunServerConsole(self)
 
     def render_custom_style(self):
         border = current_styles.border
@@ -110,25 +115,19 @@ class RunControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, sty
         self.run_tasks_procs[file_path].append(self.run_console.text())
 
     def add_run_tab(self, file_path):
-        def show_result():
-            msg = self.console_result.get_msg(file_path)
-            self.run_console.clear()
-            self.run_console.setText(msg)
-
-        if file_path not in self.run_tasks_procs.keys():
+        exists = None
+        for i in range(self.tab_bar.count()):
+            tab_tip = self.tab_bar.tabToolTip(i)
+            if tab_tip == file_path:
+                exists = i
+                break
+        if exists is None:
             file = Path(file_path)
-            btn = QPushButton()
-            btn.setText(f'{file.name.replace(".py", "")}')
-            btn.setCheckable(True)
-            btn.setChecked(True)
-            btn.setIcon(QIcon(':/icon/guanbi.svg'))
-            btn.setLayoutDirection(Qt.RightToLeft)
-            btn.file_path = file_path
-            btn.clicked.connect(show_result)
-            add_styled(btn, 'run-button')
-            self.button_groups.addButton(btn)
-            count = self.horizontalLayout_2.count()
-            self.horizontalLayout_2.insertWidget(count - 1, btn)
+            file_name = file.name.replace(".py", "")
+            index = self.tab_bar.addTab(IconProvider.get_icon(file_path), file_name)
+            self.tab_bar.setTabToolTip(index, file_path)
+        else:
+            self.tab_bar.setCurrentIndex(exists)
 
     def start_run_python(self):
         from widgets.mainwidget import MainWidget
@@ -141,9 +140,9 @@ class RunControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, sty
             self.console_result.add_task(current_file)
             self.add_run_tab(current_file)
             with suppress(Exception):
-                popen = self.run_tasks_procs.get(current_file)
-                popen.terminate()
-                popen.wait()
+                proc = self.run_tasks_procs.get(current_file)
+                proc.terminate()
+                proc.wait()
             t = threading.Thread(target=self._run_python, args=(current_file, [exec_path, current_file]))
             t.start()
 
@@ -167,14 +166,31 @@ class RunControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, sty
         self.init_run_lexer()
         self.init_slots()
         self.button_groups = QButtonGroup()
+        self.init_tab()
+
+    def init_tab(self):
+        def show_text(index):
+            file_path = self.tab_bar.tabToolTip(index)
+            msg = self.console_result.get_msg(file_path)
+            self.run_console.clear()
+            self.run_console.setText(msg)
+
+        def close_tab(index):
+            self.tab_bar.removeTab(index)
+
+        self.tab_bar = QTabBar()
+        self.tab_bar.setTabsClosable(True)
+        self.tab_bar.setMovable(True)
+        self.tab_bar.tabCloseRequested.connect(close_tab)
+        self.tab_bar.tabBarClicked.connect(show_text)
+        self.horizontalLayout_2.insertWidget(0, self.tab_bar)
+        add_styled(self.tab_bar, 'run-tab')
+        fm = QFontMetrics(QFont('微软雅黑', 9))
+        self.widget_2.setFixedHeight(fm.height() + 12)
 
     def init_slots(self):
         self.pushButton.clicked.connect(self.start_run_python)
         self.run_signal.connect(self.update_run_info)
-
-    @cached_property
-    def run_console(self):
-        return RunServerConsole(self)
 
     def init_run_lexer(self):
         self.verticalLayout.addWidget(self.run_console)

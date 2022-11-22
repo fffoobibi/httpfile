@@ -2,6 +2,10 @@ import threading
 from enum import Enum
 from pathlib import Path
 
+from PyQt5.QtGui import QIcon
+
+__all__ = ('ConfigKey', 'ConfigProvider', 'IconProvider', 'get_file_type_and_name', 'hum_convert')
+
 
 class ConfigKey(str, Enum):
     general = 'general'
@@ -54,6 +58,31 @@ class _Lazy(object):
     def observe(self, func):
         self._observe.append(func)
         return func
+
+
+class IconProvider(object):
+    @classmethod
+    def get_icon(cls, file_name: str, is_dir: bool=False) -> QIcon:
+        file_type = file_name.split('.')[-1].strip() + ' File'
+        if is_dir:
+            return QIcon(':/icon/文件夹.svg')
+        if file_type in ['txt File', 'File']:
+            return QIcon(':/icon/txt.svg')
+        elif file_type in ['py File', 'pyw File']:
+            return QIcon(':/icon/python-misc.svg')
+        elif file_type in ['json File']:
+            return QIcon(':/icon/json.svg')
+        elif file_type in ['js File']:
+            return QIcon(':/icon/txt.svg')
+        elif file_type in ['css File']:
+            return QIcon(':/icon/css.svg')
+        elif file_type in ['ui File']:
+            return QIcon(':/icon/file-xml.svg')
+        elif file_type in ['http File']:
+            return QIcon(':/icon/HTTP.svg')
+        elif file_type in ['html File']:
+            return QIcon(':/icon/html.svg')
+        return QIcon('')
 
 
 def get_file_type_and_name(file_path: str):

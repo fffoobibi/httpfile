@@ -4,7 +4,7 @@ from typing import Optional
 
 from PyQt5.QtCore import QPoint, QSize
 from PyQt5.QtGui import QIcon, QFont
-from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget
+from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget, qApp
 from jedi.api.environment import SameEnvironment
 from pydantic import BaseModel, Field
 
@@ -16,7 +16,7 @@ from widgets.components import FileSystemModel
 from widgets.factorys import add_styled
 from widgets.interfaces import ITabInterFace
 from widgets.signals import app_exit, app_start_up
-from widgets.utils import ConfigProvider, ConfigKey
+from widgets.utils import ConfigProvider, ConfigKey, IconProvider
 
 
 class AppRunTime(BaseModel):
@@ -153,6 +153,8 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         # style
         add_styled(self.tabWidget, 'tab')
         add_styled(self, 'background-darker')
+        add_styled(self.statusbar, 'status-bar')
+        add_styled(qApp, 'qApp')
 
     def load_left(self):
         self.left_buttons = QButtonGroup()
@@ -175,7 +177,9 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                 self.splitter.setSizes(sizes)
             self.stackedWidget.setCurrentWidget(target)
 
-            # print(self.splitter.widget(0).widget(index) == target, index )
+        add_styled(self.splitter, 'splitter')
+        add_styled(self.splitter_2, 'splitter')
+        add_styled(self.splitter_3, 'splitter')
 
         left_checked = self.config_name('left_checked')
         checked_index = self.settings.value(left_checked)
@@ -261,6 +265,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     #### add tab ####
     def add_tab_widget(self, file_type, file_name, file_path: str, url: str = None, content: str = None):
+        icon = IconProvider.get_icon(file_name)
         if url is None:
             def _create_tab_code_widget():
                 for k, v in self.plugins.tabs.items():
@@ -274,7 +279,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             tab: ITabInterFace = _create_tab_code_widget()
             if tab:
                 tab.set_read_only(self.r_run_time.read_only)
-                self.tabWidget.addTab(tab, file_name)
+                self.tabWidget.addTab(tab, icon, file_name)
                 self.tabWidget.setCurrentWidget(tab)
             return tab
         else:
@@ -291,7 +296,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             tab: ITabInterFace = _create_tab_code_widget()
             if tab:
                 tab.set_read_only(self.r_run_time.read_only)
-                self.tabWidget.addTab(tab, url)
+                self.tabWidget.addTab(tab, icon, url)
                 self.tabWidget.setCurrentWidget(tab)
             return tab
 

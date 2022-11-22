@@ -593,15 +593,16 @@ class HTTPFileCodeWidget(TabCodeWidget):
 
     def set_splitter_handle(self, index):
         if index == 1:
-            handler = self.splitter.handle(1)
-            handler.setCursor(Qt.SizeHorCursor)
-            layout = QVBoxLayout()
-            layout.setContentsMargins(0, 0, 0, 0)
-            button = QToolButton(handler)
-            button.setArrowType(Qt.RightArrow)
-            layout.addWidget(button)
-            # layout.addSpacerItem(QSpacerItem(20, 20, vPolicy=QSizePolicy.Expanding))
-            handler.setLayout(layout)
+            pass
+            # handler = self.splitter.handle(1)
+            # handler.setCursor(Qt.SizeHorCursor)
+            # layout = QVBoxLayout()
+            # layout.setContentsMargins(0, 0, 0, 0)
+            # button = QToolButton(handler)
+            # button.setArrowType(Qt.RightArrow)
+            # layout.addWidget(button)
+            # # layout.addSpacerItem(QSpacerItem(20, 20, vPolicy=QSizePolicy.Expanding))
+            # handler.setLayout(layout)
 
     # slots #
     def when_modify(self, position, modificationType, text, length, linesAdded,

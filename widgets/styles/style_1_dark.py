@@ -4,6 +4,7 @@ from . import register, BaseStyle
 @register('dark', index=0)
 class DarkStyle(BaseStyle):
     ## qss format
+    tooltip = """QToolTip{border:1px solid gray; background-color:#4D4C4B;color:lightgray;padding:4px}"""
     menu = """
             QMenu{background: #333231;border:1px solid #434241}
             QMenu::item{
@@ -20,25 +21,67 @@ class DarkStyle(BaseStyle):
             QTabWidget::pane{border:none;}
             QTabWidget{border: 1px solid #4D4C4B}      
             QTabWidget::tab-bar {left: 0px;}
+            QTabBar::close-button {
+                image:url(:/icon/关闭-tab.svg)
+            }
+            QTabBar::close-button:selected {
+                image: url(:/icon/关闭-tab.svg)
+            }
+            QTabBar::close-button:selected:hover {
+                image: url(:/icon/关闭实心-tab.svg)
+            }
             QTabBar::tab{
                  background: #333231;
-                 color: #78DCE8;
+                 color: lightgray;
                  border: 0px solid #C4C4C3;
                  border-bottom-color: #C2C7CB;
                  border-top-left-radius: 4px;
                  border-top-right-radius: 4px;
-                 min-height: 30px;
                  border-radius: 0px;
-                 padding: 1px 10px;
+                 padding: 5px 10px;
              }
             QTabBar::tab:hover{background: #2D2B29;}
             QTabBar::tab:selected{
                 /*选中teble背景色*/
-                background-color: #2D2B29;
-                color:lightgray;
+                background-color: #171615;
+                color:#78DCE8;
+                border-top:2px solid transparent;
                 border-bottom: 2px solid #FFC800
             }
     """
+    run_tab = """
+            QTabBar{font-family:微软雅黑}
+            QTabBar::close-button {
+                image:url(:/icon/关闭-tab.svg)
+            }
+            QTabBar::close-button:selected {
+                image: url(:/icon/关闭-tab.svg)
+            }
+            QTabBar::close-button:selected:hover {
+                image: url(:/icon/关闭实心-tab.svg)
+            }
+            QTabBar::tab{
+                 background: #2D2B29; 
+                 color: lightgray;
+                 border: 0px solid #C4C4C3;
+                 border-bottom-color: #DD6F13;
+                 border-top-left-radius: 4px;
+                 border-top-right-radius: 4px;
+                 border-radius: 0px;
+                 padding: 5px 3px;
+             }
+            QTabBar::tab:hover{background: #2D2B29;}
+            QTabBar::tab:selected{
+                background-color: #171615;
+                color:#DD6F13;
+                border-top: 1px solid  #171615;
+                border-bottom: 1px solid #DD6F13
+            }
+    """
+    splitter = """
+                QSplitter::handle{background:transparent}
+                QSplitter::handle:pressed {background-color:orange;}"""
+
     border = '#4D4C4B'
     foreground = 'lightgray'
     background_darker = '#333231'

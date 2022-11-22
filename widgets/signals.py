@@ -99,6 +99,7 @@ class SignalManager(object):
     createFileAndOpen = 'createFileAndOpen'  # 创建文件并打卡
     createHookFileAndOpen = 'createHookFileAndOpen'  # 创建hook文件并打开
 
+    projectCurrentPath = 'projectCurrentPath'  # 当前选中目录
     loadProject = 'loadProject'  # 加载文件夹
     openProjectFile = 'openProjectFile'  # 打开文件
     openUrlFile = 'openUrlFile'  # 打开远程文件

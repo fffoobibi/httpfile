@@ -12,6 +12,10 @@ def _styled_policy(t, policy, *a):
             t.render_custom_style()
         else:
             t.setStyleSheet(current_styles.menu)
+    elif policy == 'qApp':
+        t.setStyleSheet(current_styles.tooltip)
+    elif policy == 'splitter':
+        t.setStyleSheet(current_styles.splitter or '')
     elif policy == 'code_widget':  # editor wiget
         if hasattr(t, 'render_custom_style'):
             t.render_custom_style()
@@ -20,6 +24,11 @@ def _styled_policy(t, policy, *a):
             t.render_custom_style()
         else:
             t.setStyleSheet(current_styles.tab)
+    elif policy == 'run-tab':
+        if hasattr(t, 'render_custom_style'):
+            t.render_custom_style()
+        else:
+            t.setStyleSheet(current_styles.run_tab)
     elif policy == 'background-darker':  # widget background
         if hasattr(t, 'render_custom_style'):
             t.render_custom_style()
@@ -33,6 +42,11 @@ def _styled_policy(t, policy, *a):
     elif policy == 'background-lighter':  # widget background
         palette = t.palette()  # type: QPalette
         palette.setColor(QPalette.Background, QColor(current_styles.background_lighter))
+    elif policy == 'status-bar':
+        t.setStyleSheet('''
+            QStatusBar::item {border: 0px;}
+            QStatusBar{background: %s;}
+        ''' % current_styles.background_lighter)
     elif policy in ['bottom-button', 'status-button']:  # bottom buttons, status buttons
         color = current_styles.bottom_button.get('color')
         background = current_styles.bottom_button.get('background')
@@ -60,7 +74,6 @@ def _styled_policy(t, policy, *a):
                         'QPushButton:hover{background: %s;}'
                         'QPushButton:checked{background: %s;border-bottom:1px solid %s;border-right:1px solid %s}' % (
                             background, color, background_checked, background_checked, border_checked, background_checked))
-
 
 
 def styled_factory(policy):

@@ -134,7 +134,7 @@ class TabCodeWidget(QWidget):
         self.__main_lay.setSpacing(1)
 
         self.splitter = QSplitter(self)
-        self.splitter.setHandleWidth(15)
+        # self.splitter.setHandleWidth(15)
 
         self.__code_container = QWidget(self)
         self.lay = QVBoxLayout(self.__code_container)

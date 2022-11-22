@@ -21,6 +21,7 @@ class LightStyle(BaseStyle):
               background-color:rgb(236,236,237);
             }"""
     tab = """"""
+    run_tab = """"""
     foreground = 'lightgray'
 
     foreground = 'black'

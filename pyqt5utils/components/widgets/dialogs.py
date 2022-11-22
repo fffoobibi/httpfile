@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt, QEvent, QPoint, QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget, QGraphicsDropShadowEffect, QApplication, QFrame, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy, QPushButton
 
-from log_utils import debug_print
+# from log_utils import debug_print
 from pyqt5utils.components.mixin import KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn
 
 __all__ = ('ShadowDialog',)
@@ -23,7 +23,7 @@ class ShadowDialog(QDialog, KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn):
     def set_keep(self, val: bool):
         self._keep = val
 
-    def __init__(self, title='弹窗', show_title=False, title_style: str = None, *a, **kw):
+    def __init__(self, title='弹窗', show_title=False, title_style: str = None, frame_less_style:str=None,*a, **kw):
         super(ShadowDialog, self).__init__(*a, **kw)
         self.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -36,7 +36,7 @@ class ShadowDialog(QDialog, KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn):
         self.frame_less = QWidget()
         self.frame_less.setObjectName('FrameLess')
         self.frame_less.setStyleSheet(
-            '#FrameLess{background:white;color:black;font-family:微软雅黑;border-radius:5px;border:none}')
+            frame_less_style or '#FrameLess{background:white;color:black;font-family:微软雅黑;border-radius:5px;border:none}')
         lay.addWidget(self.frame_less)
 
         self._lay = QVBoxLayout(self.frame_less)
@@ -83,7 +83,7 @@ class ShadowDialog(QDialog, KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn):
         w, h = target.width(), target.height()
         left_point = target.mapToGlobal(QPoint(0, 0))
         delta = QPoint(dx, dy)
-        debug_print(self.width(), self.height())
+        # debug_print(self.width(), self.height())
         self.raise_()
         self.show()
         if position == 'l':

@@ -86,7 +86,10 @@ class BaseStyle(object):
         return list(map(lambda e: e[0], ret))
 
     menu: str = None
+    tooltip: str = None
     tab: str = None
+    run_tab: str = None
+    splitter: str = None
 
     border: str = None
 
