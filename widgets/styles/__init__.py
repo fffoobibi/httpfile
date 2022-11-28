@@ -92,12 +92,14 @@ class BaseStyle(object):
     splitter: str = None
 
     border: str = None
+    border_lighter: str = None
 
     background_darker: str = None
     background_lighter: str = None
     foreground: str = None
 
     handler: str = None
+    progress : str=None
 
     bottom_button: dict = None  # 底部按钮
     left_button: dict = None  # 左侧按钮

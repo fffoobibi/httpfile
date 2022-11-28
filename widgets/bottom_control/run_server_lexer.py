@@ -72,17 +72,23 @@ class RunServerConsoleLexer(CustomLexerCompat):
         text = self.parent().text()[start: end]
         editor: RunServerConsole = self.parent()
         self.startStyling(start)
-        trace_back = r'File ".+", line \d+'
-        word_pattern = r'\w+|\s+|\W+'
+
+        # word_pattern = r'\w+|\s+|\W+'
+        trace_back = r'File ".+?", line \d+'
+        word_pattern = r'\s+|.*'
         p = re.compile(
             fr'{trace_back}|'
             fr'{word_pattern}', re.I)
+        # print('changed ---')
+        # print(text)
         token_list = [(token, len(bytearray(token, "utf-8"))) for token in p.findall(text)]
         total_length = start
+
         for i, token in enumerate(token_list):
             word, length = token
             if re.match(trace_back, word, re.I):
-                ret = re.match(r'(File ")(.+)(", line)(\s)(\d+)', word)
+                # print('render ', word)
+                ret = re.match(r'(File ")(.+?)(", line)(\s)(\d+)', word)
                 l1 = ret.span(1)[1] - ret.span(1)[0]
                 l2 = ret.span(2)[1] - ret.span(2)[0]
                 l3 = ret.span(3)[1] - ret.span(3)[0]
@@ -93,8 +99,10 @@ class RunServerConsoleLexer(CustomLexerCompat):
                 self.setStyling(l3, self.styles_class.file_trace)
                 self.setStyling(l4, self.styles_class.file_trace)
                 self.setStyling(l5, self.styles_class.line_info)
-                editor.setIndicatorByPositionLength(self.file_trace_indic, total_length + l1, l2, int(ret.group(5)) - 1)
-
+                editor.setIndicatorByPositionLength(self.file_trace_indic, total_length + l1,
+                                                    l2
+                                                    # len(bytearray(ret.group(2), 'utf-8'))
+                                                    , int(ret.group(5)) - 1)
             elif re.match(word_pattern, word, re.I):
                 self.setStyling(length, self.styles_class.normal)
             else:

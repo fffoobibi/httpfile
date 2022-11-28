@@ -78,4 +78,11 @@
     <file>锁定.svg</file>
     <file>编辑.svg</file>
   </qresource>
+  <qresource prefix="gif">
+    <file>gif/5-121204193935-51.gif</file>
+    <file>gif/loading2.gif</file>
+    <file>gif/loading3.gif</file>
+    <file>gif/loading4.gif</file>
+    <file>gif/加载2.gif</file>
+  </qresource>
 </RCC>

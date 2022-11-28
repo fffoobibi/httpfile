@@ -81,8 +81,12 @@ class DarkStyle(BaseStyle):
     splitter = """
                 QSplitter::handle{background:transparent}
                 QSplitter::handle:pressed {background-color:orange;}"""
+    progress = "QProgressBar {border: 0px solid grey; border-radius: 0px; background-color: #FFFFFF; text-align: center;}" \
+               "QProgressBar::chunk {background:QLinearGradient(x1:0,y1:0,x2:2,y2:0,stop:0 #666699,stop:1  #DB7093); }"
 
     border = '#4D4C4B'
+    border_lighter = 'gray'
+
     foreground = 'lightgray'
     background_darker = '#333231'
     background_lighter = '#434241'

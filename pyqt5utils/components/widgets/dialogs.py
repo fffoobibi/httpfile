@@ -7,7 +7,7 @@
 from typing_extensions import Literal
 
 from PyQt5.QtCore import Qt, QEvent, QPoint, QSize
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget, QGraphicsDropShadowEffect, QApplication, QFrame, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy, QPushButton
 
 # from log_utils import debug_print
@@ -23,7 +23,7 @@ class ShadowDialog(QDialog, KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn):
     def set_keep(self, val: bool):
         self._keep = val
 
-    def __init__(self, title='弹窗', show_title=False, title_style: str = None, frame_less_style:str=None,*a, **kw):
+    def __init__(self, title='弹窗', show_title=False, title_style: str = None, frame_less_style: str = None, shadow_color='gray',  *a, **kw):
         super(ShadowDialog, self).__init__(*a, **kw)
         self.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -65,7 +65,7 @@ class ShadowDialog(QDialog, KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn):
         # shadow
         shadow = QGraphicsDropShadowEffect(self)
         shadow.setOffset(0, 0)
-        shadow.setColor(Qt.gray)
+        shadow.setColor(QColor(shadow_color))
         shadow.setBlurRadius(10)
         self.frame_less.setGraphicsEffect(shadow)
         self.installEventFilter(self)
