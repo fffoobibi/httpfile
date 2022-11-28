@@ -18,6 +18,7 @@ from widgets.utils import ConfigProvider, ConfigKey, IconProvider
 from . import BottomWidgetMixIn
 from .run_server_lexer import RunServerConsole
 from ..factorys import add_styled, styled_factory
+from ..signals import signal_manager
 from ..styles import current_styles
 
 
@@ -39,7 +40,8 @@ class ConsoleTasks(object):
         return False
 
     def add_task(self, file_path):
-        result = self.tasks.setdefault(file_path, self.result_class(path=file_path, result=[], returnCode=None, running=True))
+        result = self.tasks.setdefault(file_path,
+                                       self.result_class(path=file_path, result=[], returnCode=None, running=True))
         if result.running is False:
             result.result.clear()
 
@@ -49,7 +51,8 @@ class ConsoleTasks(object):
             task.running = False
 
     def save_msg(self, file_path, msg: str):
-        result = self.tasks[file_path]
+        result = self.tasks.setdefault(file_path,
+                                       self.result_class(path=file_path, result=[], returnCode=None, running=True))
         result.result.append(msg)
 
     def get_msg(self, file_path) -> str:
@@ -167,6 +170,16 @@ class RunControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, sty
         self.init_slots()
         self.button_groups = QButtonGroup()
         self.init_tab()
+
+    def after_init(self):
+        def run(file_path: str):
+            from widgets.mainwidget import MainWidget
+            main: MainWidget = self.get_app()
+            cmd_list = [main.get_python_info().executable]
+            cmd_list += [file_path]
+            self._run_python(file_path, cmd_list)
+
+        signal_manager.add_event(signal_manager.runPython, None, call_back=run)
 
     def init_tab(self):
         def show_text(index):

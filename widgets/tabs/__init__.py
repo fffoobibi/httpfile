@@ -11,12 +11,9 @@ from cached_property import cached_property
 from zope.interface import implementer
 
 from pyqt5utils.components import Toast
-from pyqt5utils.components.styles import StylesHelper
-
 from widgets.interfaces import ITabInterFace
 from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
-
 from .helpers import _Queue, _make_child
 
 __all__ = ('register', 'TabCodeWidget')
@@ -85,6 +82,14 @@ class TabCodeWidget(QWidget):
     def when_app_start_up(self, main_app):
         pass
 
+    # @classmethod
+    def make_qsci_widget(self, render_custom_style=None):
+        code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
+                           self.custom_menu_support, self.custom_menu_policy, self.set_apis,
+                           find_self=True, render_style=render_custom_style, multi_line=True)()
+        add_styled(code, 'code_widget')
+        return code
+
     @property
     def is_remote(self):
         return self._is_remote
@@ -127,8 +132,9 @@ class TabCodeWidget(QWidget):
     def render_custom_style(self):
         pass
 
-    def __init__(self):
+    def __init__(self, support_code=True):
         super(TabCodeWidget, self).__init__()
+        self.support_code = support_code
         self.__main_lay = QHBoxLayout(self)
         self.__main_lay.setContentsMargins(0, 0, 0, 0)
         self.__main_lay.setSpacing(1)
@@ -143,11 +149,7 @@ class TabCodeWidget(QWidget):
         if self.support_code:
             self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
                                     self.custom_menu_support, self.custom_menu_policy, self.set_apis)()
-            add_styled(self, 'code_widget')
-            StylesHelper.set_v_history_style_dynamic(self.code, color='#CFCFCF', background='transparent',
-                                                     width=self.vertical.value)
-            StylesHelper.set_h_history_style_dynamic(self.code, color='#CFCFCF', background='transparent',
-                                                     height=self.horizontal.value)
+            # add_styled(self, 'code_widget')
             self._is_remote = False
             self._update_time = None
             self._file_loaded = False
@@ -202,6 +204,7 @@ class TabCodeWidget(QWidget):
 
         if self.support_code:
             self.__define_search_indicator()
+            add_styled(self, 'code_widget')
         self.after_init()
 
     if support_code:

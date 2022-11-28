@@ -5,7 +5,6 @@ from PyQt5.QtCore import Qt, QModelIndex
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtWidgets import (QWidget, QLabel, QHBoxLayout, QVBoxLayout, QFrame, QSpacerItem, QSizePolicy, QTreeView, QPushButton, QLineEdit)
 
-from pyqt5utils.components.helper import ObjectsHelper
 from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.components.widgets.dialogs import ShadowDialog
 from widgets.base import PluginBaseMixIn
@@ -40,7 +39,6 @@ class ProjectTreeViewWidget(QWidget, PluginBaseMixIn, styled_factory('background
         self.project_view.setStyleSheet('QTreeView{border:1px solid %s;background:%s;color: %s}' % (border_color, background, color))
         StylesHelper.set_v_history_style_dynamic(self.project_view, color=handler_color, background='transparent')
         StylesHelper.set_v_history_style_dynamic(self.project_view, color=handler_color, background='transparent')
-        self.setStyleSheet('QLabel{font-family: 微软雅黑;color:%s;padding:4px}' % current_styles.foreground)
 
     def _open_file(self, index: QModelIndex):
         # file_type = self.model.type(index)
@@ -55,12 +53,12 @@ class ProjectTreeViewWidget(QWidget, PluginBaseMixIn, styled_factory('background
         frame_lay.setContentsMargins(1, 1, 1, 1)
         label = QLabel()
         label.setText('资源管理')
-        # label.setFont(QFont('微软雅黑'))
+        label.setStyleSheet('QLabel{color: %s; font-family:微软雅黑;padding:4px 0px}' % current_styles.foreground)
         label.setIndent(4)
         frame_lay.addWidget(label)
         frame_lay.addSpacerItem(QSpacerItem(20, 20, hPolicy=QSizePolicy.Expanding))
         # todo
-        btn_style = 'QPushButton{border:none;background:transparent}QPushButton:hover{background:lightgray}'
+        btn_style = 'QPushButton{border:none;background:transparent}'
         add_file = QPushButton(clicked=self.add_new_file)
         add_dir = QPushButton(clicked=self.add_new_dir)
         add_file.setIcon(QIcon(':/icon/新建文件.svg'))
@@ -105,12 +103,11 @@ class ProjectTreeViewWidget(QWidget, PluginBaseMixIn, styled_factory('background
             f.setContentsMargins(0, 0, 0, 0)
             f.setSpacing(0)
             label = QLabel('新建文件')
-            label.setStyleSheet('QLabel{font-family:微软雅黑;color:%s;background:%s;padding:5px;border: 1px solid %s}' % (current_styles.foreground, current_styles.background_lighter, current_styles.border_lighter))
+            label.setStyleSheet('QLabel{font-family:微软雅黑;color:%s;background:%s;padding:5px}' % (current_styles.foreground, current_styles.background_lighter))
             label.setAlignment(Qt.AlignCenter)
             f.addWidget(label)
             line = QLineEdit()
-            line.setStyleSheet('QLineEdit{font-family:微软雅黑;color:%s;background:%s;border-left:1px solid %s;border-right:1px solid %s; border-bottom:1px solid %s;border-top:none; padding:4px}' % (
-                current_styles.foreground, current_styles.background_darker, current_styles.border_lighter, current_styles.border_lighter, current_styles.border_lighter))
+            line.setStyleSheet('QLineEdit{font-family:微软雅黑;color:%s;background:%s;border:1px solid %s;padding:4px}' % (current_styles.foreground, current_styles.background_darker, current_styles.border))
             line.setClearButtonEnabled(True)
             line.setPlaceholderText('名称')
             line.returnPressed.connect(_make_file)
@@ -120,10 +117,8 @@ class ProjectTreeViewWidget(QWidget, PluginBaseMixIn, styled_factory('background
         path = self.current_select_path()
         if path:
             content_widget = content()
-            shadow = ShadowDialog(frame_less_style='#FrameLess{background:transparent}', shadow_color='transparent')
+            shadow = ShadowDialog(frame_less_style='#FrameLess{background:transparent}')
             shadow.add_content(content_widget)
-            w, h = ObjectsHelper.window_size()
-            shadow.setFixedWidth(w / 5)
             shadow.center(self.get_app())
 
     def add_new_dir(self):
@@ -140,12 +135,11 @@ class ProjectTreeViewWidget(QWidget, PluginBaseMixIn, styled_factory('background
             f.setContentsMargins(0, 0, 0, 0)
             f.setSpacing(0)
             label = QLabel('新建文件夹')
-            label.setStyleSheet('QLabel{font-family:微软雅黑;color:%s;background:%s;padding:5px;border: 1px solid %s}' % (current_styles.foreground, current_styles.background_lighter, current_styles.border_lighter))
+            label.setStyleSheet('QLabel{font-family:微软雅黑;color:%s;background:%s;padding:5px}' % (current_styles.foreground, current_styles.background_lighter))
             label.setAlignment(Qt.AlignCenter)
             f.addWidget(label)
             line = QLineEdit()
-            line.setStyleSheet('QLineEdit{font-family:微软雅黑;color:%s;background:%s;border-left:1px solid %s;border-right:1px solid %s; border-bottom:1px solid %s;border-top:none; padding:4px}' % (
-                current_styles.foreground, current_styles.background_darker, current_styles.border_lighter, current_styles.border_lighter, current_styles.border_lighter))
+            line.setStyleSheet('QLineEdit{font-family:微软雅黑;color:%s;background:%s;border:1px solid %s;padding:4px}' % (current_styles.foreground, current_styles.background_darker, current_styles.border))
             line.setClearButtonEnabled(True)
             line.setPlaceholderText('名称')
             line.returnPressed.connect(_make_dir)
@@ -155,10 +149,8 @@ class ProjectTreeViewWidget(QWidget, PluginBaseMixIn, styled_factory('background
         path = self.current_select_path()
         if path:
             content_widget = content()
-            shadow = ShadowDialog(frame_less_style='#FrameLess{background:transparent}', shadow_color='transparent')
+            shadow = ShadowDialog(frame_less_style='#FrameLess{background:transparent}')
             shadow.add_content(content_widget)
-            w, h = ObjectsHelper.window_size()
-            shadow.setFixedWidth(w / 5)
             shadow.center(self.get_app())
 
     def init_signals(self):

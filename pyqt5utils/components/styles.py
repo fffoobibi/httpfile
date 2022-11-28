@@ -337,7 +337,7 @@ class Sh(str, Enum):
 
     history_v_scroll_style_dynamic = '''
         QScrollBar:vertical {background: %s;padding: 0px; border-radius: 0px;max-width: %spx;}
-        QScrollBar::handle:vertical {background: %s; min-height: 20px; border-radius: 0px;}
+        QScrollBar::handle:vertical {background: %s; min-height: 25px; border-radius: 0px;}
         QScrollBar::handle:vertical:hover {background: %s;}
         QScrollBar::handle:vertical:pressed {background: %s;}
         QScrollBar::add-page:vertical {background: none;height:0px}

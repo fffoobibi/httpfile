@@ -13,8 +13,10 @@ from ui.web_serverui import Ui_Form
 from widgets.base import PluginBaseMixIn
 from widgets.bottom_control import BottomWidgetMixIn
 from widgets.bottom_control import register
+from widgets.factorys import styled_factory
 from widgets.net_utils import get_host_ip
 from widgets.signals import ProcessSignalMixIn, ProcessSignalMixInHelper
+from widgets.styles import current_styles
 from widgets.utils import ConfigProvider, ConfigKey
 
 
@@ -175,7 +177,8 @@ class WebTextBrowserHighlighter(QSyntaxHighlighter):
 
 
 @register(name='WEB服务', icon=':/icon/API.svg', index=1)
-class WebControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, ProcessSignalMixInHelper):
+class WebControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, ProcessSignalMixInHelper,
+                       styled_factory('background-darker')):
     check_state_signal = pyqtSignal(bool)
     append_signal = pyqtSignal(str)
 
@@ -183,6 +186,11 @@ class WebControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, Pro
     vertical = ConfigProvider.default(ConfigKey.general, 'vertical_width')
 
     web_worker_class = FastApiWebWorker
+
+    def render_custom_style(self):
+        border = current_styles.border
+        # self.widget.setStyleSheet('.QWidget{border:1px solid %s}' % border)
+        self.widget.setStyleSheet('.QWidget{border:1px solid %s}' % border)
 
     def __init__(self):
         super(WebControlWidget, self).__init__()
@@ -203,7 +211,6 @@ class WebControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, Pro
                                                  width=self.vertical.value)
         StylesHelper.set_h_history_style_dynamic(self.textBrowser, color='#CFCFCF', background='transparent',
                                                  height=self.horizontal.value)
-
 
     def set_slot(self):
         self.pushButton.clicked.connect(self.start_web_task)

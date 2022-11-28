@@ -2,8 +2,9 @@ import warnings
 import weakref
 
 from contextlib import suppress
-from typing import List, Type
+from typing import List, Type, Optional
 
+from PyQt5.QtGui import QColor, QFont
 from lazy_object_proxy import Proxy
 
 from widgets.base import get_app_settings
@@ -85,6 +86,14 @@ class BaseStyle(object):
         ret.sort(key=lambda e: e[1]['index'])
         return list(map(lambda e: e[0], ret))
 
+    @classmethod
+    def get_editor_color(cls, style_colors: dict, style: int) -> Optional[str]:
+        return style_colors.get(style)
+
+    @classmethod
+    def get_editor_font(cls, style_fonts: dict, style: int) -> Optional[QFont]:
+        return style_fonts.get(style)
+
     menu: str = None
     tooltip: str = None
     tab: str = None
@@ -104,6 +113,10 @@ class BaseStyle(object):
     bottom_button: dict = None  # 底部按钮
     left_button: dict = None  # 左侧按钮
 
+    editor_json: dict = None
+    editor_html: dict = None
+    editor_python: dict = None
+    editor_javascript: dict = None
     editor_http_file: dict = None
 
     editor_web_console: dict = None

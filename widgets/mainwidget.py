@@ -158,22 +158,29 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     def load_left(self):
         self.left_buttons = QButtonGroup()
+        conf_key = self.config_name('left_splitter_sizes')
 
         def _splitter_moved(pos, handle_index):
             if handle_index == 1:
+                # print('moved ----', pos)
                 current = self.splitter.widget(0).currentWidget()
+                self.settings.setValue(conf_key, self.splitter.sizes())
                 if not current.isVisible():
                     current.show()
 
         def switch_to(target: QWidget, index):
             if target.isVisible():
                 target.hide()
+                restore_position = self.settings.value(conf_key) or [0, 1000]
+                # self.splitter.setSizes([0, restore_position])
                 self.splitter.setSizes([0, 1000])
             else:
                 target.show()
                 sizes = self.splitter.sizes()
                 if sizes[0] <= 0:
+                    # restore_position = self.settings.value(conf_key) or 1000
                     sizes = [200, 1000]
+                sizes = self.settings.value(conf_key) or [200, 1000]
                 self.splitter.setSizes(sizes)
             self.stackedWidget.setCurrentWidget(target)
 

@@ -7,17 +7,21 @@ from typing import Any, List
 import jedi
 from PyQt5.Qsci import QsciLexerPython, QsciScintilla
 from PyQt5.QtCore import Qt, QDir, QTimer, pyqtSignal
-from PyQt5.QtGui import QCursor, QKeySequence, QColor
+from PyQt5.QtGui import QCursor, QKeySequence, QColor, QIcon, QFont
 from PyQt5.QtWidgets import QMenu, QAction, QTextEdit
 from cached_property import cached_property
 from jedi.api.classes import Completion
 from jedi.api.environment import SameEnvironment
 
+from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.workers import WorkerManager
 from widgets.factorys import make_styled
 from . import register, TabCodeWidget
+from ..signals import signal_manager
+from ..styles import current_styles
 
-
+# import jmespath
+# jmespath.parser.Parser
 class FileTracerMixIn(object):
     def init_file_tracer(self):
         self.__hasChangeMarkers = False
@@ -78,7 +82,8 @@ class FileTracerMixIn(object):
                 change_contents = lines[3:]
                 change_added = []
                 change_subs = []
-                line_start = int(change_info.replace('@', '').strip().split(' ')[0].split(',')[0].strip('-'))  # @@ -1,6 +1,7 @@
+                line_start = int(
+                    change_info.replace('@', '').strip().split(' ')[0].split(',')[0].strip('-'))  # @@ -1,6 +1,7 @@
                 print('\nstarts ', line_start)
                 add_line = line_start - 1
                 subs_line = line_start - 1
@@ -126,6 +131,24 @@ class FileTracerMixIn(object):
         self.__onlineChangeTraceTimer.start()
 
 
+class StyledPythonLexer(QsciLexerPython):
+
+    def defaultPaper(self, style: int) -> QColor:
+        return QColor(current_styles.editor_python['paper']['background'])
+
+    def defaultColor(self, style):
+        print('sss ', current_styles.editor_python.get('color'))
+        color = current_styles.get_editor_color(current_styles.editor_python.get('color'), style)
+        if color:
+            return QColor(color)
+        return QColor('')
+
+    # def defaultFont(self, style):
+    #     if style in [QsciLexerPython.CommentBlock, QsciLexerPython.Comment]:
+    #         return QFont('微软雅黑', 10)
+    #     return super().defaultFont(style)
+
+
 @register(file_types=['py', 'pyw'])
 class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     file_type = 'python'
@@ -134,6 +157,24 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     save_deleted_marker_number = 1
     save_changed_marker_handler: int  # type hint
     after_saved = pyqtSignal()
+
+    def render_custom_style(self):
+        handler = current_styles.handler
+        StylesHelper.set_v_history_style_dynamic(self.code, color=handler, background='transparent', width=10)
+        StylesHelper.set_h_history_style_dynamic(self.code, color=handler, background='transparent', height=10)
+        if current_styles.editor_python['margin'].get('background', None):
+            self.code.setMarginsBackgroundColor(QColor(current_styles.editor_python['margin'].get('background')))
+            self.code.setFoldMarginColors(QColor('#404040'), QColor('#404040'))
+        if current_styles.editor_python['margin'].get('foreground', None):
+            self.code.setMarginsForegroundColor(QColor(current_styles.editor_python['margin'].get('foreground')))
+        if current_styles.editor_python['caret'].get('foreground', None):
+            self.code.setCaretLineBackgroundColor(QColor(current_styles.editor_python['caret'].get('foreground')))
+        if current_styles.editor_python['caret'].get('background', None):
+            self.code.setCaretForegroundColor(QColor(current_styles.editor_python['caret'].get('background')))
+        if current_styles.editor_python['selection'].get('background', None):
+            self.code.setSelectionBackgroundColor(
+                QColor(current_styles.editor_python['selection'].get('background')))
+            self.code.resetSelectionForegroundColor()
 
     def define_file_trace_margins(self):
         editor: QsciScintilla
@@ -236,7 +277,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         return keyword.kwlist + dir(__builtins__)
 
     def set_lexer(self) -> Any:
-        return QsciLexerPython(self)
+        return StyledPythonLexer(self)
 
     def when_app_exit(self, main_app):
         pass
@@ -265,7 +306,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             ac0 = menu.addAction('打开于文件夹')
             menu.addSeparator()
 
-        act = menu.addAction('运行')
+        act = menu.addAction(QIcon(':/icon/运行，调试.svg'), '运行')
         ac1 = menu.addAction('格式化', self.__format_code, shortcut=QKeySequence('ctrl+shift+l'))
         ac2 = menu.addAction('大小写', self.__upper_or_lower_word, shortcut=QKeySequence('ctrl+p'))
         ac3 = menu.addAction('文件比较')
@@ -278,10 +319,11 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
 
         if ac == act:
             env: SameEnvironment = self.main_app.get_provider('python_info')
-            if env:
-                cmd = f'{env.executable} {self.file_path()}'
-                print(cmd)
-                self.auto_complete()
+            signal_manager.emit(signal_manager.runPython, self.file_path())
+            # if env:
+            #     cmd = f'{env.executable} {self.file_path()}'
+            #     print(cmd)
+            #     self.auto_complete()
         elif ac == ac3:
             print(repr(self.monitor_text()))
             # self._new = self.code.text().splitlines(True)

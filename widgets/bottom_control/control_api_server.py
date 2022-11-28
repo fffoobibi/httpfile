@@ -12,6 +12,8 @@ from widgets.signals import ProcessSignalMixInHelper, signal_manager
 from widgets.types import Request
 from widgets.utils import ConfigProvider, ConfigKey
 from . import BottomWidgetMixIn
+from ..factorys import styled_factory
+from ..styles import current_styles
 
 
 class ApiCodeWidget(QWidget):
@@ -19,7 +21,8 @@ class ApiCodeWidget(QWidget):
 
 
 @register(name='服务', icon=':/icon/服务01.svg', index=2)
-class ApiControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, ProcessSignalMixInHelper):
+class ApiControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, ProcessSignalMixInHelper,
+                       styled_factory('background-darker')):
     check_state_signal = pyqtSignal(bool)
     horizontal = ConfigProvider.default(ConfigKey.general, 'horizontal_height')
     vertical = ConfigProvider.default(ConfigKey.general, 'vertical_width')
@@ -36,6 +39,11 @@ class ApiControlWidget(QWidget, Ui_Form, BottomWidgetMixIn, PluginBaseMixIn, Pro
                 request: Request
                 if request.status == -1:  # loading
                     pass
+
+    def render_custom_style(self):
+        border = current_styles.border
+        # self.widget.setStyleSheet('.QWidget{border:1px solid %s}' % border)
+        self.widget_3.setStyleSheet('.QWidget{border:1px solid %s}' % border)
 
     def __init__(self):
         super(ApiControlWidget, self).__init__()

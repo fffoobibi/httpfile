@@ -112,6 +112,8 @@ class SignalManager(object):
     leftTabClicked = 'leftTabClicked'
     bottomButtonClicked = 'bottomButtonClicked'
 
+    runPython = 'runPython'
+
     info = 'info'
     warn = 'warn'
 

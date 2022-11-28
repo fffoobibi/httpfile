@@ -1,10 +1,12 @@
 from . import register, BaseStyle
+from PyQt5.Qsci import QsciLexerJSON
+from PyQt5.Qsci import QsciLexerPython
 
 
 @register('dark', index=0)
 class DarkStyle(BaseStyle):
     ## qss format
-    tooltip = """QToolTip{border:1px solid gray; background-color:#4D4C4B;color:lightgray;padding:4px}"""
+    tooltip = """QToolTip{border:1px solid gray; background-color:#333231;color:lightgray;padding:4px}"""
     menu = """
             QMenu{background: #333231;border:1px solid #434241}
             QMenu::item{
@@ -90,9 +92,12 @@ class DarkStyle(BaseStyle):
     foreground = 'lightgray'
     background_darker = '#333231'
     background_lighter = '#434241'
-    handler = '#4C4B4A'
+    # handler = '#4C4B4A'
+    handler = '#5D5C5B'
+
     bottom_button = dict(color='lightgray', checked='orange', background='#333231', background_checked='#242220')
-    left_button = dict(color='lightgray', checked='orange', background='#333231', background_checked='#242220', border_checked='orange')
+    left_button = dict(color='lightgray', checked='orange', background='#333231', background_checked='#242220',
+                       border_checked='orange')
     editor_http_file = {
         'tooltip': dict(background='#2D2B29', foreground='lightgray'),
         'selection': dict(background="#323341"),
@@ -134,6 +139,75 @@ class DarkStyle(BaseStyle):
                       chinese=None,
                       output=None,
                       variable='#FFD866'),
+    }
+
+    editor_json = {
+        'selection': dict(background="#323341"),
+        'caret': dict(background='#FFD64C', foreground='#212131'),
+        'margin': dict(background='#2D2B29', foreground='#666666'),
+        'font': {},
+        'paper': dict(background='#1B1A19'),
+        'color': {
+            QsciLexerJSON.Default: "lightgray",  # =
+            QsciLexerJSON.Number: "#0078D7",  # = ...  # type: int
+            QsciLexerJSON.String: "#FFD866",  # = ...  # type: int
+            QsciLexerJSON.UnclosedString: "#FFD866",  # = ...  # type: int
+            QsciLexerJSON.Property: "#7C79FA",  # = ...  # type: int
+            QsciLexerJSON.EscapeSequence: "#57D1EB",  # = ...  # type: int, 转义符
+            QsciLexerJSON.CommentLine: "gray",  # = ...  # type: int
+            QsciLexerJSON.CommentBlock: "gray",  # = ...  # type: int
+            QsciLexerJSON.Operator: "#FD971F",  # = ...  # type: int
+            QsciLexerJSON.IRI: "#FFD866",  # = ...  # type: int
+            QsciLexerJSON.IRICompact: "#FFD866",  # = ...  # type: int
+            QsciLexerJSON.Keyword: "#7C79FA",  # = ...  # type: int
+            QsciLexerJSON.KeywordLD: "#7C79FA",  # = ...  # type: int
+            QsciLexerJSON.Error: "red",  # = ...  # type: int
+            32: 'lightgray'  # 折叠线
+        }
+    }
+
+    editor_python = {
+        'selection': dict(background="#323341"),
+        'caret': dict(background='#FFD64C', foreground='#212131'),
+        'margin': dict(background='#2D2B29', foreground='#666666'),
+        'font': {},
+        'paper': dict(background='#1B1A19'),
+        'color': {
+            QsciLexerPython.Default: '#F8F5ED',  # = ...  # type: int
+            QsciLexerPython.Comment: 'lightgray',  # = ...  # type: int
+            QsciLexerPython.Number: '#0078D7',  # = ...  # type: int
+            QsciLexerPython.DoubleQuotedString: '#FFD866',  # = ...  # type: int
+            QsciLexerPython.SingleQuotedString: '#FFD866',  # = ...  # type: int
+            QsciLexerPython.Keyword: '#EE7762',  # = ...  # type: int
+            QsciLexerPython.TripleSingleQuotedString: '#FFD866',  # = ...  # type: int
+            QsciLexerPython.TripleDoubleQuotedString: '#FFD866',  # = ...  # type: int
+            QsciLexerPython.ClassName: '#70D7FF',  # = ...  # type: int
+            QsciLexerPython.FunctionMethodName: '#91CA1D',  # = ...  # type: int
+            QsciLexerPython.Operator: '#A97CF8',  # = ...  # type: int
+            QsciLexerPython.Identifier: '#F8F5ED',  # = ...  # type: int
+            QsciLexerPython.CommentBlock: 'lightgray',  # = ...  # type: int
+            QsciLexerPython.UnclosedString: '#FFD866',  # = ...  # type: int
+            QsciLexerPython.HighlightedIdentifier: '',  # = ...  # type: int
+            QsciLexerPython.Decorator: '#FD971F',  # = ...  # type: int
+            QsciLexerPython.DoubleQuotedFString: '#FFD866',  # = ...  # type: int
+            QsciLexerPython.SingleQuotedFString: '#FFD866',  # = ...  # type: int
+            QsciLexerPython.TripleSingleQuotedFString: '#FFD866',  # = ...  # type: int
+            QsciLexerPython.TripleDoubleQuotedFString: '#FFD866',  # = ...  # type: int
+            32: 'lightgray'  # 折叠线
+        }
+    }
+
+    editor_html = {
+        'font': {},
+        'paper': dict(background='#1B1A19'),
+        'color': dict(
+            http='#00A4EF',
+            info_http='#FF6077',
+            info_time='#B4DA82',
+            info_status='red',
+            fold_info='orange',
+            normal='lightgray',
+        )
     }
 
     editor_web_console = {
