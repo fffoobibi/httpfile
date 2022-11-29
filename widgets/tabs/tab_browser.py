@@ -42,7 +42,7 @@ class WebEngineView(QWidget):
         self.progress.setValue(0)
 
 
-@register(file_types=['html'])
+@register(file_types=['xxhtml'])
 class WebEngineWidget(TabCodeWidget):
     support_code = False
     file_loaded = pyqtSignal()

@@ -20,8 +20,7 @@ from . import register, TabCodeWidget
 from ..signals import signal_manager
 from ..styles import current_styles
 
-# import jmespath
-# jmespath.parser.Parser
+
 class FileTracerMixIn(object):
     def init_file_tracer(self):
         self.__hasChangeMarkers = False
@@ -137,16 +136,17 @@ class StyledPythonLexer(QsciLexerPython):
         return QColor(current_styles.editor_python['paper']['background'])
 
     def defaultColor(self, style):
-        print('sss ', current_styles.editor_python.get('color'))
         color = current_styles.get_editor_color(current_styles.editor_python.get('color'), style)
         if color:
             return QColor(color)
         return QColor('')
 
-    # def defaultFont(self, style):
-    #     if style in [QsciLexerPython.CommentBlock, QsciLexerPython.Comment]:
-    #         return QFont('微软雅黑', 10)
-    #     return super().defaultFont(style)
+    def defaultFont(self, p_int):
+        font: QFont = super().defaultFont(p_int)
+        font_family = current_styles.editor_python.get('font', {}).get('default', None)
+        if font_family is not None:
+            font.setFamily(font_family)
+        return font
 
 
 @register(file_types=['py', 'pyw'])
@@ -159,6 +159,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     after_saved = pyqtSignal()
 
     def render_custom_style(self):
+        super().render_custom_style()
         handler = current_styles.handler
         StylesHelper.set_v_history_style_dynamic(self.code, color=handler, background='transparent', width=10)
         StylesHelper.set_h_history_style_dynamic(self.code, color=handler, background='transparent', height=10)

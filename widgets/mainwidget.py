@@ -1,15 +1,16 @@
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 from PyQt5.QtCore import QPoint, QSize
-from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtGui import QIcon, QFont, QFontDatabase
 from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget, qApp
 from jedi.api.environment import SameEnvironment
 from pydantic import BaseModel, Field
 
 from pyqt5utils.components import Message
 from ui.main2ui import Ui_MainWindow
+from widgets.fonts import DirFontLoader
 from widgets.base import PluginBaseMixIn
 from widgets.collect import collect_plugins, Collections
 from widgets.components import FileSystemModel
@@ -22,11 +23,13 @@ from widgets.utils import ConfigProvider, ConfigKey, IconProvider
 class AppRunTime(BaseModel):
     current: Path = Field(None, description='当前工作目录')
     read_only: bool = Field(False, description='阅读模式')
+    font_src: List[int] = Field(default_factory=list)
 
 
 class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
     model: FileSystemModel = None
     plugins: Collections  # type hint
+    fdb: QFontDatabase  # type hint
     single_step = ConfigProvider.default(ConfigKey.general, 'single_step')
     app_name = 'FEditor'
 
@@ -41,6 +44,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         self.load_right()
         self.load_bottom()
         self.load_status()
+        self.load_fonts()
         self.init_signal_manager()
 
     def render_style_sheet(self):
@@ -71,6 +75,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         for clz in cl:
             widget = clz()
             self.statusbar.addPermanentWidget(widget)
+
+    def load_fonts(self):
+        self.fdb = QFontDatabase()
+        fts = DirFontLoader.load(self.fdb, './')
+        self.r_run_time.font_src.extend(fts)
+        print(self.r_run_time.font_src)
 
     def after_init(self):
         self.set_provider('main_app', self)
@@ -162,25 +172,21 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
         def _splitter_moved(pos, handle_index):
             if handle_index == 1:
-                # print('moved ----', pos)
                 current = self.splitter.widget(0).currentWidget()
-                self.settings.setValue(conf_key, self.splitter.sizes())
                 if not current.isVisible():
                     current.show()
 
         def switch_to(target: QWidget, index):
             if target.isVisible():
+                self.settings.setValue(conf_key, self.splitter.sizes())
                 target.hide()
-                restore_position = self.settings.value(conf_key) or [0, 1000]
-                # self.splitter.setSizes([0, restore_position])
                 self.splitter.setSizes([0, 1000])
             else:
                 target.show()
                 sizes = self.splitter.sizes()
                 if sizes[0] <= 0:
-                    # restore_position = self.settings.value(conf_key) or 1000
-                    sizes = [200, 1000]
-                sizes = self.settings.value(conf_key) or [200, 1000]
+                    # sizes = [200, 1000]
+                    sizes = self.settings.value(conf_key) or [200, 1000]
                 self.splitter.setSizes(sizes)
             self.stackedWidget.setCurrentWidget(target)
 

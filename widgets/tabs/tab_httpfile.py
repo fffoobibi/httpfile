@@ -215,6 +215,8 @@ class HTTPFileCodeWidget(TabCodeWidget):
         self.render_custom_style()
 
     def render_custom_style(self):
+        self.code.setIndentationGuidesForegroundColor(QColor(current_styles.guides_foreground)) if current_styles.guides_background else None
+        self.code.setIndentationGuidesBackgroundColor(QColor(current_styles.guides_background)) if current_styles.guides_background else None
         handler = current_styles.handler
         StylesHelper.set_v_history_style_dynamic(self.code, color=handler, background='transparent', width=10)
         StylesHelper.set_h_history_style_dynamic(self.code, color=handler, background='transparent', height=10)

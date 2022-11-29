@@ -1,6 +1,8 @@
 from . import register, BaseStyle
 from PyQt5.Qsci import QsciLexerJSON
 from PyQt5.Qsci import QsciLexerPython
+from PyQt5.Qsci import QsciLexerSQL
+from PyQt5.Qsci import QsciLexerBatch, QsciLexerBash
 
 
 @register('dark', index=0)
@@ -92,8 +94,11 @@ class DarkStyle(BaseStyle):
     foreground = 'lightgray'
     background_darker = '#333231'
     background_lighter = '#434241'
-    # handler = '#4C4B4A'
     handler = '#5D5C5B'
+    hover = 'red'
+
+    guides_background = '#333231'
+    guides_foreground = '#333231'
 
     bottom_button = dict(color='lightgray', checked='orange', background='#333231', background_checked='#242220')
     left_button = dict(color='lightgray', checked='orange', background='#333231', background_checked='#242220',
@@ -159,10 +164,60 @@ class DarkStyle(BaseStyle):
             QsciLexerJSON.Operator: "#FD971F",  # = ...  # type: int
             QsciLexerJSON.IRI: "#FFD866",  # = ...  # type: int
             QsciLexerJSON.IRICompact: "#FFD866",  # = ...  # type: int
-            QsciLexerJSON.Keyword: "#7C79FA",  # = ...  # type: int
+            QsciLexerJSON.Keyword: "#00D3E9",  # = ...  # type: int
             QsciLexerJSON.KeywordLD: "#7C79FA",  # = ...  # type: int
             QsciLexerJSON.Error: "red",  # = ...  # type: int
             32: 'lightgray'  # 折叠线
+        }
+    }
+
+    editor_sql = {
+        'selection': dict(background="#323341"),
+        'caret': dict(background='#FFD64C', foreground='#212131'),
+        'margin': dict(background='#2D2B29', foreground='#666666'),
+        'font': dict(default='Microsoft YaHei UI'),
+        'paper': dict(background='#1B1A19'),
+        'color': {
+            QsciLexerSQL.Comment: 'lightgray',  # = 1
+            QsciLexerSQL.CommentDoc: 'lightgray',  # = 3
+            QsciLexerSQL.CommentDocKeyword: 'lightgray',  # = 17
+            QsciLexerSQL.CommentDocKeywordError: 'red',  # = 18
+            QsciLexerSQL.CommentLine: 'lightgray',  # = 2
+            QsciLexerSQL.CommentLineHash: 'lightgray',  # = 15
+            QsciLexerSQL.Default: 'white',  # = 0
+            QsciLexerSQL.DoubleQuotedString: '#FFD866',  # = 6
+            QsciLexerSQL.Identifier: '#7976F9',  # = 11 紫色
+            QsciLexerSQL.Keyword: '#EA5831',  # = 5
+            QsciLexerSQL.KeywordSet5: '',  # = 19
+            QsciLexerSQL.KeywordSet6: '',  # = 20
+            QsciLexerSQL.KeywordSet7: '',  # = 21
+            QsciLexerSQL.KeywordSet8: '',  # = 22
+            QsciLexerSQL.Number: '#0B74BC',  # = 4
+            QsciLexerSQL.Operator: '#4DC4FF',  # = 10 括号
+            QsciLexerSQL.PlusComment: '',  # = 13
+            QsciLexerSQL.PlusKeyword: '',  # = 8
+            QsciLexerSQL.PlusPrompt: '',  # = 9
+            QsciLexerSQL.QuotedIdentifier: 'red',  # = 23
+            QsciLexerSQL.QuotedOperator: 'red',  # = 24
+            QsciLexerSQL.SingleQuotedString: '#FFD866',  # = 7 注释,字符串
+        }
+    }
+
+    editor_batch = {
+        'selection': dict(background="#323341"),
+        'caret': dict(background='#FFD64C', foreground='#212131'),
+        'margin': dict(background='#2D2B29', foreground='#666666'),
+        'font': dict(default='Microsoft YaHei UI'),
+        'paper': dict(background='#1B1A19'),
+        'color': {
+            QsciLexerBatch.Comment: "lightgray",  # = 1
+            QsciLexerBatch.Default: "#56B622",  # = 0
+            QsciLexerBatch.ExternalCommand: "red",  # = 5
+            QsciLexerBatch.HideCommandChar: "#56B622",  # = 4
+            QsciLexerBatch.Keyword: "#EA5831",  # = 2
+            QsciLexerBatch.Label: "#56B622",  # = 3
+            QsciLexerBatch.Operator: "#4DC4FF",  # = 7
+            QsciLexerBatch.Variable: "#FFD866",  # = 6
         }
     }
 
@@ -170,7 +225,7 @@ class DarkStyle(BaseStyle):
         'selection': dict(background="#323341"),
         'caret': dict(background='#FFD64C', foreground='#212131'),
         'margin': dict(background='#2D2B29', foreground='#666666'),
-        'font': {},
+        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono Medium'),
         'paper': dict(background='#1B1A19'),
         'color': {
             QsciLexerPython.Default: '#F8F5ED',  # = ...  # type: int

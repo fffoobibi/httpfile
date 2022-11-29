@@ -96,19 +96,24 @@ class BaseStyle(object):
 
     menu: str = None
     tooltip: str = None
-    tab: str = None
-    run_tab: str = None
-    splitter: str = None
+    tab: str = None  # tab
+    run_tab: str = None  # run_tab
+    splitter: str = None  # splitter qss
 
-    border: str = None
+    border: str = None  # 边框色
     border_lighter: str = None
 
     background_darker: str = None
     background_lighter: str = None
+
     foreground: str = None
+    hover: str = None
 
     handler: str = None
-    progress : str=None
+    progress: str = None
+
+    guides_foreground: str = None  # 代码折叠线前台
+    guides_background: str = None  # 代码折叠线前台
 
     bottom_button: dict = None  # 底部按钮
     left_button: dict = None  # 左侧按钮
@@ -118,6 +123,9 @@ class BaseStyle(object):
     editor_python: dict = None
     editor_javascript: dict = None
     editor_http_file: dict = None
+    editor_sql: dict = None
+    editor_batch: dict = None
+    editor_bash: dict = None
 
     editor_web_console: dict = None
     editor_run_console: dict = None

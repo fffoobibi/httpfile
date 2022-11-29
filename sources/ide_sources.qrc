@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="icon">
+    <file>browser.svg</file>
     <file>新建文件.svg</file>
     <file>新建文件夹.svg</file>
     <file>关闭-tab.svg</file>

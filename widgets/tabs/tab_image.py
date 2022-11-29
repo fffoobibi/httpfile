@@ -1,10 +1,8 @@
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
-from PyQt5.Qsci import QsciLexerXML
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QPixmap, QPainter, QCursor
-from PyQt5.QtSvg import QSvgRenderer
+from PyQt5.QtGui import QPixmap, QCursor
 from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy
 
 from . import register, TabCodeWidget

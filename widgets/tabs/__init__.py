@@ -1,12 +1,13 @@
 from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
+from types import MethodType
 from typing import List
 
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QFont, QFontMetrics, QIcon, QColor
-from PyQt5.QtWidgets import (QAction, QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QSpacerItem,
-                             QSizePolicy, QFrame, QVBoxLayout, QSplitter, QLabel)
+from PyQt5.QtGui import QFont, QFontMetrics, QIcon, QColor, QKeyEvent
+from PyQt5.QtWidgets import (QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QSpacerItem,
+                             QSizePolicy, QFrame, QVBoxLayout, QSplitter, QLabel, QShortcut)
 from cached_property import cached_property
 from zope.interface import implementer
 
@@ -19,6 +20,7 @@ from .helpers import _Queue, _make_child
 __all__ = ('register', 'TabCodeWidget')
 
 from ..factorys import add_styled
+from ..styles import current_styles
 
 tab_codes = {}
 
@@ -82,11 +84,10 @@ class TabCodeWidget(QWidget):
     def when_app_start_up(self, main_app):
         pass
 
-    # @classmethod
-    def make_qsci_widget(self, render_custom_style=None):
+    def make_qsci_widget(self, render_custom_style=None, simple_search=False, multi_line=True):
         code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
                            self.custom_menu_support, self.custom_menu_policy, self.set_apis,
-                           find_self=True, render_style=render_custom_style, multi_line=True)()
+                           find_self=True, render_style=render_custom_style, multi_line=multi_line, simple_search=simple_search)()
         add_styled(code, 'code_widget')
         return code
 
@@ -130,11 +131,12 @@ class TabCodeWidget(QWidget):
             self.code.setReadOnly(v)
 
     def render_custom_style(self):
-        pass
+        if self.support_code:
+            self.code.setIndentationGuidesForegroundColor(QColor(current_styles.guides_foreground)) if current_styles.guides_background else None
+            self.code.setIndentationGuidesBackgroundColor(QColor(current_styles.guides_background)) if current_styles.guides_background else None
 
-    def __init__(self, support_code=True):
+    def __init__(self):
         super(TabCodeWidget, self).__init__()
-        self.support_code = support_code
         self.__main_lay = QHBoxLayout(self)
         self.__main_lay.setContentsMargins(0, 0, 0, 0)
         self.__main_lay.setSpacing(1)
@@ -149,43 +151,31 @@ class TabCodeWidget(QWidget):
         if self.support_code:
             self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
                                     self.custom_menu_support, self.custom_menu_policy, self.set_apis)()
-            # add_styled(self, 'code_widget')
             self._is_remote = False
             self._update_time = None
             self._file_loaded = False
             self.__search = False
             self.__search_count = 0
             self.__search_results = _Queue()
-            self.__search_action = QAction()
-            self.__search_action.setShortcut('ctrl+f')
-            self.__search_action.triggered.connect(self.__search_action_slot)
+
+            self.__search_action = QShortcut('ctrl+f', self.code, member=self.__search_action_slot, context=Qt.WidgetShortcut)
+
             self.__search_widget, self.__search_line, self.__search_display = self.__create_search_widget()
             self.__search_widget.hide()
 
-            self.__save_action = QAction()
-            self.__save_action.setShortcut('ctrl+s')
-            self.__save_action.triggered.connect(self.__save_slot)
-
-            self.__cut_action = QAction()
-            self.__cut_action.setShortcut('ctrl+x')
-            self.__cut_action.triggered.connect(self.__cut_slot)
-
-            self.__copy_action = QAction()
-            self.__copy_action.setShortcut('ctrl+c')
-            self.__copy_action.triggered.connect(self.__copy_slot)
+            self.__save_action = QShortcut('ctrl+s', self.code, member=self.__save_slot, context=Qt.WidgetShortcut)
+            self.__cut_action = QShortcut('ctrl+x', self.code, member=self.__cut_slot, context=Qt.WidgetShortcut)
+            self.__copy_action = QShortcut('ctrl+c', self.code, member=self.__copy_slot, context=Qt.WidgetShortcut)
 
             self.lay.addWidget(self.__search_widget)
             for w in self.set_code_widgets():
                 self.lay.addWidget(w)
             self.lay.addWidget(self.code)
 
-            self.addAction(self.__search_action)
-            self.addAction(self.__save_action)
-            self.addAction(self.__cut_action)
-
             self.code.cursor_signal.connect(self.__update_line_col)
             self.code.SCN_MODIFIED.connect(self.when_modify)
             self.code.SCN_MODIFYATTEMPTRO.connect(self.__show_information)
+            self.code.setCornerWidget(QLabel())
             self.splitter.addWidget(self.__code_container)
 
         self.__main_lay.addWidget(self.splitter)
@@ -364,13 +354,30 @@ class TabCodeWidget(QWidget):
                     search_line.setFocus(True)
                     search_line.deselect()
 
+            def _keyPressEvent(this, event: QKeyEvent):
+                if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_F:
+                    w.hide()
+                    self.code.setFocus()
+                elif event.key() == Qt.Key_Escape:
+                    w.hide()
+                    self.code.setFocus()
+                else:
+                    this.__class__.keyPressEvent(this, event)
+
+            def _render_custom_style(this):
+                this.setStyleSheet('#CodeSearch{background: %s;border:1px solid %s}'
+                                   'QLineEdit{border:none;background:%s;color:%s;padding:2px 0px}'
+                                   'QPushButton{background:transparent;padding:0px}'
+                                   'QPushButton:hover{background: lightgray;border:none}' % (current_styles.background_darker, current_styles.border,
+                                                                                             current_styles.background_lighter, current_styles.foreground
+                                                                                             ))
+
             base_font = QFont('微软雅黑', 9)
             w = QWidget(self)
             w.setObjectName('CodeSearch')
-            w.setStyleSheet('#CodeSearch{background: white;border:1px solid lightgray}'
-                            'QLineEdit{border:none}'
-                            'QPushButton{background:transparent}'
-                            'QPushButton:hover{background: lightgray;border:none}')
+            w.render_custom_style = MethodType(_render_custom_style, w)
+            add_styled(w, 'custom-style')
+
             lay = QHBoxLayout(w)
             lay.setContentsMargins(2, 0, 2, 0)
 
@@ -381,6 +388,7 @@ class TabCodeWidget(QWidget):
             search_line.returnPressed.connect(_next)
             search_line.setFocusPolicy(Qt.ClickFocus)
             search_line.setMinimumWidth(search_line.fontMetrics().width('a' * 30))
+            search_line.keyPressEvent = MethodType(_keyPressEvent, search_line)
 
             lay.addWidget(search_line)
             groups = QButtonGroup()

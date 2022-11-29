@@ -1,23 +1,18 @@
 import json
 import re
-from types import MethodType
 from typing import List
 
 import jmespath
-from PyQt5.Qsci import QsciLexerJSON, QsciScintilla
+from PyQt5.Qsci import QsciLexerJSON
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSplitter, QLineEdit, QTextEdit, QHBoxLayout, QPushButton, \
+from PyQt5.QtGui import QColor, QIcon
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSplitter, QTextEdit, QHBoxLayout, QPushButton, \
     QSpacerItem, QSizePolicy
-
-# from PyQt5 import QsciScintilla
 from cached_property import cached_property
-from jmespath.visitor import TreeInterpreter, GraphvizVisitor
 
 from pyqt5utils.components.styles import StylesHelper
 from . import register, TabCodeWidget
 from ..factorys import add_styled
-
 from ..styles import current_styles
 
 
@@ -32,14 +27,15 @@ class StyledJsonLexer(QsciLexerJSON):
             return QColor(color)
         return QColor('')
 
-# class Vistor(    interpreter = visitor.TreeInterpreter(options)
-#         result = interpreter.visit(self.parsed, value))
 
 @register(file_types=['json', 'ipynb'])
 class JsonCodeWidget(TabCodeWidget):
     file_type = 'json'
 
     def render_custom_style(self):
+        self.code.setIndentationGuidesForegroundColor(QColor(current_styles.guides_foreground)) if current_styles.guides_background else None
+        self.code.setIndentationGuidesBackgroundColor(QColor(current_styles.guides_background)) if current_styles.guides_background else None
+
         handler = current_styles.handler
         StylesHelper.set_v_history_style_dynamic(self.code, color=handler, background='transparent', width=10)
         StylesHelper.set_h_history_style_dynamic(self.code, color=handler, background='transparent', height=10)
@@ -71,12 +67,7 @@ class JsonCodeWidget(TabCodeWidget):
     def after_init(self):
         def clicked():
             print(self.code.currentPosition())
-            # print(self.parser)
             posi = self.code.currentPosition()
-            # vistor = GraphvizVisitor()
-            # vistor = TreeInterpreter()
-            jmespath.search
-
             for index, ast_value in enumerate(self.parser, 0):
                 # print(ast_value)
                 if ast_value['start'] <= posi <= ast_value['end']:
@@ -91,7 +82,7 @@ class JsonCodeWidget(TabCodeWidget):
                     ))
                     break
 
-        self.code.click_signal.connect(clicked)
+        # self.code.click_signal.connect(clicked)
 
     @cached_property
     def parser(self):
@@ -109,8 +100,7 @@ class JsonCodeWidget(TabCodeWidget):
             return 300
 
     def set_splitter_widgets(self) -> List[QWidget]:
-        # self.result_widget = JsonCodeWidget(support_code=False)
-        return [self._create_jmes_path_pannel()]
+        return [self._create_jmes_path_panel()]
 
     def _jmes_path_search(self):
         def _search():
@@ -129,14 +119,25 @@ class JsonCodeWidget(TabCodeWidget):
         worker = self.code.get_or_create_worker('jmes-search')
         worker.add_task(_search, call_back=call_back, err_back=err_back)
 
-    def _create_jmes_path_pannel(self):
+    def _create_jmes_path_panel(self):
+        def _sub_func(match: re.Match):
+            g3 = match.group(3)
+            if g3 == '':
+                return f'[{match.group(2)}]'
+            else:
+                return f'[{match.group(2)}].'
+
         def _convert():
             text = self.expression_line.toPlainText().strip()
             if text.startswith('/'):
                 text = text.replace('/', '', 1)
             text = text.replace('/', '.')
-            res = re.sub(r'(\.)(\d+)(\.)', lambda m: f'[{m.group(2)}].', text)
+            res = re.sub(r'(\.)(\d+)(\.?)', _sub_func, text)
+
             self.expression_line.setText(res)
+
+        def _hide():
+            self.splitter.setSizes([1000, 0])
 
         widget = QWidget()
         v = QVBoxLayout(widget)
@@ -144,15 +145,21 @@ class JsonCodeWidget(TabCodeWidget):
 
         top_w = QWidget()
         top_lay = QHBoxLayout(top_w)
-        top_lay.setContentsMargins(0, 0, 0, 0)
+        top_lay.setContentsMargins(0, 0, 2, 0)
 
         self.clear_btn = QPushButton('清除', clicked=lambda: self.expression_line.clear())
         self.convert_btn = QPushButton('转换JSON指针', clicked=_convert)
+        self.hide_btn = QPushButton(QIcon(':/icon/减号.svg'), '', clicked=_hide)
+        self.hide_btn.setToolTip('隐藏')
+        # self.hide_btn.setIconSize(QSize(10, 10))
+
         add_styled(self.clear_btn, 'bottom-button')
         add_styled(self.convert_btn, 'bottom-button')
+        add_styled(self.hide_btn, 'border-button')
         top_lay.addWidget(self.clear_btn)
         top_lay.addWidget(self.convert_btn)
         top_lay.addSpacerItem(QSpacerItem(20, 20, hPolicy=QSizePolicy.Expanding))
+        top_lay.addWidget(self.hide_btn)
         v.addWidget(top_w)
 
         lay = QSplitter(Qt.Vertical)
@@ -161,9 +168,9 @@ class JsonCodeWidget(TabCodeWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         line = QTextEdit()
         line.textChanged.connect(self._jmes_path_search)
-        line.setPlaceholderText('jmespath 表达式')
+        line.setPlaceholderText('JmesPath 表达式')
         lay.addWidget(line)
-        output = self.make_qsci_widget(self.render_custom_style)
+        output = self.make_qsci_widget(self.render_custom_style, simple_search=True)
         lay.addWidget(output)
         lay.setSizes([300, 600])
 
@@ -171,8 +178,3 @@ class JsonCodeWidget(TabCodeWidget):
         self.jmespath_json = output
 
         return widget
-
-
-import jmespath
-
-jmespath.parser

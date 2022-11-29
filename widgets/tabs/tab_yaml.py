@@ -5,7 +5,7 @@ from PyQt5.Qsci import QsciLexerYAML
 from . import register, TabCodeWidget
 
 
-@register(file_types=['yaml'])
+@register(file_types=['yaml', 'yml'])
 class YamlCodeWidget(TabCodeWidget):
     file_type = 'yaml'
 

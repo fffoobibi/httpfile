@@ -29,6 +29,9 @@ def _styled_policy(t, policy, *a):
             t.render_custom_style()
         else:
             t.setStyleSheet(current_styles.run_tab)
+    elif policy == 'custom-style':
+        if hasattr(t, 'render_custom_style'):
+            t.render_custom_style()
     elif policy == 'background-darker':  # widget background
         if hasattr(t, 'render_custom_style'):
             t.render_custom_style()
@@ -44,9 +47,19 @@ def _styled_policy(t, policy, *a):
         palette.setColor(QPalette.Background, QColor(current_styles.background_lighter))
     elif policy == 'status-bar':
         t.setStyleSheet('''
-            QStatusBar::item {border: 0px;}
-            QStatusBar{background: %s;}
-        ''' % current_styles.background_lighter)
+            QStatusBar::item{border:0px; padding:0px; margin:0px}
+            QStatusBar{background: %s; color: %s}
+        ''' % (current_styles.background_lighter, current_styles.foreground))
+    elif policy == 'border-button':
+        border = current_styles.border
+        background = current_styles.background_darker
+        foreground = current_styles.foreground
+        hover = current_styles.background_lighter
+        t.setStyleSheet('QPushButton{background: %s;font-family:微软雅黑; color:%s}'
+                        'QPushButton:hover{background: %s;border:1px solid %s; border-radius:4px;padding:0px;}'
+                        'QPushButton:checked{background: %s}' % (
+                            'transparent', foreground, hover, border, background
+                        ))
     elif policy in ['bottom-button', 'status-button']:  # bottom buttons, status buttons
         color = current_styles.bottom_button.get('color')
         background = current_styles.bottom_button.get('background')
