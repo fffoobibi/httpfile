@@ -19,12 +19,14 @@ from widgets.components import (VirtualFileSystemTreeView, DirFlag, RootUriFlag,
 from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
 from . import register
+from ..factorys import styled_factory
+from ..styles import current_styles
 
 WorkPathFlag = Qt.UserRole + 10
 
 
 @register('远程连接', index=1, icon=':/icon/远程管理.svg')
-class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn):
+class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn, styled_factory('custom-style')):
     default_work_path: str = ConfigProvider.default(ConfigKey.left_control_virtualtree, 'work_path')
     single_step = ConfigProvider.default(ConfigKey.general, 'single_step')
 
@@ -50,15 +52,26 @@ class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn):
                     painter.drawText(QRectF(rect.width() - fm_width, rect.y(), fm_width, rect.height()), text,
                                      QTextOption())
 
+    def render_custom_style(self):
+        bk = current_styles.background_lighter
+        dk = current_styles.background_darker
+        border = current_styles.border
+        fr = current_styles.foreground
+        handler = current_styles.handler
+        self.setStyleSheet('QTreeView{background: %s; color: %s; border:1px solid %s}' % (
+            bk, fr, border
+        ))
+        self.header_widget().setStyleSheet('#HeaderFrame{background: %s;color:%s}' % (
+            dk, fr
+        ))
+        StylesHelper.set_v_history_style_dynamic(self, color=handler, background='transparent', width=10)
+        StylesHelper.set_h_history_style_dynamic(self, color=handler, background='transparent', height=10)
+
     def after_init(self):
         self.init_header_bar()
         self.load_remote_from_local()
-        self.setStyleSheet('QTreeView{border:none}')
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.menu_policy)
-
-        StylesHelper.set_v_history_style_dynamic(self, color='#CFCFCF', background='transparent', width=10)
-        StylesHelper.set_h_history_style_dynamic(self, color='#CFCFCF', background='transparent', height=10)
         self.setVerticalScrollMode(self.ScrollPerPixel)
         self.verticalScrollBar().setSingleStep(self.single_step.value)
         self.setHorizontalScrollMode(self.ScrollPerPixel)

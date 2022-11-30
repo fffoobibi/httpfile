@@ -334,7 +334,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         file_type = path.suffix.replace('.', '', 1) + ' File'
         for i in range(self.tabWidget.count()):
             widget = self.tabWidget.widget(i)
-            if widget.file_path() == file_path:
+            if widget.file_path().replace('\\', '/') == file_path.replace('\\', '/'):
                 self.tabWidget.setCurrentWidget(widget)
                 if line is not None and col is not None:
                     widget.move_to(line, col)

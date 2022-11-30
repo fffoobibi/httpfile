@@ -382,6 +382,7 @@ class VirtualFileSystemTreeView(QTreeView):
                 return btn
 
             frame = QFrame(self)
+            frame.setObjectName('HeaderFrame')
             frame.setFrameStyle(QFrame.NoFrame)
             frame.setStyleSheet('QFrame{background: #F4F4F4}')
             lay = QHBoxLayout(frame)
@@ -462,6 +463,9 @@ class VirtualFileSystemTreeView(QTreeView):
     def setHorizontalHeaderLabels(self, data):
         self.__model.setHorizontalHeaderLabels([''])
         self.__header.header_title.setText(data)
+
+    def header_widget(self):
+        return self.__header.header_widget
 
     def icon_provider(self, file_name: str, is_dir=False):
         file_type = file_name.split('.')[-1]

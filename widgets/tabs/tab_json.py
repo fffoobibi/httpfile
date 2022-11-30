@@ -115,9 +115,11 @@ class JsonCodeWidget(TabCodeWidget):
         def err_back(error):
             self.jmespath_json.clear()
             self.jmespath_json.setText(str(error))
-
-        worker = self.code.get_or_create_worker('jmes-search')
-        worker.add_task(_search, call_back=call_back, err_back=err_back)
+        if self.expression_line.toPlainText().strip():
+            worker = self.code.get_or_create_worker('jmes-search')
+            worker.add_task(_search, call_back=call_back, err_back=err_back)
+        else:
+            self.jmespath_json.clear()
 
     def _create_jmes_path_panel(self):
         def _sub_func(match: re.Match):

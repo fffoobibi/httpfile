@@ -1,17 +1,19 @@
 import difflib
 import keyword
+import re
 import subprocess
 from abc import abstractmethod
 from pathlib import Path
+from types import MethodType
 from typing import Any, List
 
 import jedi
 from PyQt5.Qsci import QsciLexerPython, QsciScintilla
-from PyQt5.QtCore import Qt, QDir, QTimer, pyqtSignal
-from PyQt5.QtGui import QCursor, QKeySequence, QColor, QIcon, QFont
+from PyQt5.QtCore import Qt, QDir, QTimer, pyqtSignal, pyqtSlot
+from PyQt5.QtGui import QCursor, QKeySequence, QColor, QIcon, QFont, QKeyEvent, QMouseEvent
 from PyQt5.QtWidgets import QMenu, QAction, QTextEdit
 from cached_property import cached_property
-from jedi.api.classes import Completion
+from jedi.api.classes import Completion, Name
 from jedi.api.environment import SameEnvironment
 
 from pyqt5utils.components.styles import StylesHelper
@@ -150,6 +152,25 @@ class StyledPythonLexer(QsciLexerPython):
         return font
 
 
+def keyPressEvent(this, a0: QKeyEvent) -> None:
+    this.__class__.keyPressEvent(this, a0)
+    if a0.modifiers() & Qt.AltModifier:
+        this._has_control = True
+
+
+def keyReleaseEvent(this, a0: QKeyEvent) -> None:
+    this.__class__.keyReleaseEvent(this, a0)
+    this._has_control = False
+
+
+def mouseMoveEvent(this, a0: QMouseEvent) -> None:
+    word = this.wordAtPoint(a0.pos())
+    if this._has_control and word:
+        this.viewport().setCursor(Qt.PointingHandCursor)
+    else:
+        this.viewport().setCursor(Qt.IBeamCursor)
+
+
 @register(file_types=['py', 'pyw'])
 class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     file_type = 'python'
@@ -163,7 +184,6 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     # indicators
     jedi_ref_indicator = 10
     jedi_syntax_indicator = 11
-
 
     # save_changed_marker_handler: int  # type hint
     after_saved = pyqtSignal()
@@ -248,6 +268,11 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     def after_init(self):
         self.set_commands()
         self.init_file_tracer()
+        self.code.setMouseTracking(True)
+        self.code._has_control = False
+        self.code.keyPressEvent = MethodType(keyPressEvent, self.code)
+        self.code.keyReleaseEvent = MethodType(keyReleaseEvent, self.code)
+        self.code.mouseMoveEvent = MethodType(mouseMoveEvent, self.code)
         self.after_saved.connect(self.reset_file_tracer)
         self.code.click_signal.connect(self._mouse_click)
         self.define_jedi_indicators()
@@ -361,43 +386,67 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             # # print(len(self._old), len(lines))
             # print(lines)
 
+    @pyqtSlot()
     def _mouse_click(self):
         line, col = self.code.current_line_col
-        print('current: ', line, col)
         word = self.code.wordAtLineIndex(line, col)
-        print('word ', word)
-        self.jedi_references(word)
+        pos = self.code.currentPosition()
+        if self.code._has_control and word:
+            self.jedi_infer(word)
+        else:
+            if word:
+                if not self.code.hasIndicator(self.jedi_ref_indicator, pos):
+                    self.jedi_references(word)
+            else:
+                self.code.clearAllIndicators(self.jedi_ref_indicator)
+
+    @property
+    def has_control_focus(self):
+        return self._has_control
 
     def define_jedi_indicators(self):
-        editor: QsciScintilla
         editor = self.code
-        editor.indicatorDefine(editor.BoxIndicator, self.jedi_ref_indicator)
+        editor: QsciScintilla
+        editor.indicatorDefine(editor.StraightBoxIndicator, self.jedi_ref_indicator)
+        editor.setIndicatorDrawUnder(True, self.jedi_ref_indicator)
+        editor.setIndicatorForegroundColor(Qt.red)
+        editor.setIndicatorOutlineColor(Qt.green)
 
-
-        # editor.markerDefine(editor.MarkerSymbol.FullRectangle, self.add_marker_number)  # add
-        # editor.setMarkerBackgroundColor(QColor('darkgreen'), self.add_marker_number)
-        # editor.setMarkerForegroundColor(QColor('red'), self.add_marker_number)
-        #
-        # editor.markerDefine(editor.MarkerSymbol.ThreeDots, self.deleted_marker_number)  # deleted
-        # editor.setMarkerForegroundColor(QColor('red'), self.deleted_marker_number)
-        #
-        # editor.markerDefine(editor.MarkerSymbol.FullRectangle, self.modify_marker_number)  # modify
-        # editor.setMarkerBackgroundColor(QColor('#F38922'), self.modify_marker_number)  # 橘色
-        #
-        # editor.setMarginLineNumbers(0, True)
-        # editor.setMarginSensitivity(0, True)
-        # editor.setMarginWidth(0, '00')
-        #
-        # editor.setMarginType(self.tracer_margin_type, editor.MarginType.SymbolMargin)
-        # editor.setMarginWidth(self.tracer_margin_type, '0')
-
-    def jedi_infer(self):
+    def jedi_infer(self, word):
         """
         推断
         :return:
         """
-        script = jedi.Script(self.code.text())
-        line, col = self.code.current_line_col
+
+        def _infer():
+            line, col = self.code.current_line_col
+            script = jedi.Script(self.code.text(), path=self.file_path())
+            refs = script.infer(line + 1, col + 1)
+            return refs
+
+        def _goto_file(ref: Name, timer: QTimer):
+            try:
+                signal_manager.emit(signal_manager.openFileAndMoveCursor, ref.module_path,
+                                    ref.line - 1, ref.column - 1
+                                    )
+            finally:
+                self.code._has_control = False
+                timer.stop()
+
+        def _call(ret: List[Name]):
+            self.code.clearAllIndicators(self.jedi_ref_indicator)
+            current_file = (self.file_path() or '').replace('\\', '/')
+            print('infers ', ret)
+            for ref in ret:
+                self._timer = QTimer()
+                self._timer.timeout.connect(lambda: _goto_file(ref, self._timer))
+                self._timer.start(150)
+                break
+
+        def _err(error):
+            print('error --', error)
+
+        self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
 
     def jedi_references(self, word):
         """
@@ -407,17 +456,17 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
 
         def _ref():
             line, col = self.code.current_line_col
-            script = jedi.Script(self.code.text(), path=Path(self.file_path()))
-            refs = script.get_references(line + 1, col + 1)
+            script = jedi.Script(self.code.text(), path=self.file_path())
+            refs = script.get_references(line + 1, col + 1, scope='file')
             return refs
 
-        def _call(ret):
-            print('refs ==>', ret)
+        def _call(ret: List[Name]):
             self.code.clearAllIndicators(self.jedi_ref_indicator)
+            current_file = (self.file_path() or '').replace('\\', '/')
             for ref in ret:
-                pos = self.code.positionFromLineIndex(ref.line-1, ref.column-1)
-                self.code.setIndicatorRange(self.jedi_ref_indicator, pos, len(word)+1)
-                print(ref.line, ref.column)
+                if (ref.module_path or '').replace('\\', '/') == current_file:
+                    pos = self.code.positionFromLineIndex(ref.line - 1, ref.column)
+                    self.code.setIndicatorRange(self.jedi_ref_indicator, pos, len(word))
 
         def _err(error):
             print('error --', error)

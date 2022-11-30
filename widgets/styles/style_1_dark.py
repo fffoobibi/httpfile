@@ -2,7 +2,8 @@ from . import register, BaseStyle
 from PyQt5.Qsci import QsciLexerJSON
 from PyQt5.Qsci import QsciLexerPython
 from PyQt5.Qsci import QsciLexerSQL
-from PyQt5.Qsci import QsciLexerBatch, QsciLexerBash
+from PyQt5.Qsci import QsciLexerBatch, QsciLexerBash, QsciLexerJavaScript
+# from PyQt5 import QsciLexerJavaScript
 
 
 @register('dark', index=0)
@@ -252,6 +253,71 @@ class DarkStyle(BaseStyle):
         }
     }
 
+    editor_javascript = {
+        'selection': dict(background="#323341"),
+        'caret': dict(background='#FFD64C', foreground='#212131'),
+        'margin': dict(background='#2D2B29', foreground='#666666'),
+        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono Medium'),
+        'paper': dict(background='#1B1A19'),
+        'color': {
+            QsciLexerJavaScript.Default: "white",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveDefault: "red",  # = ...  # type: int
+            QsciLexerJavaScript.Comment: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveComment: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.CommentLine: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveCommentLine: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.CommentDoc: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveCommentDoc: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.Number: "#00A4EF",  # = ...  # type: int 蓝色
+            QsciLexerJavaScript.InactiveNumber: "#00A4EF",  # = ...  # type: int
+            QsciLexerJavaScript.Keyword: "#ED6748",  # = ...  # type: int 橘色
+            QsciLexerJavaScript.InactiveKeyword: "#ED6748",  # = ...  # type: int
+            QsciLexerJavaScript.DoubleQuotedString: "#FFC56A",  # = ...  # type: int 浅黄色
+            QsciLexerJavaScript.InactiveDoubleQuotedString: "#FFC56A",  # = ...  # type: int
+            QsciLexerJavaScript.SingleQuotedString: "#FFC56A",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveSingleQuotedString: "#FFC56A",  # = ...  # type: int
+            QsciLexerJavaScript.UUID: "",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveUUID: "red",  # = ...  # type: int
+            QsciLexerJavaScript.PreProcessor: "red",  # = ...  # type: int
+            QsciLexerJavaScript.InactivePreProcessor: "red",  # = ...  # type: int
+            QsciLexerJavaScript.Operator: "#B6B3EB",  # = ...  # type: int 紫色
+            QsciLexerJavaScript.InactiveOperator: "blue",  # = ...  # type: int
+            QsciLexerJavaScript.Identifier: "#92D923",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveIdentifier: "red",  # = ...  # type: int
+            QsciLexerJavaScript.UnclosedString: "",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveUnclosedString: "",  # = ...  # type: int
+            QsciLexerJavaScript.VerbatimString: "",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveVerbatimString: "",  # = ...  # type: int
+            QsciLexerJavaScript.Regex: "#FFC56A",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveRegex: "#FFC56A",  # = ...  # type: int
+            QsciLexerJavaScript.CommentLineDoc: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveCommentLineDoc: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.KeywordSet2: "red",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveKeywordSet2: "red",  # = ...  # type: int
+            QsciLexerJavaScript.CommentDocKeyword: "",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveCommentDocKeyword: "",  # = ...  # type: int
+            QsciLexerJavaScript.CommentDocKeywordError: "",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveCommentDocKeywordError: "",  # = ...  # type: int
+            QsciLexerJavaScript.GlobalClass: "#6FD6F9",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveGlobalClass: "red",  # = ...  # type: int
+            QsciLexerJavaScript.RawString: "#FD971F",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveRawString: "#FD971F",  # = ...  # type: int
+            QsciLexerJavaScript.TripleQuotedVerbatimString: "#FD971F",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveTripleQuotedVerbatimString: "#FD971F",  # = ...  # type: int
+            QsciLexerJavaScript.HashQuotedString: "#FD971F",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveHashQuotedString: "#FD971F",  # = ...  # type: int
+            QsciLexerJavaScript.PreProcessorComment: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.InactivePreProcessorComment: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.PreProcessorCommentLineDoc: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.InactivePreProcessorCommentLineDoc: "lightgray",  # = ...  # type: int
+            QsciLexerJavaScript.UserLiteral: "red",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveUserLiteral: "",  # = ...  # type: int
+            QsciLexerJavaScript.TaskMarker: "",  # = ...  # type: int
+            QsciLexerJavaScript.InactiveTaskMarker: "",  # = ...  # type: int
+            QsciLexerJavaScript.EscapeSequence: "#FFBDCE",  # = ...  # type: int 粉色
+            QsciLexerJavaScript.InactiveEscapeSequence: "#FFBDCE",  # = ...  # type: int
+
+        }}
     editor_html = {
         'font': {},
         'paper': dict(background='#1B1A19'),

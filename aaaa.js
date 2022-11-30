@@ -1,5 +1,12 @@
 const data = '{"Version":"XXX","Statements":[{"aa":"some"},{"b":"ano:,{ther}"},{"bb":3}],"some":0}';
+var a=`sadfas${12132}\n`
+var r = /123232,asdfdsasdf/
+class Perple{
 
+}
+// 13123123
+
+var a = new Perple()
 const getValuesPositionInArray = arrayKey => data => {
   const arrayNameSeparator = `"${arrayKey}":`;
   const targetArrayIndexOf = data.indexOf(arrayNameSeparator) + arrayNameSeparator.length;

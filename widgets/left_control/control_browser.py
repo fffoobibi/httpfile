@@ -1,3 +1,4 @@
+import re
 from types import MethodType
 
 from PyQt5.QtCore import Qt, QUrl
@@ -58,6 +59,10 @@ class WebEngineView(QWidget, PluginBaseMixIn, styled_factory('custom-style')):
         text = self.url_line.text().strip()
         if text:
             try:
+                # re.sub(r'(https://)')
+                if (text.startswith('https://') is False) and (text.startswith('http://') is False):
+                    text = f'http://{text}'
+                    self.url_line.setText(text)
                 self.browser.load(QUrl(text))
             except:
                 pass
