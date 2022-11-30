@@ -29,43 +29,49 @@ def _hook_qt_widget(target: Type[QWidget]):
     return wrapper
 
 
+ColorTypes = Union[str, QColor, Qt.GlobalColor]
+
+
 def color_widget(title='',
-                 bar_color=QColor('#426BDD'),
-                 border_color=Qt.gray,
-                 text_color=Qt.white,
-                 auto_resize=False,
-                 nestle_enable=False,
+                 bar_color: ColorTypes = QColor('#426BDD'),
+                 border_color: ColorTypes = Qt.gray,
+                 text_color: ColorTypes = Qt.white,
+                 auto_resize: bool = False,
+                 nestle_enable: bool = False,
                  icon: str = None,
                  icon_size: int = 16,
-                 button_text_color=Qt.white,
-                 button_hover_color=QColor(109, 139, 222),
+                 button_text_color: ColorTypes = Qt.white,
+                 button_hover_color: ColorTypes = QColor(109, 139, 222),
                  button_hide_policy: set = None,
-                 back_ground_color: Union[str, QColor] = None,
-                 bar_height: int = None):
+                 back_ground_color: ColorTypes = None,
+                 bar_height: int = None,
+                 set_bkg: bool = True):
     def wrapper_init(func):
         @wraps(func)
         def inner(self, *args, **kwargs):
+            temp = TitleWidget(title,
+                               widget=None,
+                               bar_height=bar_height,
+                               back_ground_color=back_ground_color,
+                               bar_color=bar_color,
+                               border_color=border_color,
+                               text_color=text_color,
+                               auto_resize=auto_resize,
+                               nestle_enable=nestle_enable,
+                               icon=icon,
+                               icon_size=icon_size,
+                               button_text_color=button_text_color,
+                               button_hover_color=button_hover_color,
+                               button_hide_policy=button_hide_policy,
+                               )
             func(self, *args, **kwargs)
-            TitleWidget(title,
-                        widget=self,
-                        bar_height=bar_height,
-                        back_ground_color=back_ground_color,
-                        bar_color=bar_color,
-                        border_color=border_color,
-                        text_color=text_color,
-                        auto_resize=auto_resize,
-                        nestle_enable=nestle_enable,
-                        icon=icon,
-                        icon_size=icon_size,
-                        button_text_color=button_text_color,
-                        button_hover_color=button_hover_color,
-                        button_hide_policy=button_hide_policy,
-                        )
+            temp.set_content_Widget(self, set_bkg)
             self.setWindowTitle(title or self.windowTitle())
-            self.setAutoFillBackground(True)
-            pale = self.palette()
-            pale.setColor(QPalette.Window, Qt.transparent)
-            self.setPalette(pale)
+            # self.setWindowIcon(QIcon(icon or self.windowIcon()))
+            # self.setAutoFillBackground(True)
+            # pale = self.palette()
+            # pale.setColor(QPalette.Window, Qt.transparent)
+            # self.setPalette(pale)
 
         return inner
 

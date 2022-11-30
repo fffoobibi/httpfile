@@ -278,16 +278,17 @@ class _FramelessWindow(QWidget):
         """设置图标的大小"""
         self.titleBar.setIconSize(size)
 
-    def setWidget(self, widget):
+    def setWidget(self, widget, set_bkg: bool = True):
         """设置自己的控件"""
         if hasattr(self, '_widget'):
             return
         self._widget = widget
         # 设置默认背景颜色,否则由于受到父窗口的影响导致透明
-        self._widget.setAutoFillBackground(True)
-        palette = self._widget.palette()
-        palette.setColor(palette.Window, QColor(240, 240, 240))
-        self._widget.setPalette(palette)
+        if set_bkg:
+            self._widget.setAutoFillBackground(True)
+            palette = self._widget.palette()
+            palette.setColor(palette.Window, QColor(240, 240, 240))
+            self._widget.setPalette(palette)
         self._widget.installEventFilter(self)
         self.layout().addWidget(self._widget)
 
@@ -326,7 +327,7 @@ class _FramelessWindow(QWidget):
             # painter.setPen(self.border_color)
             painter.fillRect(QRect(0, 0, self.width(), height), bar)
 
-            painter.setPen(QPen(self.border_color, 1))
+            painter.setPen(QPen(QColor(self.border_color), 1))
             painter.drawRect(QRect(0, height, self.width() -
                                    1, self.height() - height - 1))
             # 绘制边框
@@ -334,7 +335,7 @@ class _FramelessWindow(QWidget):
             painter.drawLine(0, height, self.width(), height)
 
         else:
-            painter.setPen(self.border_color)
+            painter.setPen(QColor(self.border_color))
             painter.drawRect(0, 0, self.width() - 1, self.height() - 1)
 
     def mousePressEvent(self, event):
@@ -589,9 +590,9 @@ class TitleWidget(_FramelessWindow):
     def hide_title_bar(self):
         self.titleBar.hide()
 
-    def set_content_Widget(self, target: QWidget):
+    def set_content_Widget(self, target: QWidget, set_bkg=True):
         target.root = self
-        self.setWidget(target)
+        self.setWidget(target, set_bkg)
         self.override_widget()
 
     def setTextColor(self, color):

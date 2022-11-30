@@ -1,10 +1,9 @@
 import warnings
 import weakref
-
 from contextlib import suppress
 from typing import List, Type, Optional
 
-from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtGui import QFont
 from lazy_object_proxy import Proxy
 
 from widgets.base import get_app_settings

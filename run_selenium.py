@@ -7,35 +7,45 @@
 #导包
 import time
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 
 
-wd = webdriver.Chrome(service=Service(r'\Users\admin\Desktop\chromedrivers\chromedriver.exe'))
+try:
+    op = Options()
+    op.add_argument('--proxy-server=http://%s' %
+                    '54.177.104.82:20000'
+                    # '35.87.179.92:20033'
+                    )
 
-wd.get('https://www.vip-cdkeysales.com/signin')
+    wd = webdriver.Chrome(executable_path=r"C:\Users\admin\Desktop\chromedrivers\chromedriver_107_0_5304_62.exe", chrome_options=op)
 
-element=wd.find_element(By.CSS_SELECTOR,'#pclogin > div.d_register > div > div > div > div > ul > li.clearfix > input')
-element.send_keys('495024719@qq.com\n')
+    wd.get('https://www.vip-cdkeysales.com/signin')
 
-element=wd.find_element(By.CSS_SELECTOR,'#pclogin > div.d_register > div > div > div > div > ul > li.capital > input')
-element.send_keys('111111\n')
+    element=wd.find_element(By.CSS_SELECTOR,'#pclogin > div.d_register > div > div > div > div > ul > li.clearfix > input')
+    element.send_keys('495024719@qq.com\n')
 
-#time.sleep(2000)
-# wd.find_element(By.CSS_SELECTOR,'#pclogin > div.d_register > div > div > div > div > div > button').click()
-# time.sleep(5)
+    element=wd.find_element(By.CSS_SELECTOR,'#pclogin > div.d_register > div > div > div > div > ul > li.capital > input')
+    element.send_keys('111111\n')
 
-time.sleep(5)
+    #time.sleep(2000)
+    # wd.find_element(By.CSS_SELECTOR,'#pclogin > div.d_register > div > div > div > div > div > button').click()
+    # time.sleep(5)
 
-ret=wd.find_element(By.CSS_SELECTOR,'body > header > div.web_top.container > form > div > input')
+    time.sleep(5)
 
-ret.send_keys('office\n')
-time.sleep(5)
+    ret=wd.find_element(By.CSS_SELECTOR,'body > header > div.web_top.container > form > div > input')
 
-element=wd.find_element(By.CSS_SELECTOR,'body > div.bs-example.bs-example-form.search-form.warp_page > div > ul > li:nth-child(1) > a > p.title-one > span').click()
+    ret.send_keys('office\n')
+    time.sleep(5)
+
+    element=wd.find_element(By.CSS_SELECTOR,'body > div.bs-example.bs-example-form.search-form.warp_page > div > ul > li:nth-child(1) > a > p.title-one > span').click()
 
 
-windows=wd.window_handles
-wd.switch_to.window(windows[-1])
-
+    windows=wd.window_handles
+    wd.switch_to.window(windows[-1])
+except Exception as e:
+    print(e.__class__)
+    print(e)
 

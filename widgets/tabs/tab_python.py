@@ -2,6 +2,7 @@ import difflib
 import keyword
 import subprocess
 from abc import abstractmethod
+from pathlib import Path
 from typing import Any, List
 
 import jedi
@@ -58,7 +59,7 @@ class FileTracerMixIn(object):
         ...
 
     @abstractmethod
-    def add_change_markers(self, marker_infos: list):
+    def add_change_markers(self, marker_infos: list, maker_subs: list):
         ...
 
     @abstractmethod
@@ -73,7 +74,7 @@ class FileTracerMixIn(object):
             self.delete_all_changer_markers()
             old_lines = self.__old_text.splitlines(True)
             new_lines = self.monitor_text().splitlines(True)
-            lines = list(difflib.unified_diff(old_lines, new_lines, fromfile=f'original', tofile=f'current'))
+            lines = list(difflib.unified_diff(old_lines, new_lines, fromfile=f'original', tofile=f'current', ))
             if lines:
                 import sys
                 sys.stdout.writelines(lines)
@@ -100,7 +101,7 @@ class FileTracerMixIn(object):
                         subs_line += 1
                 print('added: ', change_added)
                 print('delete: ', change_subs)
-                self.add_change_markers(change_added)
+                self.add_change_markers(change_added, change_subs)
             # for line in lines[:3]
             # matcher = difflib.SequenceMatcher(None, oldL, newL)
             #
@@ -152,10 +153,19 @@ class StyledPythonLexer(QsciLexerPython):
 @register(file_types=['py', 'pyw'])
 class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     file_type = 'python'
-    save_changed_margin_line_type = 1
-    save_changed_marker_number = 0
-    save_deleted_marker_number = 1
-    save_changed_marker_handler: int  # type hint
+
+    tracer_margin_type = 1
+
+    add_marker_number = 0
+    deleted_marker_number = 1
+    modify_marker_number = 2
+
+    # indicators
+    jedi_ref_indicator = 10
+    jedi_syntax_indicator = 11
+
+
+    # save_changed_marker_handler: int  # type hint
     after_saved = pyqtSignal()
 
     def render_custom_style(self):
@@ -181,19 +191,22 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         editor: QsciScintilla
         editor = self.code
 
-        editor.markerDefine(editor.MarkerSymbol.FullRectangle, self.save_changed_marker_number)  # add
-        editor.setMarkerBackgroundColor(QColor('darkgreen'), self.save_changed_marker_number)
-        editor.setMarkerForegroundColor(QColor('red'), self.save_changed_marker_number)
+        editor.markerDefine(editor.MarkerSymbol.FullRectangle, self.add_marker_number)  # add
+        editor.setMarkerBackgroundColor(QColor('darkgreen'), self.add_marker_number)
+        editor.setMarkerForegroundColor(QColor('red'), self.add_marker_number)
 
-        editor.markerDefine(editor.MarkerSymbol.ThreeDots, self.save_deleted_marker_number)  # deleted
-        editor.setMarkerForegroundColor(QColor('red'), self.save_deleted_marker_number)
+        editor.markerDefine(editor.MarkerSymbol.ThreeDots, self.deleted_marker_number)  # deleted
+        editor.setMarkerForegroundColor(QColor('red'), self.deleted_marker_number)
+
+        editor.markerDefine(editor.MarkerSymbol.FullRectangle, self.modify_marker_number)  # modify
+        editor.setMarkerBackgroundColor(QColor('#F38922'), self.modify_marker_number)  # 橘色
 
         editor.setMarginLineNumbers(0, True)
         editor.setMarginSensitivity(0, True)
         editor.setMarginWidth(0, '00')
 
-        editor.setMarginType(self.save_changed_margin_line_type, editor.MarginType.SymbolMargin)
-        editor.setMarginWidth(self.save_changed_margin_line_type, '0')
+        editor.setMarginType(self.tracer_margin_type, editor.MarginType.SymbolMargin)
+        editor.setMarginWidth(self.tracer_margin_type, '0')
 
     def should_update_changed(self) -> bool:
         return self._file_loaded
@@ -205,11 +218,23 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         return self.code
 
     def delete_all_changer_markers(self):
-        self.code.markerDeleteAll(self.save_changed_marker_number)
+        self.code.markerDeleteAll(self.add_marker_number)
 
-    def add_change_markers(self, marker_infos: list):
-        for line, content in marker_infos:
-            self.code.markerAdd(line - 1, self.save_changed_marker_number)
+    def add_change_markers(self, marker_infos: list, marker_subs: list):
+        # modify
+        s1 = set([line for line, content in marker_infos])
+        s2 = set([line for line, content in marker_subs])
+        modified = s1 & s2
+        for line in modified:
+            self.code.markerAdd(line - 1, self.modify_marker_number)
+
+        # newlines
+        new_line = s1 - s2
+        for line in new_line:
+            self.code.markerAdd(line - 1, self.add_marker_number)  # new line
+
+        # for line, content in marker_infos:
+        #     self.code.markerAdd(line - 1, self.save_changed_marker_number)  # new line
 
     def when_modify(self, position, modificationType, text, length, linesAdded,
                     line, foldLevelNow, foldLevelPrev, token, annotationLinesAdded):
@@ -224,6 +249,8 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         self.set_commands()
         self.init_file_tracer()
         self.after_saved.connect(self.reset_file_tracer)
+        self.code.click_signal.connect(self._mouse_click)
+        self.define_jedi_indicators()
 
     def __format_code(self):
         pass
@@ -333,3 +360,74 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             # sys.stdout.writelines(lines)
             # # print(len(self._old), len(lines))
             # print(lines)
+
+    def _mouse_click(self):
+        line, col = self.code.current_line_col
+        print('current: ', line, col)
+        word = self.code.wordAtLineIndex(line, col)
+        print('word ', word)
+        self.jedi_references(word)
+
+    def define_jedi_indicators(self):
+        editor: QsciScintilla
+        editor = self.code
+        editor.indicatorDefine(editor.BoxIndicator, self.jedi_ref_indicator)
+
+
+        # editor.markerDefine(editor.MarkerSymbol.FullRectangle, self.add_marker_number)  # add
+        # editor.setMarkerBackgroundColor(QColor('darkgreen'), self.add_marker_number)
+        # editor.setMarkerForegroundColor(QColor('red'), self.add_marker_number)
+        #
+        # editor.markerDefine(editor.MarkerSymbol.ThreeDots, self.deleted_marker_number)  # deleted
+        # editor.setMarkerForegroundColor(QColor('red'), self.deleted_marker_number)
+        #
+        # editor.markerDefine(editor.MarkerSymbol.FullRectangle, self.modify_marker_number)  # modify
+        # editor.setMarkerBackgroundColor(QColor('#F38922'), self.modify_marker_number)  # 橘色
+        #
+        # editor.setMarginLineNumbers(0, True)
+        # editor.setMarginSensitivity(0, True)
+        # editor.setMarginWidth(0, '00')
+        #
+        # editor.setMarginType(self.tracer_margin_type, editor.MarginType.SymbolMargin)
+        # editor.setMarginWidth(self.tracer_margin_type, '0')
+
+    def jedi_infer(self):
+        """
+        推断
+        :return:
+        """
+        script = jedi.Script(self.code.text())
+        line, col = self.code.current_line_col
+
+    def jedi_references(self, word):
+        """
+        解析引用
+        :return:
+        """
+
+        def _ref():
+            line, col = self.code.current_line_col
+            script = jedi.Script(self.code.text(), path=Path(self.file_path()))
+            refs = script.get_references(line + 1, col + 1)
+            return refs
+
+        def _call(ret):
+            print('refs ==>', ret)
+            self.code.clearAllIndicators(self.jedi_ref_indicator)
+            for ref in ret:
+                pos = self.code.positionFromLineIndex(ref.line-1, ref.column-1)
+                self.code.setIndicatorRange(self.jedi_ref_indicator, pos, len(word)+1)
+                print(ref.line, ref.column)
+
+        def _err(error):
+            print('error --', error)
+
+        self.jedi_worker.add_task(_ref, call_back=_call, err_back=_err)
+
+    def jedi_goto(self):
+        """
+        跳转
+        :return:
+        """
+        script = jedi.Script(self.code.text())
+        line, col = self.code.current_line_col

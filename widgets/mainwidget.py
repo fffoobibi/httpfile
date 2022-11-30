@@ -2,12 +2,13 @@ import sys
 from pathlib import Path
 from typing import Optional, List
 
-from PyQt5.QtCore import QPoint, QSize
-from PyQt5.QtGui import QIcon, QFont, QFontDatabase
+from PyQt5.QtCore import QPoint, QSize, Qt
+from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QColor, QPalette
 from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget, qApp
 from jedi.api.environment import SameEnvironment
 from pydantic import BaseModel, Field
 
+from pyqt5utils import color_widget
 from pyqt5utils.components import Message
 from ui.main2ui import Ui_MainWindow
 from widgets.fonts import DirFontLoader
@@ -17,7 +18,11 @@ from widgets.components import FileSystemModel
 from widgets.factorys import add_styled
 from widgets.interfaces import ITabInterFace
 from widgets.signals import app_exit, app_start_up
+from widgets.styles import current_styles
 from widgets.utils import ConfigProvider, ConfigKey, IconProvider
+
+icon = r'D:\work\httpfile\sources\编辑.svg'
+plugins = collect_plugins()
 
 
 class AppRunTime(BaseModel):
@@ -26,6 +31,8 @@ class AppRunTime(BaseModel):
     font_src: List[int] = Field(default_factory=list)
 
 
+@color_widget(title='FEditor', icon=icon, bar_color=current_styles.background_lighter, text_color=current_styles.foreground,
+              back_ground_color=Qt.transparent, border_color=current_styles.border, set_bkg=False, nestle_enable=True)
 class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
     model: FileSystemModel = None
     plugins: Collections  # type hint
@@ -49,7 +56,19 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     def render_style_sheet(self):
         self.tabWidget.setFont(QFont('微软雅黑'))
-        # self.tabWidget_2.setFont(QFont('微软雅黑'))
+
+    def render_custom_style(self):
+        self.menubar.setStyleSheet('QMenuBar{background:%s;color:%s;border-top:1px solid %s;border-bottom: 0px solid %s}' % (
+            current_styles.background_darker, current_styles.foreground, current_styles.border, current_styles.border
+        ))
+        self.toolbar.setStyleSheet('QToolBar{background:%s;color:%s;border-top:1px solid %s;border-bottom:1px solid %s}' % (
+            current_styles.background_darker, current_styles.foreground, current_styles.border, current_styles.border
+        ))
+        self.setAutoFillBackground(True)
+        palette = self.palette()  # type: QPalette
+        palette.setColor(QPalette.Window, QColor(current_styles.background_darker))
+        palette.setColor(QPalette.Foreground, QColor(current_styles.foreground))
+        self.setPalette(palette)
 
     def init_run_time(self):
         self.r_run_time: AppRunTime = AppRunTime()
@@ -83,6 +102,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         print(self.r_run_time.font_src)
 
     def after_init(self):
+        # render style sheet
+        add_styled(self.tabWidget, 'tab')
+        add_styled(self, 'custom-style')
+        add_styled(self.statusbar, 'status-bar')
+        add_styled(qApp, 'qApp')
+
         self.set_provider('main_app', self)
         app_start_up.send(self)
 
@@ -110,8 +135,6 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                 path.touch()
                 path.write_text(file_content, encoding='utf-8')
             self.open_file(file_path)
-            # file_type, file_name = get_file_type_and_name(file_path)
-            # self.add_tab_widget(file_type, file_name, file_path)
 
         def _create_hook_file_and_open(file_path: str, file_content: str):
             path = Path(file_path)
@@ -119,8 +142,6 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                 path.touch()
                 path.write_text(file_content, encoding='utf-8')
             self.open_file(file_path)
-            # file_type, file_name = get_file_type_and_name(file_path)
-            # self.add_tab_widget(file_type, file_name, file_path)
 
         def _open_project_file(file_path):
             self.open_file(file_path)
@@ -159,12 +180,6 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
         self.setWindowTitle(self.app_name)
         self.setWindowIcon(QIcon(r'D:\work\httpfile\sources\编辑.svg'))
-
-        # style
-        add_styled(self.tabWidget, 'tab')
-        add_styled(self, 'background-darker')
-        add_styled(self.statusbar, 'status-bar')
-        add_styled(qApp, 'qApp')
 
     def load_left(self):
         self.left_buttons = QButtonGroup()
@@ -317,7 +332,6 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         path = Path(file_path)
         file_name = path.name
         file_type = path.suffix.replace('.', '', 1) + ' File'
-        # print('open file ', file_path, file_name, file_type)
         for i in range(self.tabWidget.count()):
             widget = self.tabWidget.widget(i)
             if widget.file_path() == file_path:
@@ -367,7 +381,6 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     @classmethod
     def run(cls):
-        plugins = collect_plugins()
         cls.plugins = plugins
         app = QApplication(sys.argv)
         mainapp = cls()
