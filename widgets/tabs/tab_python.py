@@ -1,24 +1,23 @@
 import difflib
 import keyword
-import re
 import subprocess
 from abc import abstractmethod
-from pathlib import Path
-from types import MethodType
 from typing import Any, List
 
 import jedi
 from PyQt5.Qsci import QsciLexerPython, QsciScintilla
-from PyQt5.QtCore import Qt, QDir, QTimer, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QCursor, QKeySequence, QColor, QIcon, QFont, QKeyEvent, QMouseEvent
-from PyQt5.QtWidgets import QMenu, QAction, QTextEdit
+from PyQt5.QtCore import Qt, QDir, QTimer, pyqtSignal, QPoint
+from PyQt5.QtGui import QCursor, QKeySequence, QColor, QIcon, QFont
+from PyQt5.QtWidgets import QMenu, QAction, QTextEdit, QTextBrowser, QLineEdit
 from cached_property import cached_property
 from jedi.api.classes import Completion, Name
 from jedi.api.environment import SameEnvironment
 
 from pyqt5utils.components.styles import StylesHelper
+from pyqt5utils.components.widgets.dialogs import ShadowDialog
 from pyqt5utils.workers import WorkerManager
 from widgets.factorys import make_styled
+
 from . import register, TabCodeWidget
 from ..signals import signal_manager
 from ..styles import current_styles
@@ -29,7 +28,7 @@ class FileTracerMixIn(object):
         self.__hasChangeMarkers = False
         self.__old_text = self.monitor_text()
         self.__last_saved_text = self.monitor_text()
-        self.__onlineChangeTraceTimer = QTimer(self)
+        self.__onlineChangeTraceTimer = QTimer()
         self.__onlineChangeTraceTimer.setSingleShot(True)
         self.__onlineChangeTraceTimer.setInterval(300)
         self.__onlineChangeTraceTimer.timeout.connect(self.__online_change_trace_timer_timeout)
@@ -78,15 +77,15 @@ class FileTracerMixIn(object):
             new_lines = self.monitor_text().splitlines(True)
             lines = list(difflib.unified_diff(old_lines, new_lines, fromfile=f'original', tofile=f'current', ))
             if lines:
-                import sys
-                sys.stdout.writelines(lines)
+                # sys.stdout.writelines(lines)
+
                 change_info = lines[2]
                 change_contents = lines[3:]
                 change_added = []
                 change_subs = []
                 line_start = int(
                     change_info.replace('@', '').strip().split(' ')[0].split(',')[0].strip('-'))  # @@ -1,6 +1,7 @@
-                print('\nstarts ', line_start)
+                # print('\nstarts ', line_start)
                 add_line = line_start - 1
                 subs_line = line_start - 1
                 i = line_start - 1
@@ -101,8 +100,8 @@ class FileTracerMixIn(object):
                     elif content[0] == ' ':  # and index != 0:  # no change
                         add_line += 1
                         subs_line += 1
-                print('added: ', change_added)
-                print('delete: ', change_subs)
+                # print('added: ', change_added)
+                # print('delete: ', change_subs)
                 self.add_change_markers(change_added, change_subs)
             # for line in lines[:3]
             # matcher = difflib.SequenceMatcher(None, oldL, newL)
@@ -150,25 +149,6 @@ class StyledPythonLexer(QsciLexerPython):
         if font_family is not None:
             font.setFamily(font_family)
         return font
-
-
-def keyPressEvent(this, a0: QKeyEvent) -> None:
-    this.__class__.keyPressEvent(this, a0)
-    if a0.modifiers() & Qt.AltModifier:
-        this._has_control = True
-
-
-def keyReleaseEvent(this, a0: QKeyEvent) -> None:
-    this.__class__.keyReleaseEvent(this, a0)
-    this._has_control = False
-
-
-def mouseMoveEvent(this, a0: QMouseEvent) -> None:
-    word = this.wordAtPoint(a0.pos())
-    if this._has_control and word:
-        this.viewport().setCursor(Qt.PointingHandCursor)
-    else:
-        this.viewport().setCursor(Qt.IBeamCursor)
 
 
 @register(file_types=['py', 'pyw'])
@@ -270,11 +250,8 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         self.init_file_tracer()
         self.code.setMouseTracking(True)
         self.code._has_control = False
-        self.code.keyPressEvent = MethodType(keyPressEvent, self.code)
-        self.code.keyReleaseEvent = MethodType(keyReleaseEvent, self.code)
-        self.code.mouseMoveEvent = MethodType(mouseMoveEvent, self.code)
+        self.code.support_language_parse = True
         self.after_saved.connect(self.reset_file_tracer)
-        self.code.click_signal.connect(self._mouse_click)
         self.define_jedi_indicators()
 
     def __format_code(self):
@@ -369,36 +346,12 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
                 path = QDir.toNativeSeparators(self.file_path())
                 subprocess.Popen(f'explorer /select, {path}', shell=True)
                 return
-
         if ac == act:
             env: SameEnvironment = self.main_app.get_provider('python_info')
             signal_manager.emit(signal_manager.runPython, self.file_path())
-            # if env:
-            #     cmd = f'{env.executable} {self.file_path()}'
-            #     print(cmd)
-            #     self.auto_complete()
         elif ac == ac3:
             print(repr(self.monitor_text()))
-            # self._new = self.code.text().splitlines(True)
-            # lines = list(difflib.unified_diff(self._old, self._new, fromfile='a.py', tofile='b.py'))
-            # import sys
-            # sys.stdout.writelines(lines)
-            # # print(len(self._old), len(lines))
-            # print(lines)
 
-    @pyqtSlot()
-    def _mouse_click(self):
-        line, col = self.code.current_line_col
-        word = self.code.wordAtLineIndex(line, col)
-        pos = self.code.currentPosition()
-        if self.code._has_control and word:
-            self.jedi_infer(word)
-        else:
-            if word:
-                if not self.code.hasIndicator(self.jedi_ref_indicator, pos):
-                    self.jedi_references(word)
-            else:
-                self.code.clearAllIndicators(self.jedi_ref_indicator)
 
     @property
     def has_control_focus(self):
@@ -407,10 +360,152 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     def define_jedi_indicators(self):
         editor = self.code
         editor: QsciScintilla
-        editor.indicatorDefine(editor.StraightBoxIndicator, self.jedi_ref_indicator)
-        editor.setIndicatorDrawUnder(True, self.jedi_ref_indicator)
+        editor.indicatorDefine(editor.StraightBoxIndicator, self.code.indic_ref)
+        editor.setIndicatorDrawUnder(True, self.code.indic_ref)
         editor.setIndicatorForegroundColor(Qt.red)
         editor.setIndicatorOutlineColor(Qt.green)
+
+    # language server
+    stop_hover = False
+
+    def _render_tip(self, msg: str, when_close=None, line_str=None):
+        background = current_styles.background_lighter
+        border = current_styles.border_lighter
+        foreground = current_styles.foreground
+        tip_shadow = ShadowDialog(
+            shadow_color='transparent',
+            frame_less_style='#FrameLess{background:%s;color:%s;font-family:微软雅黑;border:1px solid %s}' % (
+                background, foreground, border
+            ))
+        tip_shadow.when_close = when_close
+        text = QTextBrowser()
+        text.setHtml(msg)
+        text.setStyleSheet('QTextBrowser{background:%s;color:%s;font-family:微软雅黑;border:none}' % (
+            background, foreground
+        ))
+        if line_str:
+            fw = text.fontMetrics().width(line_str) + 10 * 2 + 8 + 20
+            tip_shadow.setMinimumWidth(fw)
+        StylesHelper.set_h_history_style_dynamic(text, color=current_styles.handler, height=8, background='transparent')
+        StylesHelper.set_v_history_style_dynamic(text, color=current_styles.handler, width=8, background='transparent')
+        tip_shadow.add_content(text)
+
+        point = self.code.mapFromGlobal(QCursor.pos())
+        tip_shadow.pop_with_position(self, dx=point.x(), dy=point.y())
+
+    def _render_rename(self, word: str, confirm, when_close=None, line_str=None):
+        def wrapper_confirm():
+            renamed = text.text().strip()
+            if renamed:
+                tip_shadow.close()
+                confirm(renamed)
+
+        background = current_styles.background_lighter
+        border = current_styles.border_lighter
+        foreground = current_styles.foreground
+        tip_shadow = ShadowDialog(
+            shadow_color='transparent',
+            frame_less_style='#FrameLess{background:%s;color:%s;font-family:微软雅黑;border:1px solid %s}' % (
+                background, foreground, border
+            ))
+        tip_shadow.when_close = when_close
+        text = QLineEdit()
+        text.setPlaceholderText(word)
+        text.setStyleSheet('QLineEdit{background:%s;color:%s;font-family:微软雅黑;border:none}' % (
+            background, foreground
+        ))
+        text.setClearButtonEnabled(True)
+        text.returnPressed.connect(wrapper_confirm)
+        if line_str:
+            fw = text.fontMetrics().width(line_str) + 10 * 2 + 8 + 20
+            tip_shadow.setMinimumWidth(fw)
+        tip_shadow.add_content(text)
+
+        left_0 = self.code.mapToGlobal(QPoint(0, 0))
+        point = self.code.getGlobalCursorPosition()
+        point = self.code.mapToGlobal(point)
+        point = point - left_0
+        point.setY(point.y() + self.code.textHeight(self.code.current_line_col[0]))
+        tip_shadow.pop_with_position(self, dx=point.x(), dy=point.y())
+        text.setFocus(True)
+
+    def onTextDocumentHover(self, word: str, line: int, col: int):
+
+        def _infer():
+            script = jedi.Script(self.code.text(), path=self.file_path())
+            refs = script.infer(line + 1, col + 1)
+            return refs
+
+        def _call(ret: List[Name]):
+            for ref in ret:
+                define_info = (ref.full_name or '').replace(word, '').rstrip('.')
+                if ref.type == 'function':
+                    describe = 'def ' + ref._get_docstring_signature()
+                else:
+                    describe = ref.description
+                doc_string = ''.join([f'<p>{line_doc}</p>' for line_doc in ref.docstring(raw=True).splitlines(keepends=False)])
+                line = f'<hr>'
+                full = f"""<p style="color:#49BDF8">{define_info}</p>{describe}\n{line}{doc_string}"""
+                self._render_tip(full, when_close=_when_close, line_str=describe)
+                return
+
+        def _when_close():
+            self.stop_hover = False
+
+        def _err(error):
+            print('error --', error)
+            self.stop_hover = False
+
+        if self.stop_hover is False:
+            self.stop_hover = True
+            self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
+
+    def onTextDocumentReferences(self, word: str, line, col):
+        def _ref():
+            script = jedi.Script(self.code.text(), path=self.file_path())
+            refs = script.get_references(line + 1, col + 1, scope='file')
+            return refs
+
+        def _call(ret: List[Name]):
+            self.code.clearAllIndicators(self.code.indic_ref)
+            current_file = (self.file_path() or '').replace('\\', '/')
+            for ref in ret:
+                if ref.module_path and (ref.module_path.__str__().replace('\\', '/') == current_file):
+                    pos = self.code.positionFromLineIndex(ref.line - 1, ref.column)
+                    self.code.setIndicatorRange(self.code.indic_ref, pos, len(word))
+                    self.code._current_refs.append([ref.line - 1, ref.column])
+
+        def _err(error):
+            print('error --', error)
+
+        self.jedi_worker.add_task(_ref, call_back=_call, err_back=_err)
+
+    def onTextDocumentRename(self, word: str, line, col):
+        def confirm(renamed: str):
+            print('rename check', renamed)
+            local_cursor_point = self.code.local_pos
+            current_value = self.code.verticalScrollBar().value()
+            position = self.code.positionFromLineIndex(line, col)
+            start = self.code.getIndicatorStartPos(self.code.indic_ref, position)
+            word_length = len(word)
+            self.code.replaceRange(start, word_length, renamed)
+            for i in range(len(self.code._current_refs) - 1):
+                if self.code.gotoNextIndicator(self.code.indic_ref, True):
+                    next_start = self.code.getIndicatorStartPos(self.code.indic_ref, self.code.currentPosition() - 1)
+                    if next_start is not None:
+                        self.code.replaceRange(next_start, word_length, renamed)
+            self.code.verticalScrollBar().setValue(current_value)
+
+            nl, nc = self.code.lineIndexFromPoint(local_cursor_point)
+            self.code.setCursorPosition(nl, nc)
+
+        self._render_rename(word, confirm)
+
+    def onTextDocumentInfer(self, word: str, line, col):
+        pass
+
+    def onTextDocumentSyntaxCheck(self, word: str, line, col):
+        pass
 
     def jedi_infer(self, word):
         """
@@ -422,11 +517,12 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             line, col = self.code.current_line_col
             script = jedi.Script(self.code.text(), path=self.file_path())
             refs = script.infer(line + 1, col + 1)
+
             return refs
 
         def _goto_file(ref: Name, timer: QTimer):
             try:
-                signal_manager.emit(signal_manager.openFileAndMoveCursor, ref.module_path,
+                signal_manager.emit(signal_manager.openFileAndMoveCursor, ref.module_path.__str__(),
                                     ref.line - 1, ref.column - 1
                                     )
             finally:
@@ -436,7 +532,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         def _call(ret: List[Name]):
             self.code.clearAllIndicators(self.jedi_ref_indicator)
             current_file = (self.file_path() or '').replace('\\', '/')
-            print('infers ', ret)
+
             for ref in ret:
                 self._timer = QTimer()
                 self._timer.timeout.connect(lambda: _goto_file(ref, self._timer))
@@ -447,31 +543,6 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             print('error --', error)
 
         self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
-
-    def jedi_references(self, word):
-        """
-        解析引用
-        :return:
-        """
-
-        def _ref():
-            line, col = self.code.current_line_col
-            script = jedi.Script(self.code.text(), path=self.file_path())
-            refs = script.get_references(line + 1, col + 1, scope='file')
-            return refs
-
-        def _call(ret: List[Name]):
-            self.code.clearAllIndicators(self.jedi_ref_indicator)
-            current_file = (self.file_path() or '').replace('\\', '/')
-            for ref in ret:
-                if (ref.module_path or '').replace('\\', '/') == current_file:
-                    pos = self.code.positionFromLineIndex(ref.line - 1, ref.column)
-                    self.code.setIndicatorRange(self.jedi_ref_indicator, pos, len(word))
-
-        def _err(error):
-            print('error --', error)
-
-        self.jedi_worker.add_task(_ref, call_back=_call, err_back=_err)
 
     def jedi_goto(self):
         """

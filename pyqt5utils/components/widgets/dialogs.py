@@ -4,6 +4,9 @@
 # @Email   : 2836204894@qq.com
 # @File    : dialogs.py
 # @Software: PyCharm
+import types
+from typing import Callable, Optional
+
 from typing_extensions import Literal
 
 from PyQt5.QtCore import Qt, QEvent, QPoint, QSize
@@ -23,12 +26,25 @@ class ShadowDialog(QDialog, KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn):
     def set_keep(self, val: bool):
         self._keep = val
 
-    def __init__(self, title='弹窗', show_title=False, title_style: str = None, frame_less_style: str = None, shadow_color='gray',  *a, **kw):
+    @property
+    def when_close(self):
+        return self._when_close
+
+    @when_close.setter
+    def when_close(self, func: Optional[Callable]):
+        if func is not None:
+            if isinstance(func, types.MethodType):
+                self._when_close = func
+            else:
+                self._when_close = func
+
+    def __init__(self, title='弹窗', show_title=False, title_style: str = None, frame_less_style: str = None, shadow_color='gray', *a, **kw):
         super(ShadowDialog, self).__init__(*a, **kw)
         self.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self._keep = False
         self._move_flag = False
+        self._when_close = None
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(5, 5, 5, 5)
@@ -73,9 +89,16 @@ class ShadowDialog(QDialog, KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn):
     def add_content(self, widget: QWidget):
         self._lay.addWidget(widget)
 
+    def replace_content(self, widget: QWidget, index: int):
+        children = self._lay.children()
+        self._lay.replaceWidget(children[index], widget)
+        self.update()
+
     def eventFilter(self, a0, a1: QEvent) -> bool:
         if a1.type() == QEvent.WindowDeactivate:
             if not self._keep:
+                if self._when_close:
+                    self._when_close()
                 self.close()
         return QDialog.eventFilter(self, a0, a1)
 
@@ -83,7 +106,6 @@ class ShadowDialog(QDialog, KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn):
         w, h = target.width(), target.height()
         left_point = target.mapToGlobal(QPoint(0, 0))
         delta = QPoint(dx, dy)
-        # debug_print(self.width(), self.height())
         self.raise_()
         self.show()
         if position == 'l':

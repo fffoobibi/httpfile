@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from PyQt5.QtCore import Qt, QModelIndex
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QWidget, QLabel, QHBoxLayout, QVBoxLayout, QFrame, QSpacerItem, QSizePolicy, QTreeView, QPushButton, QLineEdit)
 
 from pyqt5utils.components.styles import StylesHelper

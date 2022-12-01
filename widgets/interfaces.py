@@ -18,3 +18,23 @@ class ITabInterFace(IRenderStyle):
 
     def set_read_only(self, v: bool):
         """设置编码方式"""
+
+
+class ILanguageInterFace(Interface):
+    def onTextDocumentInfer(self, word: str, line, col):
+        """"""
+
+    def onTextDocumentCompletion(self, word: str, line, col):
+        """"""
+
+    def onTextDocumentHover(self, word: str, line: int, col: int):
+        """"""
+
+    def onTextDocumentReferences(self, word: str, line, col):
+        """"""
+
+    def onTextDocumentRename(self, word: str, line, col):
+        """"""
+
+    def onTextDocumentSyntaxCheck(self, word: str, line, col):
+        """"""

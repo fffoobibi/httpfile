@@ -47,11 +47,12 @@ class BackgroundWorker(QObject):
                 raise
 
     def add_task(self, func, args=(), kwargs={}, call_back=None, err_back=None):
-        self.async_loop.call_soon_threadsafe(
+        handler = self.async_loop.call_soon_threadsafe(
             self._sync_wrapper(
                 func, *args, **kwargs, call_back=call_back, err_back=err_back
             )
         )
+        return handler
 
     def _sync_wrapper(self, func, *args, call_back=None, err_back=None):
 
@@ -90,10 +91,11 @@ class BackgroundWorker(QObject):
         return inner
 
     def add_coro(self, coro, call_back=None, err_back=None):
-        asyncio.run_coroutine_threadsafe(
+        handler = asyncio.run_coroutine_threadsafe(
             self._async_wrapper(
                 coro, call_back, err_back=err_back), self.async_loop
         )
+        return handler
 
     async def _async_wrapper(self, coro, call_back=None, err_back=None):
         try:

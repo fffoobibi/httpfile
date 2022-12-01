@@ -12,7 +12,7 @@ from cached_property import cached_property
 from zope.interface import implementer
 
 from pyqt5utils.components import Toast
-from widgets.interfaces import ITabInterFace
+from widgets.interfaces import ITabInterFace, ILanguageInterFace
 from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
 from .helpers import _Queue, _make_child
@@ -44,7 +44,7 @@ def load_tab_widgets():
     return tab_codes
 
 
-@implementer(ITabInterFace)
+@implementer(ITabInterFace, ILanguageInterFace)
 class TabCodeWidget(QWidget):
     vertical = ConfigProvider.default(ConfigKey.general, 'vertical_width')
     horizontal = ConfigProvider.default(ConfigKey.general, 'horizontal_height')
@@ -58,6 +58,25 @@ class TabCodeWidget(QWidget):
 
     # flag
     support_code = True
+
+    # implement language interface
+    def onTextDocumentInfer(self, word: str, line, col):
+        """"""
+
+    def onTextDocumentCompletion(self, word: str, line, col):
+        """"""
+
+    def onTextDocumentHover(self, word: str, line: int, col: int):
+        """"""
+
+    def onTextDocumentReferences(self, word: str, line, col):
+        """"""
+
+    def onTextDocumentRename(self, word: str, line, col):
+        """"""
+
+    def onTextDocumentSyntaxCheck(self, word: str, line, col):
+        """"""
 
     @property
     def type(self):
@@ -151,6 +170,7 @@ class TabCodeWidget(QWidget):
         if self.support_code:
             self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
                                     self.custom_menu_support, self.custom_menu_policy, self.set_apis)()
+            self.code.setUpFromObj(self)
             self._is_remote = False
             self._update_time = None
             self._file_loaded = False

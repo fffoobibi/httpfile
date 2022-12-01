@@ -8,6 +8,7 @@ Module implementing a compatability interface class to QsciScintilla.
 """
 
 import contextlib
+from typing import Optional
 
 from PyQt5.QtCore import pyqtSignal, Qt, QPoint
 from PyQt5.QtGui import QPalette, QColor
@@ -1306,6 +1307,44 @@ class QsciScintillaCompat(QsciScintilla):
             return True
 
         return False
+
+    def getNextIndicatorPosition(self, indicator, wrap) -> Optional[int]:
+        pos = self.SendScintilla(QsciScintilla.SCI_GETCURRENTPOS)
+        docLen = self.SendScintilla(QsciScintilla.SCI_GETTEXTLENGTH)
+        isInIndicator = self.hasIndicator(indicator, pos)
+        posStart = self.getIndicatorStartPos(indicator, pos)
+        posEnd = self.getIndicatorEndPos(indicator, pos)
+
+        if posStart == 0 and posEnd == docLen - 1:
+            # indicator does not exist
+            return
+
+        if posEnd >= docLen:
+            if not wrap:
+                return
+
+            isInIndicator = self.hasIndicator(indicator, 0)
+            posEnd = self.getIndicatorEndPos(indicator, 0)
+
+        if isInIndicator:
+            # get out of it
+            posEnd = self.getIndicatorEndPos(indicator, posEnd)
+            if posEnd >= docLen:
+                if not wrap:
+                    return
+
+                posEnd = self.getIndicatorEndPos(indicator, 0)
+
+        newPos = posEnd + 1
+        posStart = self.getIndicatorStartPos(indicator, newPos)
+        posEnd = self.getIndicatorEndPos(indicator, newPos)
+
+        if self.hasIndicator(indicator, posStart):
+            # found it
+            line, index = self.lineIndexFromPosition(posEnd)
+            return posStart
+
+        return
 
     def gotoNextIndicator(self, indicator, wrap):
         """

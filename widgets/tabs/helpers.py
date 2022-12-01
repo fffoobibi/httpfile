@@ -1,22 +1,29 @@
+import inspect
 import types
 from collections import deque
+from typing import Callable
 
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QColor, QFont, QIcon, QFontMetrics, QKeyEvent
-from PyQt5.QtWidgets import QAction, QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QLabel, QSpacerItem, QSizePolicy, QFrame, QShortcut
+from PyQt5.QtCore import pyqtSignal, Qt, pyqtSlot, QTimer, QPoint
+from PyQt5.QtGui import QColor, QFont, QIcon, QFontMetrics, QKeyEvent, QMouseEvent
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QLabel, QFrame, QShortcut
+from cached_property import cached_property
+from zope.interface import implementer
 
 from pyqt5utils.qsci.base import BaseCodeWidget
 from widgets.base import PluginBaseMixIn
 from widgets.factorys import add_styled
+from widgets.interfaces import ILanguageInterFace
 from widgets.styles import current_styles
 
 
 def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support, custom_menu_policy, set_apis,
                 find_self=None, render_style=None, multi_line=False, simple_search=False):
     from widgets.mainwidget import MainWidget
-    class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn):
+    class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn, LanguageServerMixIn):
+        click_signal = pyqtSignal()
         file_styled = pyqtSignal()
         run_margin_signal = pyqtSignal(int)
+        mouse_move_signal = pyqtSignal(str, int, int)
 
         if render_style:
             def render_custom_style(self):
@@ -225,12 +232,79 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                 w.setFixedHeight(QFontMetrics(QFont('微软雅黑', 10)).height() * 1.5)
                 return w, search_line, display_label
 
+        def __getattr__(self, item):
+            return getattr(instance, item)
+
+        def __str__(self):
+            return f'CodeEditor[{instance.file_type.upper()}]'
+
+        __repr__ = __str__
+
+        def statics_current_refs(self):
+            return list(self._current_refs)
+
+        @property
+        def local_pos(self) -> QPoint:
+            return self._current_pos
+
+        def keyPressEvent(self, a0: QKeyEvent) -> None:
+            super().keyPressEvent(a0)
+            if a0.modifiers() & Qt.AltModifier:
+                self._has_control = True
+            if a0.key() == Qt.Key_F1:
+                if self.hasIndicator(self.indic_ref, self.currentPosition()):
+                    line, index = self.current_line_col
+                    word = self.wordAtLineIndex(line, index)
+                    self.onTextDocumentRename(word, line, index)
+
+        def keyReleaseEvent(self, a0: QKeyEvent) -> None:
+            super().keyReleaseEvent(a0)
+            self._has_control = False
+
+        def mousePressEvent(self, event):
+            super(BaseCodeChild, self).mousePressEvent(event)
+            self._current_pos = event.pos()
+
+        def mouseMoveEvent(self, a0: QMouseEvent) -> None:
+            if self.support_language_parse:
+                word = self.wordAtPoint(a0.pos())
+                line, index = self.lineIndexFromPoint(a0.pos())
+                if self._has_control and word:
+                    self.viewport().setCursor(Qt.PointingHandCursor)
+                else:
+                    self.viewport().setCursor(Qt.IBeamCursor)
+                self.mouse_move_signal.emit(word, line, index)
+
+        @pyqtSlot()
+        def _mouse_click_language_parse_event(self):
+            if self.support_language_parse:
+                line, col = self.current_line_col
+                word = self.wordAtLineIndex(line, col)
+                pos = self.currentPosition()
+                if self._has_control and word:
+                    self.onTextDocumentInfer(word, line, col)
+                else:
+                    if word:
+                        if not self.hasIndicator(self.indic_ref, pos):
+                            self._current_refs.clear()
+                            self.onTextDocumentReferences(word, line, col)
+                    else:
+                        self._current_refs.clear()
+                        self.clearAllIndicators(self.indic_ref)
+
+        @pyqtSlot(str, int, int)
+        def _mouse_hover_language_parse_event(self, word, line, col):
+            if word:
+                self.onTextDocumentHover(word, line, col)
+
         def __init__(self):
             super(BaseCodeChild, self).__init__()
             self.code_container = instance
             self.find_from = find_self
-            self.setCaretLineAlwaysVisible(True)
+            self._has_control: bool = False
+            self._hover_queue = deque(maxlen=2)
 
+            self.setCaretLineAlwaysVisible(True)
             self.enableMultiCursorSupport()
             self.setAutoCompletionSource(self.AcsAPIs)
             self.setStyleSheet('BaseCodeChild{border:none}')  # QToolTip{background:red;color:white}')
@@ -252,8 +326,10 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                 self.__search_widget.hide()
                 self.__define_search_indicator()
 
-        def __getattr__(self, item):
-            return getattr(instance, item)
+            self.click_signal.connect(self._mouse_click_language_parse_event)
+            self._current_refs = deque()
+            self._current_pos = QPoint()
+            widget_debounce(self, self._mouse_hover_language_parse_event, self.mouse_move_signal)
 
         def get_app(self) -> MainWidget:
             return super(BaseCodeChild, self).get_app()
@@ -314,3 +390,65 @@ class _Queue(object):
         self._pos -= 1
         self._pos %= self._len
         return self._queue[self._pos]
+
+
+def widget_debounce(self: QWidget, trigger_func: Callable, trigger_signal: pyqtSignal, interval: int = 500) -> None:
+    def _trigger(*a):
+        self._debounce_args = a
+        timer.stop()
+        timer.start()
+        # self._debounce_timer.stop()
+        # self._debounce_timer.start()
+
+    def _wrapper():
+        trigger_func(*self._debounce_args)
+
+    debounce_name = f'_debounce_{trigger_func.__name__}_timer'
+    timer = QTimer()
+    timer.setSingleShot(True)
+    timer.setInterval(interval)
+    timer.timeout.connect(_wrapper)
+    self._debounce_args = None
+    setattr(self, debounce_name, timer)
+    trigger_signal.connect(_trigger)
+
+
+@implementer(ILanguageInterFace)
+class LanguageServerMixIn(object):
+    support_language_parse: bool = False
+
+    indic_infer = 26
+    indic_Completion = 27
+    indic_hover = 28
+    indic_ref = 29
+    indic_rename = 30
+    indic_syntax_check = 31
+
+    __setup_targets__ = [
+        'onTextDocumentInfer', 'onTextDocumentCompletion', 'onTextDocumentHover', 'onTextDocumentReferences', 'onTextDocumentRename', 'onTextDocumentSyntaxCheck'
+    ]
+
+    def setUpFromObj(self, obj):
+        clz = obj.__class__
+        for k, v in clz.__dict__.items():
+            if inspect.isfunction(v) and v.__name__ in self.__setup_targets__:
+                bound_method = types.MethodType(v, self)
+                setattr(self, k, bound_method)
+
+    def onTextDocumentInfer(self, word: str, line, col):
+        pass
+
+    def onTextDocumentCompletion(self, word: str, line, col):
+        pass
+
+    def onTextDocumentHover(self, word: str, line: int, col: int):
+        pass
+
+    def onTextDocumentReferences(self, word: str, line, col):
+        pass
+
+    def onTextDocumentRename(self, word: str, line, col):
+        pass
+
+    def onTextDocumentSyntaxCheck(self, word: str, line, col):
+        pass

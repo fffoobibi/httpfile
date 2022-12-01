@@ -1,10 +1,10 @@
 # _# _coding;utf-8 _*_
-# å¼€å‘å›¢é˜Ÿï¼šæ˜Žæ—¥ç§‘æŠ€
-# å¼€å‘äººå‘˜ï¼š$(USER)
-# å¼€å‘æ—¶é—´ï¼š$(DATE)$(TIME)
-# æ–‡ä»¶åï¼š$(NAME).py
-# å¼€å‘å·¥å…·ï¼š$(PRODUCT_NAME)
-#å¯¼åŒ…
+# ¿ª·¢ÍÅ¶Ó£ºÃ÷ÈÕ¿Æ¼¼
+# ¿ª·¢ÈËÔ±£º$(USER)
+# ¿ª·¢Ê±¼ä£º$(DATE)$(TIME)
+# ÎÄ¼þÃû£º$(NAME).py
+# ¿ª·¢¹¤¾ß£º$(PRODUCT_NAME)
+#µ¼°ü
 import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -23,10 +23,10 @@ try:
 
     wd.get('https://www.vip-cdkeysales.com/signin')
 
-    element=wd.find_element(By.CSS_SELECTOR,'#pclogin > div.d_register > div > div > div > div > ul > li.clearfix > input')
+    element=wd.xxxaaa(By.CSS_SELECTOR,'#pclogin > div.d_register > div > div > div > div > ul > li.clearfix > input')
     element.send_keys('495024719@qq.com\n')
 
-    element=wd.find_element(By.CSS_SELECTOR,'#pclogin > div.d_register > div > div > div > div > ul > li.capital > input')
+    element=wd.xxxaaa(By.CSS_SELECTOR,'#pclogin > div.d_register > div > div > div > div > ul > li.capital > input')
     element.send_keys('111111\n')
 
     #time.sleep(2000)
@@ -35,12 +35,12 @@ try:
 
     time.sleep(5)
 
-    ret=wd.find_element(By.CSS_SELECTOR,'body > header > div.web_top.container > form > div > input')
+    ret=wd.xxxaaa(By.CSS_SELECTOR,'body > header > div.web_top.container > form > div > input')
 
     ret.send_keys('office\n')
     time.sleep(5)
 
-    element=wd.find_element(By.CSS_SELECTOR,'body > div.bs-example.bs-example-form.search-form.warp_page > div > ul > li:nth-child(1) > a > p.title-one > span').click()
+    element=wd.xxxaaa(By.CSS_SELECTOR,'body > div.bs-example.bs-example-form.search-form.warp_page > div > ul > li:nth-child(1) > a > p.title-one > span').click()
 
 
     windows=wd.window_handles

@@ -7,20 +7,20 @@ url = 'https://instagram.com/stories/battlerigs/2961784597757525872?utm_source=i
 # create_browser    
 from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.by import By
-def create_browser():
-    chrome_options = ChromeOptions()
+def test_browser():
+    bbb = ChromeOptions()
     # 屏蔽webdriver特征方法1,高版本
-    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+    bbb.add_argument('--disable-blink-features=AutomationControlled')
     # 屏蔽屏蔽自动化受控提示,webdriver version>76
-    chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
-    chrome_options.add_experimental_option('useAutomationExtension', False)
+    bbb.add_experimental_option('excludeSwitches', ['enable-automation'])
+    bbb.add_experimental_option('useAutomationExtension', False)
 
-    return Chrome(executable_path=path, options=chrome_options)
+    return Chrome(executable_path=path, options=bbb)
 
 
 def login():
     try:
-        browser = create_browser()
+        browser = test_browser()
         browser.get(url)
         time.sleep(15000)
         account = '//*[@id="loginForm"]/div/div[1]/div/label/input'
