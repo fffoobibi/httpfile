@@ -1,4 +1,5 @@
 import inspect
+import time
 import types
 from collections import deque
 from typing import Callable
@@ -159,9 +160,10 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                     this.setStyleSheet('#CodeSearch{background: %s;border:1px solid %s}'
                                        'QLineEdit{border:none;background:%s;color:%s;padding:2px 0px}'
                                        'QPushButton{background:transparent;padding:0px}'
-                                       'QPushButton:hover{background: lightgray;border:none}' % (current_styles.background_darker, current_styles.border,
-                                                                                                 current_styles.background_lighter, current_styles.foreground
-                                                                                                 ))
+                                       'QPushButton:hover{background: lightgray;border:none}' % (
+                                           current_styles.background_darker, current_styles.border,
+                                           current_styles.background_lighter, current_styles.foreground
+                                       ))
 
                 base_font = QFont('微软雅黑', 9)
                 w = QWidget(self)
@@ -273,7 +275,8 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                     self.viewport().setCursor(Qt.PointingHandCursor)
                 else:
                     self.viewport().setCursor(Qt.IBeamCursor)
-                self.mouse_move_signal.emit(word, line, index)
+                if word:
+                    self.mouse_move_signal.emit(word, line, index)
 
         @pyqtSlot()
         def _mouse_click_language_parse_event(self):
@@ -303,6 +306,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             self.find_from = find_self
             self._has_control: bool = False
             self._hover_queue = deque(maxlen=2)
+            self.stop_hover = False
 
             self.setCaretLineAlwaysVisible(True)
             self.enableMultiCursorSupport()
@@ -321,7 +325,8 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                 self.__search = False
                 self.__search_count = 0
                 self.__search_results = _Queue()
-                self.__search_action = QShortcut('ctrl+f', self, member=self.__search_action_slot, context=Qt.WidgetShortcut)  # QAction()
+                self.__search_action = QShortcut('ctrl+f', self, member=self.__search_action_slot,
+                                                 context=Qt.WidgetShortcut)  # QAction()
                 self.__search_widget, self.__search_line, self.__search_display = self.__create_search_widget()
                 self.__search_widget.hide()
                 self.__define_search_indicator()
@@ -397,8 +402,6 @@ def widget_debounce(self: QWidget, trigger_func: Callable, trigger_signal: pyqtS
         self._debounce_args = a
         timer.stop()
         timer.start()
-        # self._debounce_timer.stop()
-        # self._debounce_timer.start()
 
     def _wrapper():
         trigger_func(*self._debounce_args)
@@ -425,7 +428,8 @@ class LanguageServerMixIn(object):
     indic_syntax_check = 31
 
     __setup_targets__ = [
-        'onTextDocumentInfer', 'onTextDocumentCompletion', 'onTextDocumentHover', 'onTextDocumentReferences', 'onTextDocumentRename', 'onTextDocumentSyntaxCheck'
+        'onTextDocumentInfer', 'onTextDocumentCompletion', 'onTextDocumentHover', 'onTextDocumentReferences',
+        'onTextDocumentRename', 'onTextDocumentSyntaxCheck'
     ]
 
     def setUpFromObj(self, obj):

@@ -31,8 +31,9 @@ class AppRunTime(BaseModel):
     font_src: List[int] = Field(default_factory=list)
 
 
-@color_widget(title='FEditor', icon=icon, bar_color=current_styles.background_lighter, text_color=current_styles.foreground,
-              back_ground_color=Qt.transparent, border_color=current_styles.border, set_bkg=False, nestle_enable=True)
+@color_widget(title='FEditor', icon=icon, bar_color=current_styles.background_lighter,
+              text_color=current_styles.foreground,
+              back_ground_color=Qt.transparent, border_color=current_styles.border, set_bkg=False, nestle_enable=False)
 class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
     model: FileSystemModel = None
     plugins: Collections  # type hint
@@ -58,12 +59,16 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         self.tabWidget.setFont(QFont('微软雅黑'))
 
     def render_custom_style(self):
-        self.menubar.setStyleSheet('QMenuBar{background:%s;color:%s;border-top:1px solid %s;border-bottom: 0px solid %s}' % (
-            current_styles.background_darker, current_styles.foreground, current_styles.border, current_styles.border
-        ))
-        self.toolbar.setStyleSheet('QToolBar{background:%s;color:%s;border-top:1px solid %s;border-bottom:1px solid %s}' % (
-            current_styles.background_darker, current_styles.foreground, current_styles.border, current_styles.border
-        ))
+        self.menubar.setStyleSheet(
+            'QMenuBar{background:%s;color:%s;border-top:1px solid %s;border-bottom: 0px solid %s}' % (
+                current_styles.background_darker, current_styles.foreground, current_styles.border,
+                current_styles.border
+            ))
+        self.toolbar.setStyleSheet(
+            'QToolBar{background:%s;color:%s;border-top:1px solid %s;border-bottom:1px solid %s}' % (
+                current_styles.background_darker, current_styles.foreground, current_styles.border,
+                current_styles.border
+            ))
         self.setAutoFillBackground(True)
         palette = self.palette()  # type: QPalette
         palette.setColor(QPalette.Window, QColor(current_styles.background_darker))

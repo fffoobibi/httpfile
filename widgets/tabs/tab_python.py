@@ -1,6 +1,7 @@
 import difflib
 import keyword
 import subprocess
+import threading
 from abc import abstractmethod
 from typing import Any, List
 
@@ -17,7 +18,6 @@ from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.components.widgets.dialogs import ShadowDialog
 from pyqt5utils.workers import WorkerManager
 from widgets.factorys import make_styled
-
 from . import register, TabCodeWidget
 from ..signals import signal_manager
 from ..styles import current_styles
@@ -103,29 +103,6 @@ class FileTracerMixIn(object):
                 # print('added: ', change_added)
                 # print('delete: ', change_subs)
                 self.add_change_markers(change_added, change_subs)
-            # for line in lines[:3]
-            # matcher = difflib.SequenceMatcher(None, oldL, newL)
-            #
-            # for token, _, _, j1, j2 in matcher.get_opcodes():
-            #     if token in ["insert", "replace"]:
-            #         for lineNo in range(j1, j2):
-            #             self.markerAdd(lineNo, self.__changeMarkerSaved)
-            #             self.__hasChangeMarkers = True
-            #
-            # # step 2: mark unsaved changes
-            # oldL = self.__lastSavedText.splitlines()
-            # newL = self.text().splitlines()
-            # matcher = difflib.SequenceMatcher(None, oldL, newL)
-            #
-            # for token, _, _, j1, j2 in matcher.get_opcodes():
-            #     if token in ["insert", "replace"]:
-            #         for lineNo in range(j1, j2):
-            #             self.markerAdd(lineNo, self.__changeMarkerUnsaved)
-            #             self.__hasChangeMarkers = True
-            #
-            # if self.__hasChangeMarkers:
-            #     self.changeMarkersUpdated.emit(self)
-            #     self.__markerMap.update()
 
     def __reset_online_change_trace_timer(self):
         self.__onlineChangeTraceTimer.stop()
@@ -248,9 +225,9 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     def after_init(self):
         self.set_commands()
         self.init_file_tracer()
-        self.code.setMouseTracking(True)
         self.code._has_control = False
         self.code.support_language_parse = True
+        self.code.setMouseTracking(True)
         self.after_saved.connect(self.reset_file_tracer)
         self.define_jedi_indicators()
 
@@ -352,7 +329,6 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         elif ac == ac3:
             print(repr(self.monitor_text()))
 
-
     @property
     def has_control_focus(self):
         return self._has_control
@@ -366,7 +342,6 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         editor.setIndicatorOutlineColor(Qt.green)
 
     # language server
-    stop_hover = False
 
     def _render_tip(self, msg: str, when_close=None, line_str=None):
         background = current_styles.background_lighter
@@ -392,6 +367,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
 
         point = self.code.mapFromGlobal(QCursor.pos())
         tip_shadow.pop_with_position(self, dx=point.x(), dy=point.y())
+        print('render tip ==', 222)
 
     def _render_rename(self, word: str, confirm, when_close=None, line_str=None):
         def wrapper_confirm():
@@ -443,21 +419,30 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
                     describe = 'def ' + ref._get_docstring_signature()
                 else:
                     describe = ref.description
-                doc_string = ''.join([f'<p>{line_doc}</p>' for line_doc in ref.docstring(raw=True).splitlines(keepends=False)])
-                line = f'<hr>'
-                full = f"""<p style="color:#49BDF8">{define_info}</p>{describe}\n{line}{doc_string}"""
+                doc_string = ''.join(
+                    [f'<p>{line_doc}</p>' for line_doc in ref.docstring(raw=True).splitlines(keepends=False)])
+                hr_line = f'<hr>'
+                full = f"""<p style="color:#49BDF8">{define_info}</p>{describe}\n{hr_line}{doc_string}"""
                 self._render_tip(full, when_close=_when_close, line_str=describe)
                 return
 
         def _when_close():
-            self.stop_hover = False
+            try:
+                self.code.stop_hover = False
+                print('i am call ====', self.code.stop_hover, threading.currentThread())
+            except:
+                pass
 
         def _err(error):
-            print('error --', error)
-            self.stop_hover = False
+            try:
+                print('error ', error)
+                self.code.stop_hover = False
+            except:
+                import traceback
+                traceback.print_exc()
 
-        if self.stop_hover is False:
-            self.stop_hover = True
+        if self.code.stop_hover is False:
+            self.code.stop_hover = True
             self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
 
     def onTextDocumentReferences(self, word: str, line, col):
@@ -476,7 +461,8 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
                     self.code._current_refs.append([ref.line - 1, ref.column])
 
         def _err(error):
-            print('error --', error)
+            print('error --', error, self.code.stop_hover)
+            self.code.stop_hover = False
 
         self.jedi_worker.add_task(_ref, call_back=_call, err_back=_err)
 

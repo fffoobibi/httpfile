@@ -11,7 +11,8 @@ from typing_extensions import Literal
 
 from PyQt5.QtCore import Qt, QEvent, QPoint, QSize
 from PyQt5.QtGui import QIcon, QColor
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget, QGraphicsDropShadowEffect, QApplication, QFrame, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy, QPushButton
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget, QGraphicsDropShadowEffect, QApplication, QFrame, QHBoxLayout, \
+    QLabel, QSpacerItem, QSizePolicy, QPushButton
 
 # from log_utils import debug_print
 from pyqt5utils.components.mixin import KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn
@@ -38,7 +39,8 @@ class ShadowDialog(QDialog, KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn):
             else:
                 self._when_close = func
 
-    def __init__(self, title='弹窗', show_title=False, title_style: str = None, frame_less_style: str = None, shadow_color='gray', *a, **kw):
+    def __init__(self, title='弹窗', show_title=False, title_style: str = None, frame_less_style: str = None,
+                 shadow_color='gray', *a, **kw):
         super(ShadowDialog, self).__init__(*a, **kw)
         self.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -97,10 +99,16 @@ class ShadowDialog(QDialog, KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn):
     def eventFilter(self, a0, a1: QEvent) -> bool:
         if a1.type() == QEvent.WindowDeactivate:
             if not self._keep:
-                if self._when_close:
-                    self._when_close()
                 self.close()
         return QDialog.eventFilter(self, a0, a1)
+
+    def close(self) -> bool:
+        super().close()
+        if self._when_close:
+            try:
+                self._when_close()
+            except Exception as e:
+                pass
 
     def pop_with_position(self, target: QWidget, position: Literal['l', 't', 'r', 'b'] = 'l', dx: int = 0, dy: int = 0):
         w, h = target.width(), target.height()

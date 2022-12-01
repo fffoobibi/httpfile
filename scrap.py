@@ -8,14 +8,14 @@ url = 'https://instagram.com/stories/battlerigs/2961784597757525872?utm_source=i
 from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.by import By
 def test_browser():
-    bbb = ChromeOptions()
+    options = ChromeOptions()
     # 屏蔽webdriver特征方法1,高版本
-    bbb.add_argument('--disable-blink-features=AutomationControlled')
+    options.add_argument('--disable-blink-features=AutomationControlled')
     # 屏蔽屏蔽自动化受控提示,webdriver version>76
-    bbb.add_experimental_option('excludeSwitches', ['enable-automation'])
-    bbb.add_experimental_option('useAutomationExtension', False)
+    options.add_experimental_option('excludeSwitches', ['enable-automation'])
+    options.add_experimental_option('useAutomationExtension', False)
 
-    return Chrome(executable_path=path, options=bbb)
+    return Chrome(executable_path=path, options=options)
 
 
 def login():
