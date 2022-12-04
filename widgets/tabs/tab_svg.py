@@ -3,7 +3,7 @@ from typing import Any, List
 
 from PyQt5.Qsci import QsciLexerXML
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QPixmap, QPainter, QCursor
+from PyQt5.QtGui import QPixmap, QPainter, QCursor, QColor
 from PyQt5.QtSvg import QSvgRenderer
 from PyQt5.QtWidgets import QWidget, QLabel, QMenu, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy
 
@@ -13,13 +13,28 @@ from ..styles import current_styles
 from ..utils import hum_convert
 
 
+class StyledSvgLexer(QsciLexerXML):
+
+    def defaultPaper(self, style: int) -> QColor:
+        try:
+            return QColor(current_styles.editor_svg['paper']['background'])
+        except:
+            return super(StyledSvgLexer, self).defaultPaper(style)
+
+    def defaultColor(self, style: int) -> QColor:
+        color = current_styles.get_editor_color(current_styles.editor_svg.get('color'), style)
+        if color:
+            return QColor(color)
+        return super().defaultColor(style)
+
+
 @register(file_types=['svg'])
 class SVGCodeWidget(TabCodeWidget):
     file_loaded = pyqtSignal()
     file_type = 'svg'
 
     def set_lexer(self) -> Any:
-        return QsciLexerXML(self)
+        return StyledSvgLexer(self)
 
     def set_splitter_factor(self, index) -> int:
         if index == 0:

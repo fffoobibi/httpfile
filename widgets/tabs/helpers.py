@@ -252,7 +252,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
         def keyPressEvent(self, a0: QKeyEvent) -> None:
             super().keyPressEvent(a0)
             if a0.modifiers() & Qt.AltModifier:
-                self._has_control = True
+                self._has_alt_control = True
             if a0.key() == Qt.Key_F1:
                 if self.hasIndicator(self.indic_ref, self.currentPosition()):
                     line, index = self.current_line_col
@@ -261,17 +261,22 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
 
         def keyReleaseEvent(self, a0: QKeyEvent) -> None:
             super().keyReleaseEvent(a0)
-            self._has_control = False
+            self._has_alt_control = False
 
         def mousePressEvent(self, event):
             super(BaseCodeChild, self).mousePressEvent(event)
             self._current_pos = event.pos()
+            if self._has_alt_control and event.button() == Qt.LeftButton:
+                line, index = self.current_line_col
+                word = self.wordAtLineIndex(line, index)
+                if word:
+                    self.onTextDocumentInfer(word, line, index)
 
         def mouseMoveEvent(self, a0: QMouseEvent) -> None:
             if self.support_language_parse:
                 word = self.wordAtPoint(a0.pos())
                 line, index = self.lineIndexFromPoint(a0.pos())
-                if self._has_control and word:
+                if self._has_alt_control and word:
                     self.viewport().setCursor(Qt.PointingHandCursor)
                 else:
                     self.viewport().setCursor(Qt.IBeamCursor)
@@ -284,7 +289,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                 line, col = self.current_line_col
                 word = self.wordAtLineIndex(line, col)
                 pos = self.currentPosition()
-                if self._has_control and word:
+                if self._has_alt_control and word:
                     self.onTextDocumentInfer(word, line, col)
                 else:
                     if word:
@@ -304,7 +309,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             super(BaseCodeChild, self).__init__()
             self.code_container = instance
             self.find_from = find_self
-            self._has_control: bool = False
+            self._has_alt_control: bool = False
             self._hover_queue = deque(maxlen=2)
             self.stop_hover = False
 
@@ -412,6 +417,7 @@ def widget_debounce(self: QWidget, trigger_func: Callable, trigger_signal: pyqtS
     timer.setInterval(interval)
     timer.timeout.connect(_wrapper)
     self._debounce_args = None
+    self._debounce_timer = timer
     setattr(self, debounce_name, timer)
     trigger_signal.connect(_trigger)
 

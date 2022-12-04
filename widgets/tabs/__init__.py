@@ -1,3 +1,4 @@
+from collections import deque
 from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ from cached_property import cached_property
 from zope.interface import implementer
 
 from pyqt5utils.components import Toast
+from pyqt5utils.components.styles import StylesHelper
 from widgets.interfaces import ITabInterFace, ILanguageInterFace
 from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
@@ -149,13 +151,53 @@ class TabCodeWidget(QWidget):
         if self.support_code:
             self.code.setReadOnly(v)
 
-    def render_custom_style(self):
+    def when_remove(self):
         if self.support_code:
-            self.code.setIndentationGuidesForegroundColor(QColor(current_styles.guides_foreground)) if current_styles.guides_background else None
-            self.code.setIndentationGuidesBackgroundColor(QColor(current_styles.guides_background)) if current_styles.guides_background else None
+            if getattr(self.code, '_debounce_timer', None):
+                self.code._debounce_timer.stop()
+
+    def create_dynamic_actions(self):
+        return []
+
+    def when_theme_changed(self, changed=False):
+        if self.support_code and changed:
+            self.code.setLexer(self.set_lexer())
+
+    def render_custom_style(self):
+        self.code.setIndentationGuidesForegroundColor(QColor(current_styles.guides_foreground)) if current_styles.guides_background else None
+        self.code.setIndentationGuidesBackgroundColor(QColor(current_styles.guides_background)) if current_styles.guides_background else None
+        handler = current_styles.handler
+        styles = getattr(current_styles, f'editor_{self.file_type}')
+        if styles:
+            StylesHelper.set_v_history_style_dynamic(self.code, color=handler, background='transparent', width=10)
+            StylesHelper.set_h_history_style_dynamic(self.code, color=handler, background='transparent', height=10)
+            if styles['margin'].get('background', None):
+                self.code.setMarginsBackgroundColor(QColor(styles['margin'].get('background')))
+                self.code.setFoldMarginColors(QColor('#404040'), QColor('#404040'))
+            if styles['margin'].get('foreground', None):
+                self.code.setMarginsForegroundColor(QColor(styles['margin'].get('foreground')))
+            if styles['caret'].get('foreground', None):
+                self.code.setCaretLineBackgroundColor(QColor(styles['caret'].get('foreground')))
+            if styles['caret'].get('background', None):
+                self.code.setCaretForegroundColor(QColor(styles['caret'].get('background')))
+            if styles['selection'].get('background', None):
+                self.code.setSelectionBackgroundColor(
+                    QColor(styles['selection'].get('background')))
+                self.code.resetSelectionForegroundColor()
+
+    def store_data(self, data):
+        self.__data.append(data)
+
+    def restore_data(self):
+        if len(self.__data):
+            return self.__data.pop()
+
+    def restore_clear(self):
+        self.__data.clear()
 
     def __init__(self):
         super(TabCodeWidget, self).__init__()
+        self.__data = deque(maxlen=1)
         self.__main_lay = QHBoxLayout(self)
         self.__main_lay.setContentsMargins(0, 0, 0, 0)
         self.__main_lay.setSpacing(1)
@@ -331,6 +373,9 @@ class TabCodeWidget(QWidget):
 
         def __search_action_slot(self):
             if self.__search_widget.isHidden():
+                search_content = self.restore_data()
+                if search_content:
+                    self.__search_line.setText(search_content)
                 self.__search_widget.show()
                 self.__search_line.setFocus()
             else:
@@ -376,9 +421,15 @@ class TabCodeWidget(QWidget):
 
             def _keyPressEvent(this, event: QKeyEvent):
                 if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_F:
+                    sear_content = search_line.text().strip()
+                    search_line.clear()
+                    self.store_data(sear_content)
                     w.hide()
                     self.code.setFocus()
                 elif event.key() == Qt.Key_Escape:
+                    sear_content = search_line.text().strip()
+                    search_line.clear()
+                    self.store_data(sear_content)
                     w.hide()
                     self.code.setFocus()
                 else:

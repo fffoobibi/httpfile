@@ -3,21 +3,24 @@ import keyword
 import subprocess
 import threading
 from abc import abstractmethod
+from types import MethodType
 from typing import Any, List
 
 import jedi
+import parso.normalizer
 from PyQt5.Qsci import QsciLexerPython, QsciScintilla
 from PyQt5.QtCore import Qt, QDir, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QCursor, QKeySequence, QColor, QIcon, QFont
-from PyQt5.QtWidgets import QMenu, QAction, QTextEdit, QTextBrowser, QLineEdit
+from PyQt5.QtWidgets import QMenu, QAction, QTextEdit, QTextBrowser, QLineEdit, QPushButton
 from cached_property import cached_property
+from jedi.api import errors
 from jedi.api.classes import Completion, Name
 from jedi.api.environment import SameEnvironment
 
 from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.components.widgets.dialogs import ShadowDialog
 from pyqt5utils.workers import WorkerManager
-from widgets.factorys import make_styled
+from widgets.factorys import make_styled, add_styled
 from . import register, TabCodeWidget
 from ..signals import signal_manager
 from ..styles import current_styles
@@ -67,9 +70,6 @@ class FileTracerMixIn(object):
     def should_update_changed(self) -> bool:
         ...
 
-    def tracer_file_name(self):
-        return 'test.py'
-
     def __online_change_trace_timer_timeout(self):
         if self.should_update_changed():
             self.delete_all_changer_markers()
@@ -112,13 +112,16 @@ class FileTracerMixIn(object):
 class StyledPythonLexer(QsciLexerPython):
 
     def defaultPaper(self, style: int) -> QColor:
-        return QColor(current_styles.editor_python['paper']['background'])
+        try:
+            return QColor(current_styles.editor_python['paper']['background'])
+        except:
+            return super().defaultPaper(style)
 
     def defaultColor(self, style):
         color = current_styles.get_editor_color(current_styles.editor_python.get('color'), style)
         if color:
             return QColor(color)
-        return QColor('')
+        return super(StyledPythonLexer, self).defaultColor(style)
 
     def defaultFont(self, p_int):
         font: QFont = super().defaultFont(p_int)
@@ -145,24 +148,24 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     # save_changed_marker_handler: int  # type hint
     after_saved = pyqtSignal()
 
-    def render_custom_style(self):
-        super().render_custom_style()
-        handler = current_styles.handler
-        StylesHelper.set_v_history_style_dynamic(self.code, color=handler, background='transparent', width=10)
-        StylesHelper.set_h_history_style_dynamic(self.code, color=handler, background='transparent', height=10)
-        if current_styles.editor_python['margin'].get('background', None):
-            self.code.setMarginsBackgroundColor(QColor(current_styles.editor_python['margin'].get('background')))
-            self.code.setFoldMarginColors(QColor('#404040'), QColor('#404040'))
-        if current_styles.editor_python['margin'].get('foreground', None):
-            self.code.setMarginsForegroundColor(QColor(current_styles.editor_python['margin'].get('foreground')))
-        if current_styles.editor_python['caret'].get('foreground', None):
-            self.code.setCaretLineBackgroundColor(QColor(current_styles.editor_python['caret'].get('foreground')))
-        if current_styles.editor_python['caret'].get('background', None):
-            self.code.setCaretForegroundColor(QColor(current_styles.editor_python['caret'].get('background')))
-        if current_styles.editor_python['selection'].get('background', None):
-            self.code.setSelectionBackgroundColor(
-                QColor(current_styles.editor_python['selection'].get('background')))
-            self.code.resetSelectionForegroundColor()
+    # def render_custom_style(self):
+    #     super().render_custom_style()
+    # handler = current_styles.handler
+    # StylesHelper.set_v_history_style_dynamic(self.code, color=handler, background='transparent', width=10)
+    # StylesHelper.set_h_history_style_dynamic(self.code, color=handler, background='transparent', height=10)
+    # if current_styles.editor_python['margin'].get('background', None):
+    #     self.code.setMarginsBackgroundColor(QColor(current_styles.editor_python['margin'].get('background')))
+    #     self.code.setFoldMarginColors(QColor('#404040'), QColor('#404040'))
+    # if current_styles.editor_python['margin'].get('foreground', None):
+    #     self.code.setMarginsForegroundColor(QColor(current_styles.editor_python['margin'].get('foreground')))
+    # if current_styles.editor_python['caret'].get('foreground', None):
+    #     self.code.setCaretLineBackgroundColor(QColor(current_styles.editor_python['caret'].get('foreground')))
+    # if current_styles.editor_python['caret'].get('background', None):
+    #     self.code.setCaretForegroundColor(QColor(current_styles.editor_python['caret'].get('background')))
+    # if current_styles.editor_python['selection'].get('background', None):
+    #     self.code.setSelectionBackgroundColor(
+    #         QColor(current_styles.editor_python['selection'].get('background')))
+    #     self.code.resetSelectionForegroundColor()
 
     def define_file_trace_margins(self):
         editor: QsciScintilla
@@ -225,7 +228,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     def after_init(self):
         self.set_commands()
         self.init_file_tracer()
-        self.code._has_control = False
+        self.code._has_alt_control = False
         self.code.support_language_parse = True
         self.code.setMouseTracking(True)
         self.after_saved.connect(self.reset_file_tracer)
@@ -340,6 +343,33 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         editor.setIndicatorDrawUnder(True, self.code.indic_ref)
         editor.setIndicatorForegroundColor(Qt.red)
         editor.setIndicatorOutlineColor(Qt.green)
+
+    def create_dynamic_actions(self):
+        def render_custom_style(this):
+            foreground = current_styles.foreground
+            this.setStyleSheet('color:%s;font-family:微软雅黑;background:transparent' % foreground)
+
+        btn = QPushButton()
+        btn.setIcon(QIcon(':/icon/fenxi.svg'))
+        btn.setText('代码分析')
+        btn.setToolTip('代码分析')
+        btn.render_custom_style = MethodType(render_custom_style, btn)
+        btn.clicked.connect(lambda :print('fckj y'))
+
+        menu: QMenu = make_styled(QMenu, 'menu')
+        a1 = menu.addAction('错误检查')
+        a2 = menu.addAction('引用分析')
+        a3 = menu.addAction('代码跳转')
+        a4 = menu.addAction('悬浮提示')
+        a1.setCheckable(True)
+        a2.setCheckable(True)
+        a3.setCheckable(True)
+        a4.setCheckable(True)
+        btn.setMenu(menu)
+        add_styled(btn, 'custom-style')
+        return [
+            btn
+        ]
 
     # language server
 
@@ -464,7 +494,8 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             print('error --', error, self.code.stop_hover)
             self.code.stop_hover = False
 
-        self.jedi_worker.add_task(_ref, call_back=_call, err_back=_err)
+        # self.jedi_worker.add_task(_ref, call_back=_call, err_back=_err)
+        self.onTextDocumentSyntaxCheck(word, line, col)
 
     def onTextDocumentRename(self, word: str, line, col):
         def confirm(renamed: str):
@@ -488,22 +519,10 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         self._render_rename(word, confirm)
 
     def onTextDocumentInfer(self, word: str, line, col):
-        pass
-
-    def onTextDocumentSyntaxCheck(self, word: str, line, col):
-        pass
-
-    def jedi_infer(self, word):
-        """
-        推断
-        :return:
-        """
 
         def _infer():
-            line, col = self.code.current_line_col
             script = jedi.Script(self.code.text(), path=self.file_path())
             refs = script.infer(line + 1, col + 1)
-
             return refs
 
         def _goto_file(ref: Name, timer: QTimer):
@@ -512,13 +531,12 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
                                     ref.line - 1, ref.column - 1
                                     )
             finally:
-                self.code._has_control = False
+                self.code._has_alt_control = False
                 timer.stop()
 
         def _call(ret: List[Name]):
-            self.code.clearAllIndicators(self.jedi_ref_indicator)
             current_file = (self.file_path() or '').replace('\\', '/')
-
+            print('ret ====', ret)
             for ref in ret:
                 self._timer = QTimer()
                 self._timer.timeout.connect(lambda: _goto_file(ref, self._timer))
@@ -528,12 +546,24 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         def _err(error):
             print('error --', error)
 
+        print('infer --', word, line, col)
         self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
 
-    def jedi_goto(self):
-        """
-        跳转
-        :return:
-        """
-        script = jedi.Script(self.code.text())
-        line, col = self.code.current_line_col
+    def onTextDocumentSyntaxCheck(self, word: str, line, col):
+        def _syntax_check():
+            script = jedi.Script(self.code.text(), path=self.file_path())
+            refs = script.get_syntax_errors()
+            return refs
+
+        def _call(ret: List[errors.SyntaxError]):
+            print('ret ====', ret)
+            for error in ret:
+                print('error ', error._parso_error.code, error._parso_error.message)
+                # print(error.get_message(), error.line, error.column, error.until_line, error.until_column)
+            # parso.normalizer.Issue
+
+        def _err(error):
+            print('error --', error)
+
+        print('infer --', word, line, col)
+        self.jedi_worker.add_task(_syntax_check, call_back=_call, err_back=_err)

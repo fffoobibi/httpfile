@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import Optional, List
 
 from PyQt5.QtCore import QPoint, QSize, Qt
-from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QColor, QPalette
-from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget, qApp
+from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QColor, QPalette, QCursor
+from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget, qApp, QWidgetAction
 from jedi.api.environment import SameEnvironment
 from pydantic import BaseModel, Field
 
@@ -83,15 +83,28 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     def load_tool_bar(self):
         self.toolbar = self.addToolBar('File')
+        self.static_toolbar_indexs = []
+        self.dynamic_toolbar_actions = []
         cl = sorted(self.plugins.toolbar_actions, key=lambda k: self.plugins.toolbar_actions[k]['index'])
-        for clz in cl:
+        for index, clz in enumerate(cl):
+            self.static_toolbar_indexs.append(index)
             v = self.plugins.toolbar_actions.get(clz)
             tool_tip, icon = v.get('tool_tip'), v.get('icon')
             action_provider = clz(self)
-            action: QAction = action_provider.make_action(icon, tool_tip, self)
-            action.triggered.connect(lambda e, ac=action_provider: ac.action_slot())
-            self.toolbar.addAction(action)
-
+            action = action_provider.make_action(icon, tool_tip, self)
+            if isinstance(action, QAction):
+                action.triggered.connect(lambda e, ac=action_provider: ac.action_slot())
+                self.toolbar.addAction(action)
+            elif isinstance(action, list):
+                for widget in action:
+                    ac = widget
+                    if ac is None:
+                        self.toolbar.addSeparator()
+                    elif isinstance(ac, QAction):
+                        ac.triggered.connect(lambda e, ac=action_provider: ac.action_slot())
+                        self.toolbar.addAction(ac)
+                    else:
+                        self.toolbar.addWidget(ac)
         self.toolbar.setIconSize(QSize(20, 20))
 
     def load_status(self):
@@ -176,9 +189,33 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
     def init_project(self):
 
         def remove_tab(index):
+            widget = self.tabWidget.widget(index)
+            widget.when_remove()
             self.tabWidget.removeTab(index)
 
+        def tab_widget_change(index):
+            self.logger.info(f'index change: {index}')
+            widget = self.tabWidget.widget(index)
+            if widget:
+                for dynamic in self.dynamic_toolbar_actions:
+                    self.toolbar.removeAction(dynamic)
+                self.dynamic_toolbar_actions.clear()
+                actions = widget.create_dynamic_actions()
+                for index, action in enumerate(actions):
+                    if isinstance(action, QAction):
+                        self.toolbar.addAction(action)
+                        self.dynamic_toolbar_actions.append(action)
+                    elif action is None:
+                        self.toolbar.addSeparator()
+                    else:
+                        a = QWidgetAction(self.toolbar)
+                        a.setDefaultWidget(action)
+                        self.toolbar.addAction(a)
+                        self.dynamic_toolbar_actions.append(a)
+                # self.toolbar.addAction()
+
         self.tabWidget.tabCloseRequested.connect(remove_tab)
+        self.tabWidget.currentChanged.connect(tab_widget_change)
 
         self.splitter.setStretchFactor(1, 1)
         self.splitter.setSizes([200, 500])
@@ -367,12 +404,13 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
 
     def when_app_exit(self, main_app):
         key = self.config_name('point')
-        pos = self.pos()
+        pos = self.mapToGlobal(self.pos())
         size_key = self.config_name('size')
         left_checked = self.config_name('left_checked')
         w, h = self.width(), self.height()
         self.settings.setValue(key, [pos.x(), pos.y()])
         self.settings.setValue(size_key, [w, h])
+
         checked_index = self.left_buttons.checkedButton().index
         self.settings.setValue(left_checked, checked_index)
 

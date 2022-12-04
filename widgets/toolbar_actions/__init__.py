@@ -1,5 +1,7 @@
+from typing import List, Union, Tuple
+
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction
+from PyQt5.QtWidgets import QAction, QWidget
 
 toolbar_actions_controls = {}
 
@@ -23,15 +25,20 @@ def load_toolbar_actions():
     return toolbar_actions_controls
 
 
+# BarType = Union[QAction | QWidget]
+ToolBarTypes = Union[QAction, QWidget, List[Tuple]]
+
+
 class ToolBarActionMixIn(object):
+
     def __init__(self, main_app):
         self.app = main_app
 
-    def make_action(self, icon_path, tool_tip, parent):
+    def make_action(self, icon_path, tool_tip, parent) -> ToolBarTypes:
         return QAction(QIcon(icon_path), tool_tip, parent)
 
     def action_slot(self):
         pass
 
-    def make_widget(self):
+    def make_widget(self) -> QWidget:
         return

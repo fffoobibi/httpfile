@@ -663,10 +663,14 @@ class TitleWidget(_FramelessWindow):
         btn.setStyleSheet(style)
         return btn
 
-    def override_widget(self):
-        def move(this, point):
+    def override_widget(self, target=None):
+        def resize(this, *a):
             if this.root:
-                this.root.move(point)
+                this.root.resize(*a)
+
+        def move(this, *a):
+            if this.root:
+                this.root.move(*a)
 
         def show(this) -> None:
             if this.root:
@@ -675,7 +679,7 @@ class TitleWidget(_FramelessWindow):
                 this.root.showNormal()
 
         def setWindowTitle(this, a0: str):
-            self._widget.__class__.setWindowTitle(this, a0)
+            this.__class__.setWindowTitle(this, a0)
             if this.root:
                 this.root.setWindowTitle(a0)
 
@@ -689,6 +693,7 @@ class TitleWidget(_FramelessWindow):
 
         def close(this):
             if this.root:
+                this.__class__.close(this)
                 try:
                     this.root.close()
                 except Exception:
@@ -704,13 +709,16 @@ class TitleWidget(_FramelessWindow):
                 this.root.show()
                 QDialog.exec_(self._widget)
 
-        self._widget.move = MethodType(move, self._widget)
-        self._widget.show = MethodType(show, self._widget)
-        self._widget.raise_ = MethodType(raise_, self._widget)
-        self._widget.close = MethodType(close, self._widget)
-        self._widget.exec_ = MethodType(exec_, self._widget)
-        self._widget.showNormal = MethodType(showNormal, self._widget)
-        self._widget.setWindowTitle = MethodType(setWindowTitle, self._widget)
+        widget = target or getattr(self, '_widget', None)
+        if widget:
+            widget.move = MethodType(move, widget)
+            widget.show = MethodType(show, widget)
+            widget.raise_ = MethodType(raise_, widget)
+            widget.close = MethodType(close, widget)
+            widget.exec_ = MethodType(exec_, widget)
+            widget.showNormal = MethodType(showNormal, widget)
+            widget.setWindowTitle = MethodType(setWindowTitle, widget)
+            widget.resize = MethodType(resize, widget)
 
     def closeEvent(self, a0) -> None:
         super().closeEvent(a0)

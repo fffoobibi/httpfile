@@ -64,14 +64,11 @@ def color_widget(title='',
                                button_hover_color=button_hover_color,
                                button_hide_policy=button_hide_policy,
                                )
+            self.root = temp
+            temp.override_widget(self)
             func(self, *args, **kwargs)
-            temp.set_content_Widget(self, set_bkg)
+            temp.setWidget(self, set_bkg)
             self.setWindowTitle(title or self.windowTitle())
-            # self.setWindowIcon(QIcon(icon or self.windowIcon()))
-            # self.setAutoFillBackground(True)
-            # pale = self.palette()
-            # pale.setColor(QPalette.Window, Qt.transparent)
-            # self.setPalette(pale)
 
         return inner
 

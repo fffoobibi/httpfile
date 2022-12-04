@@ -6,6 +6,7 @@
 # @Software: PyCharm
 from contextlib import contextmanager
 
+from PyQt5.QtWidgets import QFrame, QHBoxLayout
 from jedi import RefactoringError
 
 
@@ -27,3 +28,12 @@ def hook_jedi_context():
         yield
     finally:
         ChangedFile.apply = old
+
+
+def make_h_panel(spacing=0, margins=0):
+    frame = QFrame()
+    frame.setFrameShape(QFrame.NoFrame)
+    lay = QHBoxLayout(frame)
+    lay.setSpacing(spacing)
+    lay.setContentsMargins(margins, margins, margins, margins)
+    return lay, frame

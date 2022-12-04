@@ -17,6 +17,8 @@ def _styled_policy(t, policy, *a):
     elif policy == 'splitter':
         t.setStyleSheet(current_styles.splitter or '')
     elif policy == 'code_widget':  # editor wiget
+        if hasattr(t, 'when_theme_changed'):
+            t.when_theme_changed(*a)
         if hasattr(t, 'render_custom_style'):
             t.render_custom_style()
     elif policy == 'tab':  # tabwidget
@@ -50,6 +52,9 @@ def _styled_policy(t, policy, *a):
             QStatusBar::item{border:0px; padding:0px; margin:0px}
             QStatusBar{background: %s; color: %s}
         ''' % (current_styles.background_lighter, current_styles.foreground))
+    elif policy == 'toolbar-button':
+        foreground = current_styles.foreground
+        t.setStyleSheet('color:%s;font-family:微软雅黑;background:transparent' % foreground)
     elif policy == 'border-button':
         border = current_styles.border
         background = current_styles.background_darker

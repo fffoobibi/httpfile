@@ -19,6 +19,9 @@ class ITabInterFace(IRenderStyle):
     def set_read_only(self, v: bool):
         """设置编码方式"""
 
+    def when_remove(self):
+        """"""
+
 
 class ILanguageInterFace(Interface):
     def onTextDocumentInfer(self, word: str, line, col):

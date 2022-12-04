@@ -334,10 +334,8 @@ class CodeTabWidget(QTabWidget):
             self.tabBar().moveTab(tab_index, 0)
 
     def addTab(self, widget: QWidget, icon: QIcon, a1: str) -> int:
-        count = self.count()
         super().addTab(widget, icon, a1)
-        # if widget.raw_file:
-        #     self.setTabToolTip(count, widget.raw_file)
+
 
 
 FileNameFlag = Qt.DisplayRole

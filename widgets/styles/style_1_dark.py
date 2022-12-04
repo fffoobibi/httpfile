@@ -2,8 +2,7 @@ from . import register, BaseStyle
 from PyQt5.Qsci import QsciLexerJSON
 from PyQt5.Qsci import QsciLexerPython
 from PyQt5.Qsci import QsciLexerSQL
-from PyQt5.Qsci import QsciLexerBatch, QsciLexerBash, QsciLexerJavaScript
-# from PyQt5 import QsciLexerJavaScript
+from PyQt5.Qsci import QsciLexerBatch, QsciLexerBash, QsciLexerJavaScript, QsciLexerXML, QsciLexerMarkdown
 
 
 @register('dark', index=0)
@@ -318,18 +317,162 @@ class DarkStyle(BaseStyle):
             QsciLexerJavaScript.InactiveEscapeSequence: "#FFBDCE",  # = ...  # type: int
 
         }}
+
     editor_html = {
-        'font': {},
+        'selection': dict(background="#323341"),
+        'caret': dict(background='#FFD64C', foreground='#212131'),
+        'margin': dict(background='#2D2B29', foreground='#666666'),
+        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono Medium'),
         'paper': dict(background='#1B1A19'),
-        'color': dict(
-            http='#00A4EF',
-            info_http='#FF6077',
-            info_time='#B4DA82',
-            info_status='red',
-            fold_info='orange',
-            normal='lightgray',
-        )
+        'color': {
+            QsciLexerXML.ASPAtStart: "#CABBAB",  # ,=15
+            QsciLexerXML.ASPJavaScriptComment: "#CABBAB",  # , = 57
+            QsciLexerXML.ASPJavaScriptCommentDoc: "#CABBAB",  # , = 59
+            QsciLexerXML.ASPJavaScriptCommentLine: "#CABBAB",  # , = 58
+            QsciLexerXML.ASPJavaScriptDefault: "#CABBAB",  # , = 56
+            QsciLexerXML.ASPJavaScriptDoubleQuotedString: "#CABBAB",  # , = 63
+            QsciLexerXML.ASPJavaScriptKeyword: "#CABBAB",  # , = 62
+            QsciLexerXML.ASPJavaScriptNumber: "#CABBAB",  # , = 60
+            QsciLexerXML.ASPJavaScriptRegex: "#CABBAB",  # , = 67
+            QsciLexerXML.ASPJavaScriptSingleQuotedString: "#CABBAB",  # , = 64
+            QsciLexerXML.ASPJavaScriptStart: "#CABBAB",  # , = 55
+            QsciLexerXML.ASPJavaScriptSymbol: "#CABBAB",  # , = 65
+            QsciLexerXML.ASPJavaScriptUnclosedString: "#CABBAB",  # , = 66
+            QsciLexerXML.ASPJavaScriptWord: "#CABBAB",  # , = 61
+            QsciLexerXML.ASPPythonClassName: "#CABBAB",  # , = 114
+            QsciLexerXML.ASPPythonComment: "#CABBAB",  # , = 107
+            QsciLexerXML.ASPPythonDefault: "#CABBAB",  # , = 106
+            QsciLexerXML.ASPPythonDoubleQuotedString: "#CABBAB",  # , = 109
+            QsciLexerXML.ASPPythonFunctionMethodName: "#CABBAB",  # , = 115
+            QsciLexerXML.ASPPythonIdentifier: "#CABBAB",  # , = 117
+            QsciLexerXML.ASPPythonKeyword: "#CABBAB",  # , = 111
+            QsciLexerXML.ASPPythonNumber: "#CABBAB",  # , = 108
+            QsciLexerXML.ASPPythonOperator: "#CABBAB",  # , = 116
+            QsciLexerXML.ASPPythonSingleQuotedString: "#CABBAB",  # , = 110
+            QsciLexerXML.ASPPythonStart: "#CABBAB",  # , = 105
+            QsciLexerXML.ASPPythonTripleDoubleQuotedString: "#CABBAB",  # , = 113
+            QsciLexerXML.ASPPythonTripleSingleQuotedString: "#CABBAB",  # , = 112
+            QsciLexerXML.ASPStart: "#CABBAB",  # , = 16
+            QsciLexerXML.ASPVBScriptComment: "#CABBAB",  # , = 82
+            QsciLexerXML.ASPVBScriptDefault: "#CABBAB",  # , = 81
+            QsciLexerXML.ASPVBScriptIdentifier: "#CABBAB",  # , = 86
+            QsciLexerXML.ASPVBScriptKeyword: "#CABBAB",  # , = 84
+            QsciLexerXML.ASPVBScriptNumber: "#CABBAB",  # , = 83
+            QsciLexerXML.ASPVBScriptStart: "#CABBAB",  # , = 80
+            QsciLexerXML.ASPVBScriptString: "#CABBAB",  # , = 85
+            QsciLexerXML.ASPVBScriptUnclosedString: "#CABBAB",  # , = 87
+            QsciLexerXML.ASPXCComment: "#CABBAB",  # , = 20
+            QsciLexerXML.Attribute: "#71C9F5",  # , = 3
+            QsciLexerXML.CDATA: "blue",  # , = 17
+            QsciLexerXML.Default: "gray",  # , = 0
+            QsciLexerXML.Entity: "red",  # , = 10
+            QsciLexerXML.HTMLComment: "gray",  # , = 9
+            QsciLexerXML.HTMLDoubleQuotedString: "#E9B647",  # , = 6
+            QsciLexerXML.HTMLNumber: "#E9B647",  # , = 5
+            QsciLexerXML.HTMLSingleQuotedString: "#E9B647",  # , = 7
+            QsciLexerXML.HTMLValue: "#CABBAB",  # , = 19
+            QsciLexerXML.JavaScriptComment: "#C3BAAB",  # , = 42
+            QsciLexerXML.JavaScriptCommentDoc: "#C3BAAB",  # , = 44
+            QsciLexerXML.JavaScriptCommentLine: "#C3BAAB",  # , = 43
+            QsciLexerXML.JavaScriptDefault: "#C3BAAB",  # , = 41
+            QsciLexerXML.JavaScriptDoubleQuotedString: "#C3BAAB",  # , = 48
+            QsciLexerXML.JavaScriptKeyword: "#C3BAAB",  # , = 47
+            QsciLexerXML.JavaScriptNumber: "#C3BAAB",  # , = 45
+            QsciLexerXML.JavaScriptRegex: "#C3BAAB",  # , = 52
+            QsciLexerXML.JavaScriptSingleQuotedString: "#C3BAAB",  # , = 49
+            QsciLexerXML.JavaScriptStart: "#C3BAAB",  # , = 40
+            QsciLexerXML.JavaScriptSymbol: "#C3BAAB",  # , = 50
+            QsciLexerXML.JavaScriptUnclosedString: "#C3BAAB",  # , = 51
+            QsciLexerXML.JavaScriptWord: "#C3BAAB",  # , = 46
+            QsciLexerXML.OtherInTag: "#C3BAAB",  # , = 8
+            QsciLexerXML.PHPComment: "#C3BAAB",  # , = 124
+            QsciLexerXML.PHPCommentLine: "#C3BAAB",  # , = 125
+            QsciLexerXML.PHPDefault: "#C3BAAB",  # , = 118
+            QsciLexerXML.PHPDoubleQuotedString: "#C3BAAB",  # , = 119
+            QsciLexerXML.PHPDoubleQuotedVariable: "#C3BAAB",  # , = 126
+            QsciLexerXML.PHPKeyword: "#C3BAAB",  # , = 121
+            QsciLexerXML.PHPNumber: "#C3BAAB",  # , = 122
+            QsciLexerXML.PHPOperator: "#C3BAAB",  # , = 127
+            QsciLexerXML.PHPSingleQuotedString: "#C3BAAB",  # , = 120
+            QsciLexerXML.PHPStart: "#C3BAAB",  # , = 18
+            QsciLexerXML.PHPVariable: "#C3BAAB",  # , = 123
+            QsciLexerXML.PythonClassName: "#C3BAAB",  # , = 99
+            QsciLexerXML.PythonComment: "#C3BAAB",  # , = 92
+            QsciLexerXML.PythonDefault: "#C3BAAB",  # , = 91
+            QsciLexerXML.PythonDoubleQuotedString: "#C3BAAB",  # , = 94
+            QsciLexerXML.PythonFunctionMethodName: "#C3BAAB",  # , = 100
+            QsciLexerXML.PythonIdentifier: "#C3BAAB",  # , = 102
+            QsciLexerXML.PythonKeyword: "#C3BAAB",  # , = 96
+            QsciLexerXML.PythonNumber: "#C3BAAB",  # , = 93
+            QsciLexerXML.PythonOperator: "#C3BAAB",  # , = 101
+            QsciLexerXML.PythonSingleQuotedString: "#C3BAAB",  # , = 95
+            QsciLexerXML.PythonStart: "#C3BAAB",  # , = 90
+            QsciLexerXML.PythonTripleDoubleQuotedString: "#C3BAAB",  # , = 98
+            QsciLexerXML.PythonTripleSingleQuotedString: "#C3BAAB",  # , = 97
+            QsciLexerXML.Script: "red",  # , = 14
+            QsciLexerXML.SGMLBlockDefault: "#EBCB8B",  # , = 31
+            QsciLexerXML.SGMLCommand: "#EBCB8B",  # , = 22
+            QsciLexerXML.SGMLComment: "gray",  # , = 29
+            QsciLexerXML.SGMLDefault: "#EBCB8B",  # , = 21
+            QsciLexerXML.SGMLDoubleQuotedString: "red",  # , = 24
+            QsciLexerXML.SGMLEntity: "red",  # , = 28
+            QsciLexerXML.SGMLError: "green",  # , = 26
+            QsciLexerXML.SGMLParameter: "#71C9F5",  # , = 23
+            QsciLexerXML.SGMLParameterComment: "green",  # , = 30
+            QsciLexerXML.SGMLSingleQuotedString: "green",  # , = 25
+            QsciLexerXML.SGMLSpecial: "green",  # , = 27
+            QsciLexerXML.Tag: "#E35730",  # , = 1
+            QsciLexerXML.UnknownAttribute: "red",  # , = 4
+            QsciLexerXML.UnknownTag: "#E35730",  # , = 2
+            QsciLexerXML.VBScriptComment: "#C3BAAB",  # , = 72
+            QsciLexerXML.VBScriptDefault: "#C3BAAB",  # , = 71
+            QsciLexerXML.VBScriptIdentifier: "#C3BAAB",  # , = 76
+            QsciLexerXML.VBScriptKeyword: "#C3BAAB",  # , = 74
+            QsciLexerXML.VBScriptNumber: "#C3BAAB",  # , = 73
+            QsciLexerXML.VBScriptStart: "#C3BAAB",  # , = 70
+            QsciLexerXML.VBScriptString: "#C3BAAB",  # , = 75
+            QsciLexerXML.VBScriptUnclosedString: "#C3BAAB",  # , = 77
+            QsciLexerXML.XMLEnd: "#CABBAB",  # , = 13
+            QsciLexerXML.XMLStart: "#CABBAB",  # , = 12
+            QsciLexerXML.XMLTagEnd: "#CABBAB",
+            32: 'lightgray'
+
+        }  # , = 11
     }
+    editor_xml = editor_html
+    editor_svg = editor_html
+
+    editor_markdown = {
+        'selection': dict(background="#323341"),
+        'caret': dict(background='#FFD64C', foreground='#212131'),
+        'margin': dict(background='#2D2B29', foreground='#666666'),
+        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono Medium'),
+        'paper': dict(background='#1B1A19'),
+        'color': {
+
+            QsciLexerMarkdown.BlockQuote: 'red',  # = 15
+            QsciLexerMarkdown.CodeBackticks: '#647379',  # = 19, like `x=1`
+            QsciLexerMarkdown.CodeBlock: '#647379',  # = 21
+            QsciLexerMarkdown.CodeDoubleBackticks: '#647379',  # = 20
+            QsciLexerMarkdown.Default: 'white',  # = 0
+            QsciLexerMarkdown.EmphasisAsterisks: '#647379',  # = 4
+            QsciLexerMarkdown.EmphasisUnderscores: '#647379',  # = 5
+            QsciLexerMarkdown.Header1: '#ED6B88',  # = 6
+            QsciLexerMarkdown.Header2: '#83D7EC',  # = 7
+            QsciLexerMarkdown.Header3: '#A9DC76',  # = 8
+            QsciLexerMarkdown.Header4: '#A685F7',  # = 9
+            QsciLexerMarkdown.Header5: '#FF8C00',  # = 10
+            QsciLexerMarkdown.Header6: '#F9B336',  # = 11
+            QsciLexerMarkdown.HorizontalRule: 'lightgray',  # = 17, 水平线
+            QsciLexerMarkdown.Link: '#D9F0FF',  # = 18
+            QsciLexerMarkdown.OrderedListItem: '#E1D6FC',  # = 14
+            QsciLexerMarkdown.Prechar: 'green',  # = 12
+            QsciLexerMarkdown.Special: 'red',  # = 1
+            QsciLexerMarkdown.StrikeOut: 'green',  # = 16
+            QsciLexerMarkdown.StrongEmphasisAsterisks: 'green',  # = 2
+            QsciLexerMarkdown.StrongEmphasisUnderscores: 'green',  # = 3
+            QsciLexerMarkdown.UnorderedListItem: '#E1D6FC',  # = 13
+        }}
 
     editor_web_console = {
         'font': {},

@@ -91,6 +91,7 @@ class PluginBaseMixIn(object):
     settings_path = './config.ini'
     settings_serializers = [_settings_dump, _settings_load]
 
+    logging_path = './app.log'
     # settings: _Settings = None  # type hint bad but necessary
 
     __provider__ = dict()
@@ -98,8 +99,27 @@ class PluginBaseMixIn(object):
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__()
-        # print('PluginBaseMixIn hook ', cls)
         cls.__init__ = _after(cls, '__init__')(_plugin_init_)
+
+    @cached_property
+    def logger(self):
+        import logging
+        logger = logging.getLogger(self.get_app().app_name)
+        logger.setLevel(logging.DEBUG)
+
+        formatter = logging.Formatter('%(asctime)s %(filename)s [line:%(lineno)d] %(levelname)s: %(message)s')
+
+        handler = logging.FileHandler(self.logging_path, mode='a', encoding='utf-8')
+        handler.setLevel(logging.DEBUG)
+        handler.setFormatter(formatter)
+
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        stream_handler.setLevel(logging.INFO)
+
+        logger.addHandler(handler)
+        logger.addHandler(stream_handler)
+        return logger
 
     @cached_property
     def settings(self) -> _Settings:

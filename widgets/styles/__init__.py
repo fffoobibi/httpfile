@@ -4,6 +4,7 @@ from contextlib import suppress
 from typing import List, Type, Optional
 
 from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QApplication
 from lazy_object_proxy import Proxy
 
 from widgets.base import get_app_settings
@@ -46,14 +47,19 @@ def load_style_clz():
     return _styles_clz
 
 
-def _run_trace_obj():
+def _run_trace_obj(change_theme=None):
     for obj, value in _styles_traces.items():
-        with suppress(Exception):
+        QApplication.processEvents()
+        try:
             func, a, kw = value
-            func(obj, *a, **kw)
+            func(obj, *a, change_theme, **kw)
+        except:
+            import traceback
+            traceback.print_exc()
 
 
 class BaseStyle(object):
+    locked = False
 
     @classmethod
     def add_trace(cls, tag, func, *a, **kw):
@@ -64,17 +70,20 @@ class BaseStyle(object):
     def reload(cls):
         with suppress(Exception):
             del current_styles.__wrapped__
-        signal_manager.emit(signal_manager.themeChange)
+        # signal_manager.emit(signal_manager.themeChange)
 
     @classmethod
     def change(cls, theme_name: str):
         if theme_name not in _styles_clz.keys():
             warnings.warn('theme must in %s' % ','.join(_styles_clz.keys()))
             return
-        app = get_app_settings()
-        app.setValue('theme', theme_name)
-        _run_trace_obj()
-        cls.reload()
+        if not cls.locked:
+            cls.locked = True
+            app = get_app_settings()
+            app.setValue('theme', theme_name)
+            cls.reload()
+            _run_trace_obj(True)
+            cls.locked = False
 
     @classmethod
     def theme_list(cls) -> List[str]:
@@ -87,7 +96,10 @@ class BaseStyle(object):
 
     @classmethod
     def get_editor_color(cls, style_colors: dict, style: int) -> Optional[str]:
-        return style_colors.get(style)
+        try:
+            return style_colors.get(style)
+        except:
+            pass
 
     @classmethod
     def get_editor_font(cls, style_fonts: dict, style: int) -> Optional[QFont]:
@@ -125,6 +137,37 @@ class BaseStyle(object):
     editor_sql: dict = None
     editor_batch: dict = None
     editor_bash: dict = None
+    editor_xml: dict = None
+    editor_svg: dict = None
+    editor_markdown: dict = None
+    editor_common: dict = None
 
     editor_web_console: dict = None
     editor_run_console: dict = None
+
+    def __init_subclass__(cls, **kwargs):
+        super(BaseStyle, cls).__init_subclass__(**kwargs)
+
+        for attr in [
+            'guides_foreground',  # 代码折叠线前台
+            'guides_background',  # 代码折叠线前台
+            'bottom_button',  # 底部按钮
+            'left_button',  # 左侧按钮
+            'editor_json',
+            'editor_html',
+            'editor_python',
+            'editor_javascript',
+            'editor_http_file',
+            'editor_sql',
+            'editor_batch',
+            'editor_bash',
+            'editor_xml',
+            'editor_svg',
+            'editor_markdown',
+            'editor_common',
+            'editor_web_console',
+            'editor_run_console',
+        ]:
+            value = getattr(cls, attr)
+            if value is None:
+                setattr(cls, attr, {})

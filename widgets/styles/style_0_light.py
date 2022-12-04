@@ -28,6 +28,7 @@ class LightStyle(BaseStyle):
     background_darker = 'white'
     background_lighter = 'white'
     handler = 'gray'
+    border = 'lightgray'
     bottom_button = dict(color='black', checked='black', background='transparent', background_checked='lightgray')
     left_button = dict(color='lightgray', checked='orange', background='#333231', background_checked='#242220', border_checked='orange')
 
@@ -44,3 +45,25 @@ class LightStyle(BaseStyle):
             normal='black',
         )
     }
+
+    editor_web_console = {
+        'font': {},
+        'paper': dict(background='#1B1A19'),
+        'color': dict(
+            http='#00A4EF',
+            info_http='#FF6077',
+            info_time='#B4DA82',
+            info_status='red',
+            fold_info='orange',
+            normal='lightgray',
+        )
+    }
+
+    editor_run_console = {'font': {},
+                          'paper': dict(background='#1B1A19'),
+                          'color': dict(
+                              normal='lightgray',
+                              file_info='#C6DBE9',
+                              line_info='#C6DBE9',
+                              file_trace='red'
+                          )}
