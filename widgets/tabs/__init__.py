@@ -5,7 +5,7 @@ from pathlib import Path
 from types import MethodType
 from typing import List
 
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal, Qt, QFile
 from PyQt5.QtGui import QFont, QFontMetrics, QIcon, QColor, QKeyEvent
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QSpacerItem,
                              QSizePolicy, QFrame, QVBoxLayout, QSplitter, QLabel, QShortcut)
@@ -56,6 +56,7 @@ class TabCodeWidget(QWidget):
 
     after_saved: pyqtSignal
     file_loaded: pyqtSignal
+    file_changed: pyqtSignal = pyqtSignal(int, int, )
     file_type: str
 
     # flag
@@ -108,7 +109,8 @@ class TabCodeWidget(QWidget):
     def make_qsci_widget(self, render_custom_style=None, simple_search=False, multi_line=True):
         code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
                            self.custom_menu_support, self.custom_menu_policy, self.set_apis,
-                           find_self=True, render_style=render_custom_style, multi_line=multi_line, simple_search=simple_search)()
+                           find_self=True, render_style=render_custom_style, multi_line=multi_line,
+                           simple_search=simple_search)()
         add_styled(code, 'code_widget')
         return code
 
@@ -164,8 +166,10 @@ class TabCodeWidget(QWidget):
             self.code.setLexer(self.set_lexer())
 
     def render_custom_style(self):
-        self.code.setIndentationGuidesForegroundColor(QColor(current_styles.guides_foreground)) if current_styles.guides_background else None
-        self.code.setIndentationGuidesBackgroundColor(QColor(current_styles.guides_background)) if current_styles.guides_background else None
+        self.code.setIndentationGuidesForegroundColor(
+            QColor(current_styles.guides_foreground)) if current_styles.guides_background else None
+        self.code.setIndentationGuidesBackgroundColor(
+            QColor(current_styles.guides_background)) if current_styles.guides_background else None
         handler = current_styles.handler
         styles = getattr(current_styles, f'editor_{self.file_type}')
         if styles:
@@ -220,7 +224,8 @@ class TabCodeWidget(QWidget):
             self.__search_count = 0
             self.__search_results = _Queue()
 
-            self.__search_action = QShortcut('ctrl+f', self.code, member=self.__search_action_slot, context=Qt.WidgetShortcut)
+            self.__search_action = QShortcut('ctrl+f', self.code, member=self.__search_action_slot,
+                                             context=Qt.WidgetShortcut)
 
             self.__search_widget, self.__search_line, self.__search_display = self.__create_search_widget()
             self.__search_widget.hide()
@@ -291,11 +296,33 @@ class TabCodeWidget(QWidget):
 
         def when_modify(self, position, modificationType, text, length, linesAdded,
                         line, foldLevelNow, foldLevelPrev, token, annotationLinesAdded):
-            full = self.code.SC_MOD_INSERTTEXT | self.code.SC_MOD_DELETETEXT
+            iflag = self.code.SC_MOD_INSERTTEXT
+            dflag = self.code.SC_MOD_DELETETEXT
+            bfdflag = self.code.SC_MOD_BEFOREDELETE
+
+            full = iflag | dflag | bfdflag
             if ~modificationType & full == full:
                 return
+            if ((modificationType & ~dflag) & ~iflag) & bfdflag == bfdflag:
+                print('befoo ddd')
+                self.set_read_only(True)
+
+            if (modificationType & ~dflag) & iflag == iflag:
+                self.when_insert(position, text, length, linesAdded, line)
+            else:
+                self.when_delete(position, text, length, linesAdded, line)
+                print('delete ====')
+
+            print('modify', position, text, length, linesAdded, line, token)
+
+        def when_insert(self, position: int, text: bytes, length: int, linesAdded: int, line: int):
+            pass
+
+        def when_delete(self, position: int, text: bytes, length: int, linesAdded: int, line: int):
+            pass
 
         def __show_information(self):
+            self.set_read_only(False)
             point = self.code.getGlobalCursorPosition()
             point = self.code.mapToGlobal(point)
             point.setY(point.y() - 40)
@@ -304,7 +331,7 @@ class TabCodeWidget(QWidget):
             self.toast.show()
 
         def __update_line_col(self, line, col):
-            signal_manager.emit(signal_manager.statusLineInfo, line, col)
+            signal_manager.emit(signal_manager.statusLineInfo, line, col, self.code.currentPosition())
 
         def __cut_slot(self):
             if not self.code.hasSelection():
@@ -439,9 +466,10 @@ class TabCodeWidget(QWidget):
                 this.setStyleSheet('#CodeSearch{background: %s;border:1px solid %s}'
                                    'QLineEdit{border:none;background:%s;color:%s;padding:2px 0px}'
                                    'QPushButton{background:transparent;padding:0px}'
-                                   'QPushButton:hover{background: lightgray;border:none}' % (current_styles.background_darker, current_styles.border,
-                                                                                             current_styles.background_lighter, current_styles.foreground
-                                                                                             ))
+                                   'QPushButton:hover{background: lightgray;border:none}' % (
+                                       current_styles.background_darker, current_styles.border,
+                                       current_styles.background_lighter, current_styles.foreground
+                                   ))
 
             base_font = QFont('微软雅黑', 9)
             w = QWidget(self)

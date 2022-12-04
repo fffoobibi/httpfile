@@ -7,7 +7,7 @@ from enum import IntEnum, Enum
 from typing import List, Any, Tuple
 
 from PyQt5.Qsci import QsciAPIs, QsciScintilla, QsciCommand
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QDir, QThread
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QDir, QThread, QFile
 from PyQt5.QtGui import QColor, QFont, QKeySequence
 from PyQt5.QtWidgets import QAction, QMenu
 
@@ -532,10 +532,24 @@ class BaseCodeWidget(QsciScintillaCompat):
     ### load file ###
     def load_file(self, file_path):
         with suppress(Exception):
-            from pathlib import Path
-            self.setText(Path(file_path).read_text(encoding='utf-8'))
-            return self.lines()
+            # method1
+            # import mmap
+            # with open(file_path, 'r+b') as f:
+            #     with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+            #         contents = mm.read()
+            #         self.setText(contents.decode('utf-8'))
+
+            # method2
+            file = QFile(file_path)
+            if not file.open(QFile.ReadOnly):
+                return
+            self.read(file)
+            file.close()
+
+                # from pathlib import Path
+            # self.setText(Path(file_path).read_text(encoding='utf-8'))
+            # return self.lines()
 
     def load_content(self, content: str):
         self.setText(content)
-        return len(content.splitlines())
+        # return len(content.splitlines())

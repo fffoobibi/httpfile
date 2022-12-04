@@ -25,8 +25,8 @@ class LineCol(QPushButton, PluginBaseMixIn, styled_factory('bottom-button')):
         self.clicked.connect(self.click_slot)
         self.setToolTip('转到行 Ctrl+G')
 
-    def update_line_col(self, line, col):
-        self.setText(f'{line + 1}:{col + 1}')
+    def update_line_col(self, line, col, position):
+        self.setText(f'{line + 1}:{col + 1}:{position}')
 
     def click_slot(self):
         from widgets.mainwidget import MainWidget
