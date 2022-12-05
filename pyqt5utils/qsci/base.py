@@ -541,12 +541,12 @@ class BaseCodeWidget(QsciScintillaCompat):
 
             # method2
             file = QFile(file_path)
-            if not file.open(QFile.ReadOnly):
+            if not file.open(QFile.ReadOnly | QFile.Unbuffered):
                 return
             self.read(file)
             file.close()
 
-                # from pathlib import Path
+            # from pathlib import Path
             # self.setText(Path(file_path).read_text(encoding='utf-8'))
             # return self.lines()
 

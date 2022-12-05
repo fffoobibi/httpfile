@@ -6,8 +6,8 @@ from PyQt5.Qsci import QsciLexerSQL
 from . import register, BaseStyle
 
 
-@register('dark', index=0)
-class DarkStyle(BaseStyle):
+@register('vscode_dark', index=2)
+class VsCodeDarkStyle(BaseStyle):
     ## qss format
     tooltip = """QToolTip{border:1px solid gray; background-color:#333231;color:lightgray;padding:4px}"""
     menu = """
@@ -36,22 +36,22 @@ class DarkStyle(BaseStyle):
                 image: url(:/icon/关闭实心-tab.svg)
             }
             QTabBar::tab{
-                 background: #333231;
+                 background: #323232;
                  color: lightgray;
                  border: 0px solid #C4C4C3;
-                 border-bottom-color: #C2C7CB;
+                 border-bottom-color: #094770;
                  border-top-left-radius: 4px;
                  border-top-right-radius: 4px;
                  border-radius: 0px;
                  padding: 5px 10px;
              }
-            QTabBar::tab:hover{background: #2D2B29;}
+            QTabBar::tab:hover{background: #212121;}
             QTabBar::tab:selected{
-                /*选中teble背景色*/
+                /*选中tab背景色*/
                 background-color: #171615;
-                color:#78DCE8;
+                color:#4484BA;
                 border-top:2px solid transparent;
-                border-bottom: 2px solid #FFC800
+                border-bottom: 2px solid #094770
             }
     """
     run_tab = """
@@ -85,59 +85,41 @@ class DarkStyle(BaseStyle):
     """
     splitter = """
                 QSplitter::handle{background:transparent}
-                QSplitter::handle:pressed {background-color:orange;}"""
+                QSplitter::handle:pressed {background-color:#094770;}"""
     progress = "QProgressBar {border: 0px solid grey; border-radius: 0px; background-color: #FFFFFF; text-align: center;}" \
                "QProgressBar::chunk {background:QLinearGradient(x1:0,y1:0,x2:2,y2:0,stop:0 #666699,stop:1  #DB7093); }"
 
-    border = '#4D4C4B'
-    border_lighter = 'gray'
+    border = '#393A3C'
+    border_lighter = '#606060'
 
-    foreground = 'lightgray'
-    background_darker = '#333231'
-    background_lighter = '#434241'
-    handler = '#5D5C5B'
-    hover = 'red'
+    foreground = '#BAB9B8'
 
-    guides_background = '#333231'
-    guides_foreground = '#333231'
+    background_darker = '#242425'
+    background_lighter = '#323232'
+
+    toolbar_background = background_lighter
+    menubar_background = background_lighter
+
+    handler = '#575758'
+    hover = '#4C5052'
+
+    guides_background = '#3B3B3B'
+    guides_foreground = '#3B3B3B'
 
     bottom_button = dict(color='lightgray', checked='orange', background='#333231', background_checked='#242220')
     left_button = dict(color='lightgray', checked='orange', background='#333231', background_checked='#242220',
                        border_checked='orange')
 
     editor_globals = {
-        'statics': dict(indic_ref='gray', indic_ref_class='33393F', indic_ref_define='#40332B')
+        'selection': dict(background="#264E77"),
+        'caret': dict(background='white', foreground='#262626'),  # 光标颜色, 背景色
+        'margin': dict(background='#1E1E1E', foreground='#A4A3A3'),
+        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono Medium'),
+        'paper': dict(background='#1E1E1E'),
+        'statics': dict(indic_ref='gray', indic_ref_class='#264E77', indic_ref_define='#9B3A24')
     }
 
     editor_http_file = {
-        'tooltip': dict(background='#2D2B29', foreground='lightgray'),
-        'selection': dict(background="#323341"),
-        'caret': dict(background='#FFD64C', foreground='#212131'),
-        'margin': dict(background='#2D2B29', foreground='#666666'),
-        'font': dict(request=None,
-                     header=None,
-                     data=None,
-                     response=None,
-                     key=None,
-                     request_url=None,
-                     splitter=None,
-                     black=None,
-                     section=None,
-                     chinese=None,
-                     output=None,
-                     variable=None),
-        'paper': dict(request='#1B1A19',
-                      header='#1B1A19',
-                      data='#1B1A19',
-                      response='#1B1A19',
-                      key='#1B1A19',
-                      request_url='#1B1A19',
-                      splitter='#1B1A19',
-                      black='#1B1A19',
-                      section='#1B1A19',
-                      chinese='#1B1A19',
-                      output='#1B1A19',
-                      variable='#1B1A19'),
         'color': dict(request=None,
                       header='#9896FF',
                       data=None,
@@ -153,11 +135,6 @@ class DarkStyle(BaseStyle):
     }
 
     editor_json = {
-        'selection': dict(background="#323341"),
-        'caret': dict(background='#FFD64C', foreground='#212131'),
-        'margin': dict(background='#2D2B29', foreground='#666666'),
-        'font': {},
-        'paper': dict(background='#1B1A19'),
         'color': {
             QsciLexerJSON.Default: "lightgray",  # =
             QsciLexerJSON.Number: "#0078D7",  # = ...  # type: int
@@ -178,11 +155,6 @@ class DarkStyle(BaseStyle):
     }
 
     editor_sql = {
-        'selection': dict(background="#323341"),
-        'caret': dict(background='#FFD64C', foreground='#212131'),
-        'margin': dict(background='#2D2B29', foreground='#666666'),
-        'font': dict(default='Microsoft YaHei UI'),
-        'paper': dict(background='#1B1A19'),
         'color': {
             QsciLexerSQL.Comment: 'lightgray',  # = 1
             QsciLexerSQL.CommentDoc: 'lightgray',  # = 3
@@ -210,11 +182,6 @@ class DarkStyle(BaseStyle):
     }
 
     editor_batch = {
-        'selection': dict(background="#323341"),
-        'caret': dict(background='#FFD64C', foreground='#212131'),
-        'margin': dict(background='#2D2B29', foreground='#666666'),
-        'font': dict(default='Microsoft YaHei UI'),
-        'paper': dict(background='#1B1A19'),
         'color': {
             QsciLexerBatch.Comment: "lightgray",  # = 1
             QsciLexerBatch.Default: "#56B622",  # = 0
@@ -228,42 +195,33 @@ class DarkStyle(BaseStyle):
     }
 
     editor_python = {
-        'selection': dict(background="#323341"),
-        'caret': dict(background='#FFD64C', foreground='#212131'),
-        'margin': dict(background='#2D2B29', foreground='#666666'),
-        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono Medium'),
-        'paper': dict(background='#1B1A19'),
+        'font': dict(default='JetBrains Mono'),
         'color': {
-            QsciLexerPython.Default: '#F8F5ED',  # = ...  # type: int
-            QsciLexerPython.Comment: 'lightgray',  # = ...  # type: int
-            QsciLexerPython.Number: '#0078D7',  # = ...  # type: int
-            QsciLexerPython.DoubleQuotedString: '#FFD866',  # = ...  # type: int
-            QsciLexerPython.SingleQuotedString: '#FFD866',  # = ...  # type: int
-            QsciLexerPython.Keyword: '#EE7762',  # = ...  # type: int
-            QsciLexerPython.TripleSingleQuotedString: '#FFD866',  # = ...  # type: int
-            QsciLexerPython.TripleDoubleQuotedString: '#FFD866',  # = ...  # type: int
-            QsciLexerPython.ClassName: '#70D7FF',  # = ...  # type: int
-            QsciLexerPython.FunctionMethodName: '#91CA1D',  # = ...  # type: int
+            QsciLexerPython.Default: '#C8CDCB',  # = ...  # type: int
+            QsciLexerPython.Comment: '#5B9140',  # = ...  # type: int
+            QsciLexerPython.Number: '#B4CDA8',  # = ...  # type: int
+            QsciLexerPython.DoubleQuotedString: '#CD9069',  # = ...  # type: int
+            QsciLexerPython.SingleQuotedString: '#CD9069',  # = ...  # type: int
+            QsciLexerPython.Keyword: '#529CD3',  # = ...  # type: int
+            QsciLexerPython.TripleSingleQuotedString: '#CD9069',  # = ...  # type: int
+            QsciLexerPython.TripleDoubleQuotedString: '#CD9069',  # = ...  # type: int
+            QsciLexerPython.ClassName: '#39C8B0',  # = ...  # type: int
+            QsciLexerPython.FunctionMethodName: '#BCDB84',  # = ...  # type: int
             QsciLexerPython.Operator: '#A97CF8',  # = ...  # type: int
             QsciLexerPython.Identifier: '#F8F5ED',  # = ...  # type: int
-            QsciLexerPython.CommentBlock: 'lightgray',  # = ...  # type: int
+            QsciLexerPython.CommentBlock: '#5B9140',  # = ...  # type: int
             QsciLexerPython.UnclosedString: '#FFD866',  # = ...  # type: int
-            QsciLexerPython.HighlightedIdentifier: '',  # = ...  # type: int
-            QsciLexerPython.Decorator: '#FD971F',  # = ...  # type: int
-            QsciLexerPython.DoubleQuotedFString: '#FFD866',  # = ...  # type: int
-            QsciLexerPython.SingleQuotedFString: '#FFD866',  # = ...  # type: int
-            QsciLexerPython.TripleSingleQuotedFString: '#FFD866',  # = ...  # type: int
-            QsciLexerPython.TripleDoubleQuotedFString: '#FFD866',  # = ...  # type: int
+            QsciLexerPython.HighlightedIdentifier: 'red',  # = ...  # type: int
+            QsciLexerPython.Decorator: '#39C8B0',  # = ...  # type: int
+            QsciLexerPython.DoubleQuotedFString: '#CD9069',  # = ...  # type: int
+            QsciLexerPython.SingleQuotedFString: '#CD9069',  # = ...  # type: int
+            QsciLexerPython.TripleSingleQuotedFString: '#CD9069',  # = ...  # type: int
+            QsciLexerPython.TripleDoubleQuotedFString: '#CD9069',  # = ...  # type: int
             32: 'lightgray'  # 折叠线
         }
     }
 
     editor_javascript = {
-        'selection': dict(background="#323341"),
-        'caret': dict(background='#FFD64C', foreground='#212131'),
-        'margin': dict(background='#2D2B29', foreground='#666666'),
-        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono Medium'),
-        'paper': dict(background='#1B1A19'),
         'color': {
             QsciLexerJavaScript.Default: "white",  # = ...  # type: int
             QsciLexerJavaScript.InactiveDefault: "red",  # = ...  # type: int
@@ -325,11 +283,6 @@ class DarkStyle(BaseStyle):
         }}
 
     editor_html = {
-        'selection': dict(background="#323341"),
-        'caret': dict(background='#FFD64C', foreground='#212131'),
-        'margin': dict(background='#2D2B29', foreground='#666666'),
-        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono Medium'),
-        'paper': dict(background='#1B1A19'),
         'color': {
             QsciLexerXML.ASPAtStart: "#CABBAB",  # ,=15
             QsciLexerXML.ASPJavaScriptComment: "#CABBAB",  # , = 57
@@ -442,25 +395,16 @@ class DarkStyle(BaseStyle):
             QsciLexerXML.XMLStart: "#CABBAB",  # , = 12
             QsciLexerXML.XMLTagEnd: "#CABBAB",
             32: 'lightgray'
+
         }  # , = 11
     }
     editor_xml = editor_html
     editor_svg = editor_html
     editor_common = {
-        'selection': dict(background="#323341"),
-        'caret': dict(background='#FFD64C', foreground='#212131'),
-        'margin': dict(background='#2D2B29', foreground='#666666'),
-        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono Medium'),
-        'paper': dict(background='#1B1A19'),
         'color': {
         }}
 
     editor_markdown = {
-        'selection': dict(background="#323341"),
-        'caret': dict(background='#FFD64C', foreground='#212131'),
-        'margin': dict(background='#2D2B29', foreground='#666666'),
-        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono Medium'),
-        'paper': dict(background='#1B1A19'),
         'color': {
             QsciLexerMarkdown.BlockQuote: 'red',  # = 15
             QsciLexerMarkdown.CodeBackticks: '#647379',  # = 19, like `x=1`
@@ -487,8 +431,6 @@ class DarkStyle(BaseStyle):
         }}
 
     editor_web_console = {
-        'font': {},
-        'paper': dict(background='#1B1A19'),
         'color': dict(
             http='#00A4EF',
             info_http='#FF6077',
@@ -499,11 +441,10 @@ class DarkStyle(BaseStyle):
         )
     }
 
-    editor_run_console = {'font': {},
-                          'paper': dict(background='#1B1A19'),
-                          'color': dict(
-                              normal='lightgray',
-                              file_info='#C6DBE9',
-                              line_info='#C6DBE9',
-                              file_trace='red'
-                          )}
+    editor_run_console = {
+        'color': dict(
+            normal='lightgray',
+            file_info='#C6DBE9',
+            line_info='#C6DBE9',
+            file_trace='red'
+        )}

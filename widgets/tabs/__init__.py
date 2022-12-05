@@ -1,9 +1,10 @@
+import collections
 from collections import deque
 from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 from types import MethodType
-from typing import List
+from typing import List, Union
 
 from PyQt5.QtCore import pyqtSignal, Qt, QFile
 from PyQt5.QtGui import QFont, QFontMetrics, QIcon, QColor, QKeyEvent
@@ -130,6 +131,26 @@ class TabCodeWidget(QWidget):
     def update_time(self, v: str):
         self._update_time = v
 
+    def enable_multi(self, enabled: bool):
+        if self.support_code:
+            if enabled:
+                self.code.setWrapMode(self.code.WrapCharacter)
+            else:
+                self.code.setWrapMode(self.code.WrapNone)
+
+    def disabled_line(self, enabled):
+        if self.support_code:
+            if enabled:
+                self.store_data(self.code.marginWidth(0))
+                self.code.setMarginWidth(0, 0)
+            else:
+                margin = self.restore_data()
+                if margin is not None:
+                    self.code.setMarginWidth(0, margin)
+
+                # self.code.setMargins(0)
+                # self.code.viewport().update()
+
     def load_file(self, file_path, content: str = None):
         try:
             if self.support_code:
@@ -149,6 +170,10 @@ class TabCodeWidget(QWidget):
     def file_path(self) -> str:
         return getattr(self, '_file', '')
 
+    @cached_property
+    def real_file_type(self):
+        return self.file_path().split('.')[-1]
+
     def set_read_only(self, v):
         if self.support_code:
             self.code.setReadOnly(v)
@@ -158,7 +183,7 @@ class TabCodeWidget(QWidget):
             if getattr(self.code, '_debounce_timer', None):
                 self.code._debounce_timer.stop()
 
-    def create_dynamic_actions(self):
+    def create_dynamic_actions(self) -> Union[QWidget, List[QWidget]]:
         return []
 
     def when_theme_changed(self, changed=False):
@@ -189,19 +214,25 @@ class TabCodeWidget(QWidget):
                     QColor(styles['selection'].get('background')))
                 self.code.resetSelectionForegroundColor()
 
-    def store_data(self, data):
-        self.__data.append(data)
+    def peek_store_data(self, key='default') -> deque:
+        return self.__data[key]
 
-    def restore_data(self):
-        if len(self.__data):
-            return self.__data.pop()
+    def store_data(self, data, key='default'):
+        self.__data[key].append(data)
+
+    def store_data_clear(self, key='default'):
+        self.__data[key].clear()
+
+    def restore_data(self, key='default'):
+        if len(self.__data[key]):
+            return self.__data[key].pop()
 
     def restore_clear(self):
         self.__data.clear()
 
     def __init__(self):
         super(TabCodeWidget, self).__init__()
-        self.__data = deque(maxlen=1)
+        self.__data = collections.defaultdict(lambda: deque())
         self.__main_lay = QHBoxLayout(self)
         self.__main_lay.setContentsMargins(0, 0, 0, 0)
         self.__main_lay.setSpacing(1)
@@ -304,16 +335,14 @@ class TabCodeWidget(QWidget):
             if ~modificationType & full == full:
                 return
             if ((modificationType & ~dflag) & ~iflag) & bfdflag == bfdflag:
-                print('befoo ddd')
-                self.set_read_only(True)
-
+                print('before delete')
+                # self.set_read_only(True)
             if (modificationType & ~dflag) & iflag == iflag:
                 self.when_insert(position, text, length, linesAdded, line)
             else:
                 self.when_delete(position, text, length, linesAdded, line)
-                print('delete ====')
 
-            print('modify', position, text, length, linesAdded, line, token)
+            # print('modify', position, text, length, linesAdded, line, token)
 
         def when_insert(self, position: int, text: bytes, length: int, linesAdded: int, line: int):
             pass
@@ -322,7 +351,6 @@ class TabCodeWidget(QWidget):
             pass
 
         def __show_information(self):
-            self.set_read_only(False)
             point = self.code.getGlobalCursorPosition()
             point = self.code.mapToGlobal(point)
             point.setY(point.y() - 40)

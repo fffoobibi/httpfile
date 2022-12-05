@@ -1,31 +1,64 @@
-import collections
-import os
 import re
 from pathlib import Path
 from typing import Any
 
-from PyQt5.Qsci import QsciLexerTeX
-from PyQt5.QtCore import Qt, pyqtSlot, QFile, QSize
-from PyQt5.QtGui import QIcon, QCursor
-from PyQt5.QtWidgets import QPushButton, QFrame, QProgressBar, QSpacerItem, QSizePolicy, QApplication, QMenu
+from PyQt5.Qsci import QsciLexerCustom
+from PyQt5.QtCore import Qt, pyqtSlot, QFile, QSize, pyqtSignal
+from PyQt5.QtGui import QIcon, QCursor, QFont, QColor
+from PyQt5.QtWidgets import QPushButton, QProgressBar, QSpacerItem, QSizePolicy, QApplication, QMenu
 
 from . import register, TabCodeWidget
-
-# from PyQt5 import QsciLexerTeX
-from .helpers import widget_debounce
 from .utils import make_h_panel
-from ..factorys import add_styled
+from ..factorys import add_styled, make_styled
+from ..styles import current_styles
+
+
+class StyledLexerCommon(QsciLexerCustom):
+
+    def __init__(self, parent):
+        super(StyledLexerCommon, self).__init__(parent)
+        self.setColor(QColor(current_styles.foreground), 0)
+        self.setFont(QFont(current_styles.editor_common['font']['default'], 9), 0)
+        self.setPaper(QColor(current_styles.editor_common['paper']['background']), 0)
+
+    def styleText(self, start, end):
+        self.startStyling(start)
+        self.setStyling(end - start + 1, 0)
+
+    def language(self):
+        return 'common'
+
+    def description(self, p_int):
+        if p_int == 0:
+            return 'style_0'
+        return ''
+
+    def defaultColor(self, p_int):
+        return QColor(current_styles.foreground)
+
+    def defaultPaper(self, p_int):
+        color = QColor((current_styles.editor_common['paper'].get('background')))
+        return color
+
+    # def defaultFont(self, p_int):
+    #     f = super(StyledLexerCommon, self).defaultFont(p_int)
+    #     if p_int == 0:
+    #         font = QFont(current_styles.editor_common['font'].get('default'))
+    #         font.setPointSize(f.pointSize())
+    #         f = font
+    #     return f
 
 
 @register(file_types=['', 'log', 'ini', 'conf', 'cfg', 'txt'])
 class TextCodeWidget(TabCodeWidget):
     file_type = 'common'
+    file_loaded = pyqtSignal()
 
     def set_lexer(self) -> Any:
-        return QsciLexerTeX(self)
+        return StyledLexerCommon(self)
 
     def create_dynamic_actions(self):
-        if self.file_path().split('.')[-1] in ['log']:
+        if self.real_file_type in ['log']:
             lay, frame = make_h_panel()
             btn = QPushButton()
             btn.setIcon(QIcon(':/icon/log.svg'))
@@ -43,17 +76,59 @@ class TextCodeWidget(TabCodeWidget):
 
             btn.clicked.connect(lambda checked=True: self._split_files(progress))
             lay.addWidget(progress)
-            lay.addWidget(QPushButton('IO', clicked=self._io_demo))
+            # lay.addWidget(QPushButton('IO', clicked=self._io_demo))
             lay.addSpacerItem(QSpacerItem(20, 20, hPolicy=QSizePolicy.Expanding))
             add_styled(btn, 'toolbar-button')
-            return [frame, ]
+            return frame
+        elif self.real_file_type in ['txt']:
+            key1 = self.code.config_name('txtMultiline', self.__class__)
+            key2 = self.code.config_name('txtShowline', self.__class__)
+            k1v = self.code.settings.value(key1)
+            k2v = self.code.settings.value(key2)
 
-        return []
+            def enable_multi(checked):
+                print('checed ', checked)
+                self.code.settings.setValue(key1, checked)
+                self.enable_multi(checked)
+
+            def show_line(checked):
+                self.code.settings.setValue(key2, checked)
+                self.disabled_line(checked)
+
+            btn = QPushButton()
+            btn.setIcon(QIcon(':/icon/扳手.svg'))
+            menu = make_styled(QMenu, 'menu')
+
+            a1 = menu.addAction('换行')
+            a1.setCheckable(True)
+            a1.setChecked(k1v)
+            a1.triggered.connect(enable_multi)
+
+            a2 = menu.addAction('行号')
+            a2.setCheckable(True)
+            a2.setChecked(k2v)
+
+            a2.triggered.connect(show_line)
+            btn.setMenu(menu)
+            add_styled(btn, 'toolbar-button')
+            return btn
+
+        # return []
+
+    def when_app_exit(self, main_app):
+        pass
+
+    def when_file_loaded(self):
+        if self.real_file_type in ['txt']:
+            key1 = self.code.config_name('txtMultiline', self.__class__)
+            key2 = self.code.config_name('txtShowline', self.__class__)
+            k1v = self.code.settings.value(key1)
+            k2v = self.code.settings.value(key2)
+            self.enable_multi(k1v)
+            self.disabled_line(k2v)
 
     def after_init(self):
-        pass
-        # self.code.customContextMenuRequested.connect(self._menu_policy)
-        # widget_debounce(self.code, self._auto_save, self.code.textChanged)
+        self.file_loaded.connect(self.when_file_loaded)
 
     def custom_menu_support(self):
         return True
@@ -65,23 +140,21 @@ class TextCodeWidget(TabCodeWidget):
         if act == ac1:
             if self.code.hasSelection():
                 x1, y1, x2, y2 = self.code.getSelection()
-                print(x1, y1 ,x2, y2)
-
+                print(x1, y1, x2, y2)
 
     def when_insert(self, position: int, text: bytes, length: int, linesAdded: int, line: int):
         if self._file_loaded:
+            pass
             # file = QFile(self.file_path())
             # ptr = file.map(0, file.size() + length)
-            print('text   ', text)
-            import mmap
-            print(self.file_path())
-            fp = open(self.file_path(), 'a+b')
-            fsize = os.stat(self.file_path()).st_size + length
-            mm = mmap.mmap(fp.fileno(), fsize)
-            print('posi ', position, text, length, fsize)
-            mm[position:position + length] = text
-            mm.close()
-            fp.close()
+            # import mmap
+            # fp = open(self.file_path(), 'a+b')
+            # fsize = os.stat(self.file_path()).st_size + length
+            # mm = mmap.mmap(fp.fileno(), fsize)
+            # print('posi ', position, text, length, fsize)
+            # mm[position:position + length] = text
+            # mm.close()
+            # fp.close()
 
     @pyqtSlot()
     def _io_demo(self):

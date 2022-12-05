@@ -14,10 +14,13 @@ class StyledHtmlLexer(QsciLexerHTML):
             return super().defaultColor(style)
 
     def defaultColor(self, style: int) -> QColor:
-        color = current_styles.get_editor_color(current_styles.editor_html.get('color'), style)
-        if color:
-            return QColor(color)
-        return super().defaultColor(style)
+        try:
+            color = current_styles.get_editor_color(current_styles.editor_html.get('color'), style)
+            if color:
+                return QColor(color)
+            return super().defaultColor(style)
+        except:
+            return super(StyledHtmlLexer, self).defaultColor(style)
 
 
 @register(file_types=['html'])

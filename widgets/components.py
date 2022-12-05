@@ -334,8 +334,7 @@ class CodeTabWidget(QTabWidget):
             self.tabBar().moveTab(tab_index, 0)
 
     def addTab(self, widget: QWidget, icon: QIcon, a1: str) -> int:
-        super().addTab(widget, icon, a1)
-
+        return super().addTab(widget, icon, a1)
 
 
 FileNameFlag = Qt.DisplayRole
@@ -365,16 +364,16 @@ class VirtualFileSystemTreeView(QTreeView):
             self.header_widget = self.create_head_widget()
 
         def create_head_widget(self):
-            def add_item(this, content: str, icon: str, tooltip=''):
+            def add_item(this, content: str, icon: str, tooltip='', height: int = 20, icon_size: int = 20):
                 btn = QPushButton(content)
                 btn.setIcon(QIcon(icon))
                 btn.setStyleSheet('QPushButton{background:none;border:none;padding:0px}QPushButton:hover{'
                                   'background: lightgray;}')
                 btn.setToolTip(tooltip)
-                size = 24
+                size = height
                 btn.setFixedHeight(size)
                 btn.setFixedWidth(size)
-                btn.setIconSize(QSize(20, 20))
+                btn.setIconSize(QSize(icon_size, icon_size))
                 count = lay.count()
                 lay.insertWidget(count, btn)
                 return btn
@@ -489,8 +488,8 @@ class VirtualFileSystemTreeView(QTreeView):
             return QIcon(':/icon/html.svg')
         return QIcon('')
 
-    def add_header_item(self, content: str, icon: str, tool_tip: str) -> QPushButton:
-        return self.__header.header_widget.add_item(content, icon, tool_tip)
+    def add_header_item(self, content: str, icon: str, tool_tip: str, height=20, size=18) -> QPushButton:
+        return self.__header.header_widget.add_item(content, icon, tool_tip, height, size)
 
     def _model_data_test2(self, current: Path) -> dict:
         dirs = list(current.iterdir())

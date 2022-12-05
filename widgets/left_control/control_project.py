@@ -32,7 +32,7 @@ class ProjectTreeViewWidget(QWidget, PluginBaseMixIn, styled_factory('background
 
     def render_custom_style(self):
         border_color = current_styles.border
-        background = current_styles.background_lighter
+        background = current_styles.background_darker
         handler_color = current_styles.handler
         color = current_styles.foreground
         self.project_view.header().setStyleSheet('QHeaderView:section{background:%s;color:%s;border:none}' % (background, color))

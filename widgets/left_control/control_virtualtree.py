@@ -64,6 +64,7 @@ class NetWorkFileSystemTreeView(VirtualFileSystemTreeView, PluginBaseMixIn, styl
         self.header_widget().setStyleSheet('#HeaderFrame{background: %s;color:%s}' % (
             dk, fr
         ))
+        self.header().setFixedHeight(28)
         StylesHelper.set_v_history_style_dynamic(self, color=handler, background='transparent', width=10)
         StylesHelper.set_h_history_style_dynamic(self, color=handler, background='transparent', height=10)
 

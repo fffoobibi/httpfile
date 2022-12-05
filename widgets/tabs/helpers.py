@@ -337,7 +337,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                 self.__define_search_indicator()
 
             self.click_signal.connect(self._mouse_click_language_parse_event)
-            self._current_refs = deque()
+            self._current_refs = _Queue()
             self._current_pos = QPoint()
             widget_debounce(self, self._mouse_hover_language_parse_event, self.mouse_move_signal)
 
@@ -372,6 +372,9 @@ class _Queue(object):
         self._queue = deque()
         self._pos = 0
         self._len = 0
+
+    def __len__(self):
+        return self._len
 
     def current_pos(self):
         return self._pos
@@ -426,10 +429,18 @@ def widget_debounce(self: QWidget, trigger_func: Callable, trigger_signal: pyqtS
 class LanguageServerMixIn(object):
     support_language_parse: bool = False
 
+    # indic_ref_class = 10
+    # indic_ref_define = 11
+    # indic_ref_
+
     indic_infer = 26
     indic_Completion = 27
     indic_hover = 28
+
     indic_ref = 29
+    indic_ref_class = 25
+    indic_ref_define = 24
+
     indic_rename = 30
     indic_syntax_check = 31
 

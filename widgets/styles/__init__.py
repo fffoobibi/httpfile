@@ -111,6 +111,10 @@ class BaseStyle(object):
     run_tab: str = None  # run_tab
     splitter: str = None  # splitter qss
 
+    menubar_background: str = None
+    toolbar_background: str = None
+    left_background: str = None
+
     border: str = None  # 边框色
     border_lighter: str = None
 
@@ -129,6 +133,8 @@ class BaseStyle(object):
     bottom_button: dict = None  # 底部按钮
     left_button: dict = None  # 左侧按钮
 
+    editor_globals: dict = None
+
     editor_json: dict = None
     editor_html: dict = None
     editor_python: dict = None
@@ -141,18 +147,13 @@ class BaseStyle(object):
     editor_svg: dict = None
     editor_markdown: dict = None
     editor_common: dict = None
-
     editor_web_console: dict = None
     editor_run_console: dict = None
 
     def __init_subclass__(cls, **kwargs):
         super(BaseStyle, cls).__init_subclass__(**kwargs)
-
+        editor_globals = cls.editor_globals
         for attr in [
-            'guides_foreground',  # 代码折叠线前台
-            'guides_background',  # 代码折叠线前台
-            'bottom_button',  # 底部按钮
-            'left_button',  # 左侧按钮
             'editor_json',
             'editor_html',
             'editor_python',
@@ -169,5 +170,18 @@ class BaseStyle(object):
             'editor_run_console',
         ]:
             value = getattr(cls, attr)
-            if value is None:
-                setattr(cls, attr, {})
+            if editor_globals is not None:
+                if value is None:
+                    setattr(cls, attr, {})
+                    value = getattr(cls, attr)
+                for k, v in editor_globals.items():
+                    self_value = value.get(k, None)
+                    if self_value is not None:
+                        dic = dict(**v)
+                        dic.update(value[k])
+                        value[k] = dic
+                        # setattr(cls, attr, dic)
+                        # print('set --', attr, dic)
+                        # value[k].update(**v)
+                    else:
+                        value[k] = v

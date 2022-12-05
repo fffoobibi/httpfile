@@ -61,17 +61,19 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
     def render_custom_style(self):
         self.menubar.setStyleSheet(
             'QMenuBar{background:%s;color:%s;border-top:1px solid %s;border-bottom: 0px solid %s}' % (
-                current_styles.background_darker, current_styles.foreground, current_styles.border,
+                current_styles.menubar_background, current_styles.foreground, current_styles.border,
                 current_styles.border
             ))
         self.toolbar.setStyleSheet(
-            'QToolBar{background:%s;color:%s;border-top:1px solid %s;border-bottom:1px solid %s}' % (
-                current_styles.background_darker, current_styles.foreground, current_styles.border,
-                current_styles.border
+            'QToolBar{background:%s;color:%s;border-top:1px solid %s;border-bottom:1px solid %s;}'
+            # 'QToolBar::separator{width:1px; color:red;}'
+            % (
+                current_styles.toolbar_background, current_styles.foreground, current_styles.border,
+                current_styles.border,  # current_styles.border
             ))
         self.setAutoFillBackground(True)
         palette = self.palette()  # type: QPalette
-        palette.setColor(QPalette.Window, QColor(current_styles.background_darker))
+        palette.setColor(QPalette.Window, QColor(current_styles.background_lighter))
         palette.setColor(QPalette.Foreground, QColor(current_styles.foreground))
         self.setPalette(palette)
 
@@ -194,13 +196,18 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             self.tabWidget.removeTab(index)
 
         def tab_widget_change(index):
-            self.logger.info(f'index change: {index}')
+            # self.logger.info(f'index change: {index}')
             widget = self.tabWidget.widget(index)
             if widget:
                 for dynamic in self.dynamic_toolbar_actions:
                     self.toolbar.removeAction(dynamic)
                 self.dynamic_toolbar_actions.clear()
                 actions = widget.create_dynamic_actions()
+                if not isinstance(actions, (tuple, list)):
+                    if actions is None:
+                        actions = []
+                    else:
+                        actions = [actions]
                 for index, action in enumerate(actions):
                     if isinstance(action, QAction):
                         self.toolbar.addAction(action)
@@ -212,7 +219,10 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                         a.setDefaultWidget(action)
                         self.toolbar.addAction(a)
                         self.dynamic_toolbar_actions.append(a)
-                # self.toolbar.addAction()
+            else:
+                for dynamic in self.dynamic_toolbar_actions:
+                    self.toolbar.removeAction(dynamic)
+                self.dynamic_toolbar_actions.clear()
 
         self.tabWidget.tabCloseRequested.connect(remove_tab)
         self.tabWidget.currentChanged.connect(tab_widget_change)
@@ -349,8 +359,9 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             tab: ITabInterFace = _create_tab_code_widget()
             if tab:
                 tab.set_read_only(self.r_run_time.read_only)
-                self.tabWidget.addTab(tab, icon, file_name)
+                tab_index = self.tabWidget.addTab(tab, icon, file_name)
                 self.tabWidget.setCurrentWidget(tab)
+                self.tabWidget.setTabToolTip(tab_index, file_path)
             return tab
         else:
             file_type = url.split('.')[-1] + ' File'
@@ -366,8 +377,10 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
             tab: ITabInterFace = _create_tab_code_widget()
             if tab:
                 tab.set_read_only(self.r_run_time.read_only)
-                self.tabWidget.addTab(tab, icon, url)
+                tab_index = self.tabWidget.addTab(tab, icon, url)
                 self.tabWidget.setCurrentWidget(tab)
+                self.tabWidget.setTabToolTip(tab_index, file_path)
+
             return tab
 
     def open_file(self, file_path: str, line: int = None, col: int = None):
