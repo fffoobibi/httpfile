@@ -54,7 +54,10 @@ def _styled_policy(t, policy, *a):
         ''' % (current_styles.background_lighter, current_styles.foreground))
     elif policy == 'toolbar-button':
         foreground = current_styles.foreground
-        t.setStyleSheet('color:%s;font-family:微软雅黑;background:transparent' % foreground)
+        t.setStyleSheet(
+            'QPushButton{color:%s;font-family:微软雅黑;background:transparent;border:none;padding:3px 4px;}'
+            'QPushButton:hover{background:%s}' % (foreground, current_styles.toolbar_hover))
+        # t.setStyleSheet('color:%s;font-family:微软雅黑;background:transparent' % foreground)
     elif policy == 'border-button':
         border = current_styles.border
         background = current_styles.background_darker

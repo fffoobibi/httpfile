@@ -103,6 +103,10 @@ class VsCodeDarkStyle(BaseStyle):
     handler = '#575758'
     hover = '#4C5052'
 
+    button_hover = '#2D3B47'
+    toolbar_hover = '#4C5052'
+    item_selected = '#094770'
+
     guides_background = '#3B3B3B'
     guides_foreground = '#3B3B3B'
 

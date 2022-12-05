@@ -2,12 +2,14 @@ import inspect
 import time
 import types
 from collections import deque
-from typing import Callable
+from typing import Callable, Union, List
 
+from PyQt5.Qsci import QsciScintilla
 from PyQt5.QtCore import pyqtSignal, Qt, pyqtSlot, QTimer, QPoint
 from PyQt5.QtGui import QColor, QFont, QIcon, QFontMetrics, QKeyEvent, QMouseEvent
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QLabel, QFrame, QShortcut
 from cached_property import cached_property
+from jedi.api.classes import Name
 from zope.interface import implementer
 
 from pyqt5utils.qsci.base import BaseCodeWidget
@@ -246,6 +248,12 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             return list(self._current_refs)
 
         @property
+        def current_refs(self) -> Union[_Queue, list]:
+            if self.support_language_parse:
+                return self._current_refs
+            return []
+
+        @property
         def local_pos(self) -> QPoint:
             return self._current_pos
 
@@ -299,6 +307,8 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                     else:
                         self._current_refs.clear()
                         self.clearAllIndicators(self.indic_ref)
+                        self.clearAllIndicators(self.indic_ref_class)
+                        self.clearAllIndicators(self.indic_ref_define)
 
         @pyqtSlot(str, int, int)
         def _mouse_hover_language_parse_event(self, word, line, col):
@@ -368,6 +378,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
 
 
 class _Queue(object):
+    # def __getitem__
     def __init__(self):
         self._queue = deque()
         self._pos = 0
@@ -375,6 +386,9 @@ class _Queue(object):
 
     def __len__(self):
         return self._len
+
+    def __iter__(self):
+        yield from self._queue
 
     def current_pos(self):
         return self._pos
@@ -423,6 +437,13 @@ def widget_debounce(self: QWidget, trigger_func: Callable, trigger_signal: pyqtS
     self._debounce_timer = timer
     setattr(self, debounce_name, timer)
     trigger_signal.connect(_trigger)
+
+
+def get_ref_line_words(refs: _Queue, sci: QsciScintilla):
+    refs: List[Name]
+    for ref in refs:
+        line, col = ref.line - 1, ref.column
+        yield sci.text(line), sci.wordAtLineIndex(line, col), line, col, ref
 
 
 @implementer(ILanguageInterFace)

@@ -5,8 +5,12 @@ from typing import Any
 from PyQt5.Qsci import QsciLexerCustom
 from PyQt5.QtCore import Qt, pyqtSlot, QFile, QSize, pyqtSignal
 from PyQt5.QtGui import QIcon, QCursor, QFont, QColor
-from PyQt5.QtWidgets import QPushButton, QProgressBar, QSpacerItem, QSizePolicy, QApplication, QMenu
+from PyQt5.QtWidgets import QPushButton, QProgressBar, QSpacerItem, QSizePolicy, QApplication, QMenu, QListWidget, \
+    QLabel, QListWidgetItem, QLineEdit
 
+from pyqt5utils.components.helper import ObjectsHelper
+from pyqt5utils.components.styles import StylesHelper
+from pyqt5utils.components.widgets.dialogs import ShadowDialog
 from . import register, TabCodeWidget
 from .utils import make_h_panel
 from ..factorys import add_styled, make_styled
@@ -15,10 +19,10 @@ from ..styles import current_styles
 
 class StyledLexerCommon(QsciLexerCustom):
 
-    def __init__(self, parent):
+    def __init__(self, parent, font_size=9):
         super(StyledLexerCommon, self).__init__(parent)
         self.setColor(QColor(current_styles.foreground), 0)
-        self.setFont(QFont(current_styles.editor_common['font']['default'], 9), 0)
+        self.setFont(QFont(current_styles.editor_common['font']['default'], font_size), 0)
         self.setPaper(QColor(current_styles.editor_common['paper']['background']), 0)
 
     def styleText(self, start, end):
@@ -83,11 +87,12 @@ class TextCodeWidget(TabCodeWidget):
         elif self.real_file_type in ['txt']:
             key1 = self.code.config_name('txtMultiline', self.__class__)
             key2 = self.code.config_name('txtShowline', self.__class__)
+            font_size = self.code.config_name('textSize', self.__class__)
             k1v = self.code.settings.value(key1)
             k2v = self.code.settings.value(key2)
+            fv = self.code.settings.value(font_size) or 9
 
             def enable_multi(checked):
-                print('checed ', checked)
                 self.code.settings.setValue(key1, checked)
                 self.enable_multi(checked)
 
@@ -95,6 +100,104 @@ class TextCodeWidget(TabCodeWidget):
                 self.code.settings.setValue(key2, checked)
                 self.disabled_line(checked)
 
+            def create_font_():
+                font_btn = make_styled(QPushButton, 'toolbar-button')
+                font_sub_btn = make_styled(QPushButton, 'toolbar-button')
+                chapter_btn = make_styled(QPushButton, 'toolbar-button')
+
+                font_btn.clicked.connect(_add_font)
+                font_sub_btn.clicked.connect(_sub_font)
+                chapter_btn.clicked.connect(_extrace_chapters)
+
+                font_btn.setText('放大')
+                font_sub_btn.setText('减小')
+                chapter_btn.setText('目录')
+                line = QLineEdit()
+                line.setClearButtonEnabled(True)
+                line.returnPressed.connect(_exec_script)
+                return font_btn, font_sub_btn, chapter_btn, line
+
+            def _exec_script():
+                text = self.sender().text().strip()
+                if text:
+                    exec(text, {'self': self})
+                    self.sender().setFocus(True)
+
+            def _go_to_chapter(item: QListWidgetItem):
+                line = item.data(Qt.UserRole)
+                self.move_to(line, 0, True)
+                if self.code.wrapMode() == self.code.SC_WRAP_NONE:
+                    self.code.setFirstVisibleLine(line)
+                else:
+                    pass
+                    self.code.ensureLineVisible(line)
+                    self.code.setFirstVisibleLine(line)
+                    self.code.ensureLineVisible(line)
+                print(self.code.firstVisibleLine())
+
+            def _show_chapters(ch_list):
+                style_sheet = '#FrameLess{background:%s;border:1px solid %s}' % (current_styles.background_darker,
+                                                                                 current_styles.border)
+                sh = ShadowDialog(frame_less_style=style_sheet, shadow_color='transparent')
+                listview = QListWidget()
+                for index, chapter in ch_list:
+                    item = QListWidgetItem()
+                    item.setText(chapter)
+                    item.setData(Qt.UserRole, index)
+                    listview.addItem(item)
+                listview.itemDoubleClicked.connect(_go_to_chapter)
+                listview.setStyleSheet(
+                    'QListWidget{border:none;background:%s;color:%s}' % (
+                        current_styles.background_lighter, current_styles.foreground))
+                StylesHelper.set_h_history_style_dynamic(listview, color=current_styles.handler,
+                                                         background='transparent',
+                                                         height=10)
+                StylesHelper.set_v_history_style_dynamic(listview, color=current_styles.handler,
+                                                         background='transparent',
+                                                         width=10)
+                title = QLabel()
+                title.setAlignment(Qt.AlignCenter)
+                title.setStyleSheet('QLabel{font-family:微软雅黑;padding:4px;color:%s}' % current_styles.foreground)
+                title.setText(f'章节')
+
+                sh.add_content(title)
+                sh.add_content(listview)
+                sh.pop(self.sender())
+
+            def _extrace_chapters():
+                chapter = self.peek_store_data('txtChapters')
+                if len(chapter) == 0:
+                    with open(self.file_path(), 'r', encoding='utf-8') as f:
+                        i = -1
+                        chapter_list = []
+                        for line in f:
+                            QApplication.processEvents()
+                            i += 1
+                            if re.search('第.*?章', line):
+                                chapter_list.append([i, line.strip()])
+                    self.store_data(chapter_list, 'txtChapters')
+                chapter_list = chapter[0]
+                _show_chapters(chapter_list)
+
+            def _add_font():
+                lexer = self.code.lexer()
+                f = lexer.defaultFont(0)
+                size = f.pointSize() + 1
+                f.setPointSize(size)
+                lexer.setDefaultFont(f)
+                lexer.setFont(f, 0)
+                self.code.settings.setValue(font_size, size)
+
+            def _sub_font():
+                lexer = self.code.lexer()
+                f = lexer.defaultFont(0)
+                size = f.pointSize() - 1
+                f.setPointSize(size)
+                lexer.setDefaultFont(f)
+                lexer.setFont(f, 0)
+                self.code.settings.setValue(font_size, size)
+
+            lay, pannel = make_h_panel()
             btn = QPushButton()
             btn.setIcon(QIcon(':/icon/扳手.svg'))
             menu = make_styled(QMenu, 'menu')
@@ -111,21 +214,55 @@ class TextCodeWidget(TabCodeWidget):
             a2.triggered.connect(show_line)
             btn.setMenu(menu)
             add_styled(btn, 'toolbar-button')
-            return btn
+            lay.addWidget(btn)
+
+            b1, b2, b3, line = create_font_()
+            lay.addWidget(b1)
+            lay.addWidget(b2)
+            lay.addWidget(b3)
+            lay.addWidget(line)
+
+            lexer = self.code.lexer()
+            dft = lexer.defaultFont(0)
+            dft.setPointSize(fv)
+            lexer.setDefaultFont(dft)
+            lexer.setFont(dft, 0)
+
+            return pannel
 
         # return []
 
     def when_app_exit(self, main_app):
         pass
 
+    def when_remove(self):
+        if self.real_file_type in ['txt']:
+            cfs = self.code.config_name('textPosition', self.__class__)
+            current = self.code.currentPosition()
+            value = self.code.settings.value(cfs) or {self.file_path(): current}
+            value[self.file_path()] = current
+            value['percent'] = self.code.verticalScrollBar().value() / self.code.verticalScrollBar().maximum()
+            self.code.settings.setValue(cfs, value)
+
     def when_file_loaded(self):
         if self.real_file_type in ['txt']:
             key1 = self.code.config_name('txtMultiline', self.__class__)
             key2 = self.code.config_name('txtShowline', self.__class__)
+            cfs = self.code.config_name('textPosition', self.__class__)
+            current = self.code.currentPosition()
+            value = self.code.settings.value(cfs) or {self.file_path(): current,
+                                                      'percent': 0}
+            current = value.get(self.file_path(), 0)
             k1v = self.code.settings.value(key1)
             k2v = self.code.settings.value(key2)
+
             self.enable_multi(k1v)
             self.disabled_line(k2v)
+
+            line, index = self.code.lineIndexFromPosition(current)
+            self.move_to(line, index, True)
+            self.code.ensureCursorVisible()
+            # self.code.verticalScrollBar().setValue(value['percent'] * self.code.verticalScrollBar().maximum())
 
     def after_init(self):
         self.file_loaded.connect(self.when_file_loaded)

@@ -122,7 +122,12 @@ class BaseStyle(object):
     background_lighter: str = None
 
     foreground: str = None
+
     hover: str = None
+    button_hover: str = None
+    toolbar_hover: str = None
+    item_hover: str = None
+    item_selected: str = None
 
     handler: str = None
     progress: str = None

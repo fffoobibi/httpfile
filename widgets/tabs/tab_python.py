@@ -3,31 +3,34 @@ import keyword
 import subprocess
 import threading
 from abc import abstractmethod
+from pathlib import Path
 from types import MethodType
 from typing import Any, List
 
 import jedi
-import parso.normalizer
 from PyQt5.Qsci import QsciLexerPython, QsciScintilla
 from PyQt5.QtCore import Qt, QDir, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QCursor, QKeySequence, QColor, QIcon, QFont
-from PyQt5.QtWidgets import QMenu, QAction, QTextEdit, QTextBrowser, QLineEdit, QPushButton, QLabel
+from PyQt5.QtWidgets import QMenu, QAction, QTextEdit, QTextBrowser, QLineEdit, QPushButton, QLabel, QListWidget
 from cached_property import cached_property
 from jedi.api import errors
 from jedi.api.classes import Completion, Name
 from jedi.api.environment import SameEnvironment
 
+from pyqt5utils.components.helper import ObjectsHelper
 from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.components.widgets.dialogs import ShadowDialog
 from pyqt5utils.workers import WorkerManager
 from widgets.factorys import make_styled, add_styled
 from . import register, TabCodeWidget
+from .helpers import get_ref_line_words
 from .utils import make_h_panel
 from ..signals import signal_manager
 from ..styles import current_styles
 
 
 class FileTracerMixIn(object):
+
     def init_file_tracer(self):
         self.__hasChangeMarkers = False
         self.__old_text = self.monitor_text()
@@ -79,7 +82,6 @@ class FileTracerMixIn(object):
             lines = list(difflib.unified_diff(old_lines, new_lines, fromfile=f'original', tofile=f'current', ))
             if lines:
                 # sys.stdout.writelines(lines)
-
                 change_info = lines[2]
                 change_contents = lines[3:]
                 change_added = []
@@ -114,6 +116,10 @@ class StyledPythonLexer(QsciLexerPython):
     def __init__(self, parent):
         super(StyledPythonLexer, self).__init__(parent)
         self.setHighlightSubidentifiers(True)
+
+    def keywords(self, set: int) -> str:
+        st = super().keywords(set)
+        return f'{st} self'
 
     def defaultPaper(self, style: int) -> QColor:
         try:
@@ -156,14 +162,11 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     def define_file_trace_margins(self):
         editor: QsciScintilla
         editor = self.code
-
         editor.markerDefine(editor.MarkerSymbol.FullRectangle, self.add_marker_number)  # add
         editor.setMarkerBackgroundColor(QColor('darkgreen'), self.add_marker_number)
         editor.setMarkerForegroundColor(QColor('red'), self.add_marker_number)
-
         editor.markerDefine(editor.MarkerSymbol.ThreeDots, self.deleted_marker_number)  # deleted
         editor.setMarkerForegroundColor(QColor('red'), self.deleted_marker_number)
-
         editor.markerDefine(editor.MarkerSymbol.FullRectangle, self.modify_marker_number)  # modify
         editor.setMarkerBackgroundColor(QColor('#F38922'), self.modify_marker_number)  # 橘色
 
@@ -172,18 +175,23 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         editor.setMarginWidth(0, '00')
 
         editor.setMarginType(self.tracer_margin_type, editor.MarginType.SymbolMargin)
+
         editor.setMarginWidth(self.tracer_margin_type, '0')
 
     def should_update_changed(self) -> bool:
+
         return self._file_loaded
 
     def monitor_text(self) -> str:
+
         return self.code.text()
 
     def monitor_widget(self) -> QTextEdit:
+
         return self.code
 
     def delete_all_changer_markers(self):
+
         self.code.markerDeleteAll(self.add_marker_number)
 
     def add_change_markers(self, marker_infos: list, marker_subs: list):
@@ -346,17 +354,55 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
     def create_dynamic_actions(self):
         def render_custom_style(this):
             foreground = current_styles.foreground
-            this.setStyleSheet('color:%s;font-family:微软雅黑;background:transparent' % foreground)
+            this.setStyleSheet(
+                'QPushButton{color:%s;font-family:微软雅黑;background:transparent;border:none;padding:3px 4px;}'
+                'QPushButton::menu-indicator {image: none; width:0px}'
+                'QPushButton:hover{background:%s}' % (foreground, current_styles.toolbar_hover))
+
             next_btn.setStyleSheet('QPushButton{color:%s;font-family:微软雅黑;background:transparent;border:none}'
-                                   'QPushButton:hover{background:%s}' % (foreground, current_styles.hover))
+                                   'QPushButton:hover{background:%s}' % (foreground, current_styles.toolbar_hover))
             pre_btn.setStyleSheet('QPushButton{color:%s;font-family:微软雅黑;background:transparent;border:none}'
-                                  'QPushButton:hover{background:%s}' % (foreground, current_styles.hover))
+                                  'QPushButton:hover{background:%s}' % (foreground, current_styles.toolbar_hover))
+            label.setStyleSheet(
+                'QPushButton{color:%s;font-family:微软雅黑;background:transparent;border:none;padding:3px 4px;}'
+                'QPushButton:hover{background:%s}' % (foreground, current_styles.toolbar_hover))
 
         def _next_action():
-            pass
+            if self.code.current_refs:
+                ref = self.code.current_refs.next()
+                self.move_to(ref.line - 1, ref.column, True)
 
         def _previous_action():
-            pass
+            if self.code.current_refs:
+                ref = self.code.current_refs.previous()
+                self.move_to(ref.line, ref.column, True)
+
+        def _show_refs():
+            style_sheet = '#FrameLess{background:%s;border:1px solid %s}' % (current_styles.background_darker,
+                                                                             current_styles.border)
+            sh = ShadowDialog(frame_less_style=style_sheet, shadow_color='transparent')
+            listview = QListWidget()
+            for ltext, word, _, col, ref in get_ref_line_words(self.code.current_refs, self.code):
+                if ref.module_path:
+                    file = Path(ref.module_path).name
+                else:
+                    file = ''
+                listview.addItem(f'{file} {ref.line}:{ref.column} : {ltext}')
+            listview.setStyleSheet(
+                'QListWidget{border:none;background:%s;color:%s}' % (
+                    current_styles.background_lighter, current_styles.foreground))
+            StylesHelper.set_h_history_style_dynamic(listview, color=current_styles.handler, background='transparent',
+                                                     height=10)
+            StylesHelper.set_v_history_style_dynamic(listview, color=current_styles.handler, background='transparent',
+                                                     width=10)
+            title = QLabel()
+            title.setAlignment(Qt.AlignCenter)
+            title.setStyleSheet('QLabel{font-family:微软雅黑;padding:4px;color:%s}' % current_styles.foreground)
+            title.setText('引用关系')
+            sh.setFixedWidth(ObjectsHelper.window_size()[0] / 2.5)
+            sh.add_content(title)
+            sh.add_content(listview)
+            sh.center(self.main_app)
 
         lay, frame = make_h_panel()
         btn = QPushButton()
@@ -364,7 +410,6 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         btn.setText(' 静态分析')
         btn.setToolTip('静态分析')
         btn.render_custom_style = MethodType(render_custom_style, btn)
-        btn.clicked.connect(lambda: print('fckj y'))
         lay.addWidget(btn)
 
         menu: QMenu = make_styled(QMenu, 'menu')
@@ -379,32 +424,29 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         a3.setCheckable(True)
         a4.setCheckable(True)
         btn.setMenu(menu)
-
-        label = QLabel()
-        label.setStyleSheet('color:%s;font-family:微软雅黑;font-size:9pt' % current_styles.foreground)
-
+        label = QPushButton()
+        label.clicked.connect(_show_refs)
         next_btn = QPushButton()
         pre_btn = QPushButton()
         pre_btn.setIcon(QIcon(':/icon/jiantou_liebiaoshouqi.svg'))
         next_btn.setIcon(QIcon(':/icon/jiantou_liebiaozhankai.svg'))
-        if len(self.code._current_refs) == 0:
+
+        if len(self.code.current_refs) == 0:
             next_btn.hide()
             pre_btn.hide()
         else:
             next_btn.show()
             pre_btn.show()
+
         lay.addWidget(label)
         lay.addWidget(next_btn)
         lay.addWidget(pre_btn)
 
         next_btn.clicked.connect(_next_action)
         pre_btn.clicked.connect(_previous_action)
-
         add_styled(btn, 'custom-style')
-
         self.store_data_clear('action')
         self.store_data((label, next_btn, pre_btn), 'action', )
-        print('store data ', self.peek_store_data('action'))
 
         return frame
 
@@ -419,22 +461,23 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             frame_less_style='#FrameLess{background:%s;color:%s;font-family:微软雅黑;border:1px solid %s}' % (
                 background, foreground, border
             ))
+
         tip_shadow.when_close = when_close
         text = QTextBrowser()
         text.setHtml(msg)
         text.setStyleSheet('QTextBrowser{background:%s;color:%s;font-family:微软雅黑;border:none}' % (
             background, foreground
         ))
+
         if line_str:
             fw = text.fontMetrics().width(line_str) + 10 * 2 + 8 + 20
             tip_shadow.setMinimumWidth(fw)
+
         StylesHelper.set_h_history_style_dynamic(text, color=current_styles.handler, height=8, background='transparent')
         StylesHelper.set_v_history_style_dynamic(text, color=current_styles.handler, width=8, background='transparent')
         tip_shadow.add_content(text)
-
         point = self.code.mapFromGlobal(QCursor.pos())
         tip_shadow.pop_with_position(self, dx=point.x(), dy=point.y())
-        print('render tip ==', 222)
 
     def _render_rename(self, word: str, confirm, when_close=None, line_str=None):
         def wrapper_confirm():
@@ -451,6 +494,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             frame_less_style='#FrameLess{background:%s;color:%s;font-family:微软雅黑;border:1px solid %s}' % (
                 background, foreground, border
             ))
+
         tip_shadow.when_close = when_close
         text = QLineEdit()
         text.setPlaceholderText(word)
@@ -463,7 +507,6 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             fw = text.fontMetrics().width(line_str) + 10 * 2 + 8 + 20
             tip_shadow.setMinimumWidth(fw)
         tip_shadow.add_content(text)
-
         left_0 = self.code.mapToGlobal(QPoint(0, 0))
         point = self.code.getGlobalCursorPosition()
         point = self.code.mapToGlobal(point)
@@ -515,6 +558,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
 
     def onTextDocumentReferences(self, word: str, line, col):
+
         def _ref():
             script = jedi.Script(self.code.text(), path=self.file_path())
             refs = script.get_references(line + 1, col + 1, scope='file')
@@ -524,20 +568,17 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             self.code.clearAllIndicators(self.code.indic_ref)
             self.code.clearAllIndicators(self.code.indic_ref_class)
             self.code.clearAllIndicators(self.code.indic_ref_define)
-            self.code._current_refs.clear()
+            self.code.current_refs.clear()
             current_file = (self.file_path() or '').replace('\\', '/')
-            peek = self.peek_store_data('action')
-            print('peek  ', peek)
             label, next_btn, pre_btn = self.peek_store_data('action')[0]
             if ret:
-                label.setText(f'{len(ret)}个引用')
+                label.setText(f' {len(ret)}个引用')
                 next_btn.show()
                 pre_btn.show()
             else:
-                label.clear()
+                label.setText('')
                 next_btn.hide()
                 pre_btn.hide()
-
             for ref in ret:
                 if ref.module_path and (ref.module_path.__str__().replace('\\', '/') == current_file):
                     # print('ref --> ', ref.type, ref.is_definition())
@@ -549,7 +590,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
                             indic_type = self.code.indic_ref_define
                         pos = self.code.positionFromLineIndex(ref.line - 1, ref.column)
                         self.code.setIndicatorRange(indic_type, pos, len(word))
-                        self.code._current_refs.append([ref.line - 1, ref.column])
+                        self.code.current_refs.append(ref)
 
         def _err(error):
             print('error --', error, self.code.stop_hover)
@@ -567,13 +608,13 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             start = self.code.getIndicatorStartPos(self.code.indic_ref, position)
             word_length = len(word)
             self.code.replaceRange(start, word_length, renamed)
-            for i in range(len(self.code._current_refs) - 1):
+            for i in range(len(self.code.current_refs) - 1):
                 if self.code.gotoNextIndicator(self.code.indic_ref, True):
                     next_start = self.code.getIndicatorStartPos(self.code.indic_ref, self.code.currentPosition() - 1)
                     if next_start is not None:
                         self.code.replaceRange(next_start, word_length, renamed)
-            self.code.verticalScrollBar().setValue(current_value)
 
+            self.code.verticalScrollBar().setValue(current_value)
             nl, nc = self.code.lineIndexFromPoint(local_cursor_point)
             self.code.setCursorPosition(nl, nc)
 
@@ -591,6 +632,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
                 signal_manager.emit(signal_manager.openFileAndMoveCursor, ref.module_path.__str__(),
                                     ref.line - 1, ref.column - 1
                                     )
+
             finally:
                 self.code._has_alt_control = False
                 timer.stop()
@@ -611,6 +653,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
 
     def onTextDocumentSyntaxCheck(self, word: str, line, col):
+
         def _syntax_check():
             script = jedi.Script(self.code.text(), path=self.file_path())
             refs = script.get_syntax_errors()

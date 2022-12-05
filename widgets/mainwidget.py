@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional, List
 
 from PyQt5.QtCore import QPoint, QSize, Qt
-from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QColor, QPalette, QCursor
+from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QColor, QPalette, QFontMetrics
 from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget, qApp, QWidgetAction
 from jedi.api.environment import SameEnvironment
 from pydantic import BaseModel, Field
@@ -11,11 +11,11 @@ from pydantic import BaseModel, Field
 from pyqt5utils import color_widget
 from pyqt5utils.components import Message
 from ui.main2ui import Ui_MainWindow
-from widgets.fonts import DirFontLoader
 from widgets.base import PluginBaseMixIn
 from widgets.collect import collect_plugins, Collections
 from widgets.components import FileSystemModel
 from widgets.factorys import add_styled
+from widgets.fonts import DirFontLoader
 from widgets.interfaces import ITabInterFace
 from widgets.signals import app_exit, app_start_up
 from widgets.styles import current_styles
@@ -107,7 +107,11 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                         self.toolbar.addAction(ac)
                     else:
                         self.toolbar.addWidget(ac)
-        self.toolbar.setIconSize(QSize(20, 20))
+        basic_fm = QFontMetrics(QFont('微软雅黑', 10))
+        height = basic_fm.height() * 1.8
+        icon_size = basic_fm.height()
+        self.toolbar.setIconSize(QSize(icon_size, icon_size))
+        self.toolbar.setFixedHeight(height)
 
     def load_status(self):
         cl = sorted(self.plugins.status, key=lambda k: self.plugins.status[k]['index'])
