@@ -32,6 +32,7 @@ class DirFontLoader(FontLoader):
             if file.is_file() and file.name.split('.')[-1] in cls.allow_types:
                 f_id = fdb.addApplicationFont(file.__str__())
                 fontFamilies = fdb.applicationFontFamilies(f_id)
-                print('familys: ', fontFamilies, file)
+                print('familys: ', fontFamilies, file, fdb.isSmoothlyScalable(fontFamilies[0]), fdb.smoothSizes(fontFamilies[0], ''))
+
                 ret.append(f_id)
         return ret

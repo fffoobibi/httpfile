@@ -112,10 +112,10 @@ class TextCodeWidget(TabCodeWidget):
                 font_btn.setText('放大')
                 font_sub_btn.setText('减小')
                 chapter_btn.setText('目录')
-                line = QLineEdit()
-                line.setClearButtonEnabled(True)
-                line.returnPressed.connect(_exec_script)
-                return font_btn, font_sub_btn, chapter_btn, line
+                # line = QLineEdit()
+                # line.setClearButtonEnabled(True)
+                # line.returnPressed.connect(_exec_script)
+                return font_btn, font_sub_btn, chapter_btn  # , line
 
             def _exec_script():
                 text = self.sender().text().strip()
@@ -130,10 +130,9 @@ class TextCodeWidget(TabCodeWidget):
                     self.code.setFirstVisibleLine(line)
                 else:
                     pass
-                    self.code.ensureLineVisible(line)
-                    self.code.setFirstVisibleLine(line)
-                    self.code.ensureLineVisible(line)
-                print(self.code.firstVisibleLine())
+                    # self.code.ensureLineVisible(line)
+                    # self.code.setFirstVisibleLine(line)
+                    # self.code.ensureLineVisible(line)
 
             def _show_chapters(ch_list):
                 style_sheet = '#FrameLess{background:%s;border:1px solid %s}' % (current_styles.background_darker,
@@ -216,11 +215,11 @@ class TextCodeWidget(TabCodeWidget):
             add_styled(btn, 'toolbar-button')
             lay.addWidget(btn)
 
-            b1, b2, b3, line = create_font_()
+            b1, b2, b3 = create_font_()
             lay.addWidget(b1)
             lay.addWidget(b2)
             lay.addWidget(b3)
-            lay.addWidget(line)
+            # lay.addWidget(line)
 
             lexer = self.code.lexer()
             dft = lexer.defaultFont(0)

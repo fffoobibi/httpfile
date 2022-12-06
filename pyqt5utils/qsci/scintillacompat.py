@@ -19,8 +19,8 @@ from PyQt5.Qsci import (
     QSCINTILLA_VERSION as QSCIQSCINTILLA_VERSION,
 )
 
-
 ###############################################################################
+from pyqt5utils import deprecated
 
 
 def QSCINTILLA_VERSION():
@@ -1109,14 +1109,19 @@ class QsciScintillaCompat(QsciScintilla):
         return ''
 
     def getIndicatorValue(self, indicator: int, pos):
-        # self.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, indicator)
         value = self.SendScintilla(QsciScintilla.SCI_INDICATORVALUEAT,
                                    indicator, pos)
         return value
 
+    @deprecated
     def setIndicatorValue(self, indicator, value: int):
-        # self.SendScintilla(QsciScintilla.SCI_SETINDICATORCURRENT, indicator)
         self.SendScintilla(QsciScintilla.SCI_SETINDICATORVALUE, value)
+
+    def setIndicatorAlpha(self, indicator: int, value: int):
+        self.SendScintilla(self.SCI_INDICSETALPHA, indicator, value)
+
+    def setIndicatorOutAlpha(self, indicator: int, value: int):
+        self.SendScintilla(self.SCI_INDICSETOUTLINEALPHA, indicator, value)
 
     def setIndicatorRange(self, indicator, spos, length):
         """

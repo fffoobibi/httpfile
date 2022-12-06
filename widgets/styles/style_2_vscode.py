@@ -118,7 +118,7 @@ class VsCodeDarkStyle(BaseStyle):
         'selection': dict(background="#264E77"),
         'caret': dict(background='white', foreground='#262626'),  # 光标颜色, 背景色
         'margin': dict(background='#1E1E1E', foreground='#A4A3A3'),
-        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono Medium'),
+        'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono'),
         'paper': dict(background='#1E1E1E'),
         'statics': dict(indic_ref='gray', indic_ref_class='#264E77', indic_ref_define='#9B3A24')
     }

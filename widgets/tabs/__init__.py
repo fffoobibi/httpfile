@@ -82,6 +82,9 @@ class TabCodeWidget(QWidget):
     def onTextDocumentSyntaxCheck(self, word: str, line, col):
         """"""
 
+    def capacities(self) -> int:
+        return 0
+
     @property
     def type(self):
         return self.file_type
@@ -246,7 +249,7 @@ class TabCodeWidget(QWidget):
         self.lay.setSpacing(0)
         if self.support_code:
             self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
-                                    self.custom_menu_support, self.custom_menu_policy, self.set_apis)()
+                                    self.custom_menu_support, self.custom_menu_policy, self.set_apis, find_self=True, cap=self.capacities)()
             self.code.setUpFromObj(self)
             self._is_remote = False
             self._update_time = None

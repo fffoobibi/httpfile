@@ -1,7 +1,6 @@
 import difflib
 import keyword
 import subprocess
-import threading
 from abc import abstractmethod
 from pathlib import Path
 from types import MethodType
@@ -20,6 +19,7 @@ from jedi.api.environment import SameEnvironment
 from pyqt5utils.components.helper import ObjectsHelper
 from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.components.widgets.dialogs import ShadowDialog
+from pyqt5utils.qsci.scintillacompat import QsciScintillaCompat
 from pyqt5utils.workers import WorkerManager
 from widgets.factorys import make_styled, add_styled
 from . import register, TabCodeWidget
@@ -138,6 +138,7 @@ class StyledPythonLexer(QsciLexerPython):
         font_family = current_styles.editor_python.get('font', {}).get('default', None)
         if font_family is not None:
             font.setFamily(font_family)
+            font.setPointSizeF(10)
             font.setBold(False)
         return font
 
@@ -301,7 +302,6 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             self.code._apis.add(c)
         self.code._apis.prepare()
         self.code.autoCompleteFromAPIs()
-        print('raws -:', self.code._apis.installedAPIFiles())
 
     def custom_menu_policy(self, pos):
 
@@ -332,7 +332,15 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
 
     def define_jedi_indicators(self):
         editor = self.code
-        editor: QsciScintilla
+
+        editor: QsciScintillaCompat
+
+        editor.indicatorDefine(editor.StraightBoxIndicator, self.code.indic_brace)
+        editor.setIndicatorDrawUnder(True, self.code.indic_brace)
+        editor.setIndicatorForegroundColor(QColor('red'), self.code.indic_brace)
+        editor.setMatchedBraceIndicator(self.code.indic_brace)
+        editor.setIndicatorAlpha(self.code.indic_brace, 200)
+        editor.setIndicatorOutAlpha(self.code.indic_brace, 0)
 
         editor.indicatorDefine(editor.StraightBoxIndicator, self.code.indic_ref)
         editor.setIndicatorDrawUnder(True, self.code.indic_ref)
@@ -515,6 +523,10 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         tip_shadow.pop_with_position(self, dx=point.x(), dy=point.y())
         text.setFocus(True)
 
+    def capacities(self) -> int:
+        editor = self.code
+        return editor.ref_flag | editor.rename_flag | editor.infer_flag | editor.hover_flag
+
     def onTextDocumentHover(self, word: str, line: int, col: int):
 
         def _infer():
@@ -541,7 +553,6 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         def _when_close():
             try:
                 self.code.stop_hover = False
-                print('i am call ====', self.code.stop_hover, threading.currentThread())
             except:
                 pass
 
@@ -553,9 +564,31 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
                 import traceback
                 traceback.print_exc()
 
-        if self.code.stop_hover is False:
-            self.code.stop_hover = True
-            self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
+        position = self.code.positionFromLineIndex(line, col)
+        hover_position = self.code.styleAt(position)
+        if hover_position not in [
+            StyledPythonLexer.NoWarning,
+            StyledPythonLexer.Spaces,
+            StyledPythonLexer.Operator,
+            StyledPythonLexer.Tabs,
+            StyledPythonLexer.TabsAfterSpaces,
+            StyledPythonLexer.Number,
+            StyledPythonLexer.Comment,
+            StyledPythonLexer.CommentBlock,
+            StyledPythonLexer.SingleQuotedString,
+            StyledPythonLexer.SingleQuotedFString,
+            StyledPythonLexer.DoubleQuotedString,
+            StyledPythonLexer.DoubleQuotedFString,
+            StyledPythonLexer.UnclosedString,
+            StyledPythonLexer.TripleSingleQuotedString,
+            StyledPythonLexer.TripleSingleQuotedFString,
+            StyledPythonLexer.TripleDoubleQuotedString,
+            StyledPythonLexer.TripleDoubleQuotedFString,
+        ]:
+            if self.code.stop_hover is False:
+                self.code.stop_hover = True
+                print('parse hover', hover_position)
+                self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
 
     def onTextDocumentReferences(self, word: str, line, col):
 
@@ -596,7 +629,29 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
             print('error --', error, self.code.stop_hover)
             self.code.stop_hover = False
 
-        self.jedi_worker.add_task(_ref, call_back=_call, err_back=_err)
+        position = self.code.positionFromLineIndex(line, col)
+        hover_position = self.code.styleAt(position)
+        if hover_position not in [
+            StyledPythonLexer.NoWarning,
+            StyledPythonLexer.Spaces,
+            StyledPythonLexer.Operator,
+            StyledPythonLexer.Tabs,
+            StyledPythonLexer.TabsAfterSpaces,
+            StyledPythonLexer.Number,
+            StyledPythonLexer.Comment,
+            StyledPythonLexer.CommentBlock,
+            StyledPythonLexer.SingleQuotedString,
+            StyledPythonLexer.SingleQuotedFString,
+            StyledPythonLexer.DoubleQuotedString,
+            StyledPythonLexer.DoubleQuotedFString,
+            StyledPythonLexer.UnclosedString,
+            StyledPythonLexer.TripleSingleQuotedString,
+            StyledPythonLexer.TripleSingleQuotedFString,
+            StyledPythonLexer.TripleDoubleQuotedString,
+            StyledPythonLexer.TripleDoubleQuotedFString,
+        ]:
+            print('parse reference')
+            self.jedi_worker.add_task(_ref, call_back=_call, err_back=_err)
         # self.onTextDocumentSyntaxCheck(word, line, col)
 
     def onTextDocumentRename(self, word: str, line, col):
@@ -671,3 +726,4 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
 
         print('infer --', word, line, col)
         self.jedi_worker.add_task(_syntax_check, call_back=_call, err_back=_err)
+

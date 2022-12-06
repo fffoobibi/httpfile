@@ -97,18 +97,18 @@ class ShadowDialog(QDialog, KeepAliveAndCloseMixIn, KeepMoveTogetherMixIn):
         self.update()
 
     def eventFilter(self, a0, a1: QEvent) -> bool:
-        if a1.type() == QEvent.WindowDeactivate:
+        if a0 == self and a1.type() == QEvent.WindowDeactivate:
             if not self._keep:
                 self.close()
         return QDialog.eventFilter(self, a0, a1)
 
     def close(self) -> bool:
-        super().close()
-        if self._when_close:
+        if self._when_close is not None:
             try:
                 self._when_close()
-            except Exception as e:
+            except Exception:
                 pass
+        return super().close()
 
     def pop_with_position(self, target: QWidget, position: Literal['l', 't', 'r', 'b'] = 'l', dx: int = 0, dy: int = 0):
         w, h = target.width(), target.height()

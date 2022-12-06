@@ -55,21 +55,101 @@
 #     #     'id': '1',
 #     #     'method': 'asdfsdfsf'
 #     # })
-
-import pyls
-import pyls_jsonrpc
-
-# import socket
-# sock = socket.socket()
-
+import json
+from pathlib import Path
 import requests
 
-requests.post('http://127.0.0.1:2087', data={
+# import pyls
+#
+# file = Path(r'D:/work/httpfile/scrap.py').read_bytes()
+# headers = {'Content-Length': str(len(file))}
+# resp = requests.post('http://127.0.0.1:2087',
+#                      headers=headers,
+#                      data={
+#                          'jsonrpc': '2.0',
+#                          'id': '1',
+#                          'method': 'initialize',
+#                          'params':
+#                              {
+#                                  'processId': 1,
+#                                  'rootUri': 'file:///D:/work/httpfile/scrap.py',
+#                                  'capabilities': {
+#                                      'textDocument': {
+#                                          'completion': {},
+#                                          'hover': {},
+#                                          'definition': {},
+#                                          'references': {},
+#                                          'documentHighlight': {},
+#                                          'signatureHelp': {}
+#                                      }
+#                                  }
+#                              }
+#                      })
+# print('---------------')
+# print(resp.text)
+# print(resp.status_code)
+data = {
     'jsonrpc': '2.0',
     'id': '1',
-    'method': 'asdfsdfsf',
+    'method': 'initialize',
     'params':
         {
-
+            'processId': 1,
+            'rootUri': 'file:///D:/work/httpfile/scrap.py',
+            'capabilities': {
+                'textDocument': {
+                    'completion': {},
+                    'hover': {},
+                    'definition': {},
+                    'references': {},
+                    'documentHighlight': {},
+                    'signatureHelp': {}
+                }
+            }
         }
-})
+}
+import socket
+
+file = Path(r'D:/work/httpfile/scrap.py').read_bytes()
+# headers = {'Content-Length': str(len(file))}
+data = r'''Content-Length: %s
+\r\n
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params":
+        {
+            "processId": 1,
+            "rootUri": "file:///D:/work/httpfile/scrap.py",
+            "capabilities": {
+                "textDocument": {
+                    "completion": {},
+                    "hover": {},
+                    "definition": {},
+                    "references": {},
+                    "documentHighlight": {},
+                    "signatureHelp": {}
+                }
+            }
+        }
+}
+''' % len(file)
+
+print(repr(data))
+server_ip_port = ('127.0.0.1', 2087)  # 不写本机ip会拿1个可用的ip来用
+
+sk = socket.socket()
+sk.connect(server_ip_port)
+sk.sendall(data.encode('utf-8'))  # 向服务端发送数据，以字节流的方式发送
+
+txt = ''
+while True:
+    server_reply = sk.recv(1024).decode()  # 接受服务端的返回结果,反解成字符串
+    print('get ---', server_reply)
+    txt += server_reply
+    if not server_reply:
+        break
+
+sk.close()
+print('res ', txt)

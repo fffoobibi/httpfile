@@ -45,7 +45,11 @@ class KeepAliveAndCloseMixIn(object):
         cls.__init__ = _after(cls, '__init__')(__init__)
 
     def keep_ref(self):
-        self._instance.add(self)
+        try:
+            self._instance.add(self)
+        except:
+            import traceback
+            traceback.print_exc()
 
 
 class DragMoveMixin(object):

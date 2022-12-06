@@ -20,13 +20,14 @@ from widgets.styles import current_styles
 
 
 def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support, custom_menu_policy, set_apis,
-                find_self=None, render_style=None, multi_line=False, simple_search=False):
+                find_self=None, render_style=None, multi_line=False, simple_search=False, cap=None):
     from widgets.mainwidget import MainWidget
     class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn, LanguageServerMixIn):
         click_signal = pyqtSignal()
         file_styled = pyqtSignal()
         run_margin_signal = pyqtSignal(int)
         mouse_move_signal = pyqtSignal(str, int, int)
+        indic_brace = 20
 
         if render_style:
             def render_custom_style(self):
@@ -262,10 +263,11 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             if a0.modifiers() & Qt.AltModifier:
                 self._has_alt_control = True
             if a0.key() == Qt.Key_F1:
-                if self.hasIndicator(self.indic_ref, self.currentPosition()):
-                    line, index = self.current_line_col
-                    word = self.wordAtLineIndex(line, index)
-                    self.onTextDocumentRename(word, line, index)
+                if self.support_language_parse and self.supported(self.rename_flag):
+                    if self.hasIndicator(self.indic_ref, self.currentPosition()):
+                        line, index = self.current_line_col
+                        word = self.wordAtLineIndex(line, index)
+                        self.onTextDocumentRename(word, line, index)
 
         def keyReleaseEvent(self, a0: QKeyEvent) -> None:
             super().keyReleaseEvent(a0)
@@ -273,15 +275,16 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
 
         def mousePressEvent(self, event):
             super(BaseCodeChild, self).mousePressEvent(event)
-            self._current_pos = event.pos()
-            if self._has_alt_control and event.button() == Qt.LeftButton:
-                line, index = self.current_line_col
-                word = self.wordAtLineIndex(line, index)
-                if word:
-                    self.onTextDocumentInfer(word, line, index)
+            if self.support_language_parse and self.supported(self.infer_flag):
+                self._current_pos = event.pos()
+                if self._has_alt_control and event.button() == Qt.LeftButton:
+                    line, index = self.current_line_col
+                    word = self.wordAtLineIndex(line, index)
+                    if word:
+                        self.onTextDocumentInfer(word, line, index)
 
         def mouseMoveEvent(self, a0: QMouseEvent) -> None:
-            if self.support_language_parse:
+            if self.support_language_parse and self.supported(self.hover_flag):
                 word = self.wordAtPoint(a0.pos())
                 line, index = self.lineIndexFromPoint(a0.pos())
                 if self._has_alt_control and word:
@@ -297,31 +300,46 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                 line, col = self.current_line_col
                 word = self.wordAtLineIndex(line, col)
                 pos = self.currentPosition()
-                if self._has_alt_control and word:
+                if self._has_alt_control and word and self.supported(self.infer_flag):
                     self.onTextDocumentInfer(word, line, col)
                 else:
-                    if word:
-                        if not self.hasIndicator(self.indic_ref, pos):
+                    flag = self.supported(self.ref_flag)
+                    if word and flag:
+                        if not any([self.hasIndicator(self.indic_ref, pos),
+                                    self.hasIndicator(self.indic_ref_class, pos),
+                                    self.hasIndicator(self.indic_ref_define, pos)
+                                    ]):
                             self._current_refs.clear()
                             self.onTextDocumentReferences(word, line, col)
                     else:
-                        self._current_refs.clear()
-                        self.clearAllIndicators(self.indic_ref)
-                        self.clearAllIndicators(self.indic_ref_class)
-                        self.clearAllIndicators(self.indic_ref_define)
+                        if flag:
+                            self._current_refs.clear()
+                            self.clearAllIndicators(self.indic_ref)
+                            self.clearAllIndicators(self.indic_ref_class)
+                            self.clearAllIndicators(self.indic_ref_define)
 
         @pyqtSlot(str, int, int)
         def _mouse_hover_language_parse_event(self, word, line, col):
-            if word:
+            pos = self.currentPosition()
+            has_ref = any([self.hasIndicator(self.indic_ref, pos),
+                           self.hasIndicator(self.indic_ref_class, pos),
+                           self.hasIndicator(self.indic_ref_define, pos)
+                           ])
+            if word and not has_ref:
                 self.onTextDocumentHover(word, line, col)
 
         def __init__(self):
             super(BaseCodeChild, self).__init__()
+            self.SendScintilla(self.SCI_SETFONTQUALITY, self.SC_EFF_QUALITY_ANTIALIASED)
+
             self.code_container = instance
             self.find_from = find_self
             self._has_alt_control: bool = False
             self._hover_queue = deque(maxlen=2)
             self.stop_hover = False
+            # language server capacities
+            if cap:
+                self.support_enabled(self.capacities())
 
             self.setCaretLineAlwaysVisible(True)
             self.enableMultiCursorSupport()
@@ -350,6 +368,11 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             self._current_refs = _Queue()
             self._current_pos = QPoint()
             widget_debounce(self, self._mouse_hover_language_parse_event, self.mouse_move_signal)
+
+        def capacities(self) -> int:
+            if hasattr(cap, '__func__'):
+                return cap.__func__(self)
+            return cap(self)
 
         def get_app(self) -> MainWidget:
             return super(BaseCodeChild, self).get_app()
@@ -450,9 +473,13 @@ def get_ref_line_words(refs: _Queue, sci: QsciScintilla):
 class LanguageServerMixIn(object):
     support_language_parse: bool = False
 
-    # indic_ref_class = 10
-    # indic_ref_define = 11
-    # indic_ref_
+    language_mask = 0
+    rename_flag = 1
+    infer_flag = 1 << 1
+    completion_flag = 1 << 2
+    hover_flag = 1 << 3
+    ref_flag = 1 << 4
+    syntax_flag = 1 << 5
 
     indic_infer = 26
     indic_Completion = 27
@@ -467,8 +494,22 @@ class LanguageServerMixIn(object):
 
     __setup_targets__ = [
         'onTextDocumentInfer', 'onTextDocumentCompletion', 'onTextDocumentHover', 'onTextDocumentReferences',
-        'onTextDocumentRename', 'onTextDocumentSyntaxCheck'
+        'onTextDocumentRename', 'onTextDocumentSyntaxCheck', 'capacities'
     ]
+
+    __flags__ = 200
+
+    def capacities(self) -> int:
+        return 0
+
+    def support_enabled(self, flags: int):
+        self.language_mask |= flags
+
+    def supported(self, flag: int):
+        return self.language_mask & flag
+
+    def support_disabled(self, flag: int):
+        self.language_mask &= ~flag
 
     def setUpFromObj(self, obj):
         clz = obj.__class__
