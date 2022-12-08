@@ -1,93 +1,8 @@
-# import asyncio
-#
-# from aiohttp_json_rpc import JsonRpcClient
-#
-# {
-#     "jsonrpc": "2.0",
-#     "id": 1,
-#     "method": "textDocument/definition",
-#     "params": {
-#         "textDocument": {
-#             "uri": "file:///C:/Users/fqk12/Desktop/httpfile/2.py"
-#         },
-#         "position": {
-#             "line": 3,
-#             "character": 1
-#         }
-#     }
-# }
-#
-# import pyls
-#
-# params = {
-#     "textDocument": {
-#         "uri": "file:///C:/Users/fqk12/Desktop/httpfile/2.py"
-#     },
-#     "position": {
-#         "line": 3,
-#         "character": 1
-#     }}
-#
-#
-# async def definition(request):
-#     print(request.params, )
-#
-#
-# async def ping_json_rpc():
-#     """Connect to ws://localhost:8080/, call ping() and disconnect."""
-#     rpc_client = JsonRpcClient()
-#     rpc_client.add_methods(['textDocument', definition])
-#     try:
-#         await rpc_client.connect('localhost', 2087)
-#         call_result = await rpc_client.call(definition, params=params)
-#         print(call_result)  # prints 'pong' (if that's return val of ping)
-#     finally:
-#         await rpc_client.disconnect()
-#
-#
-# if __name__ == '__main__':
-#     asyncio.run(ping_json_rpc())
-#
-#     # import requests
-#     #
-#     # requests.post('http://127.0.0.1:2087', data={
-#     #     'jsonrpc': '2.0',
-#     #     'id': '1',
-#     #     'method': 'asdfsdfsf'
-#     # })
 import json
 from pathlib import Path
-import requests
-
-# import pyls
-#
-# file = Path(r'D:/work/httpfile/scrap.py').read_bytes()
-# headers = {'Content-Length': str(len(file))}
-# resp = requests.post('http://127.0.0.1:2087',
-#                      headers=headers,
-#                      data={
-#                          'jsonrpc': '2.0',
-#                          'id': '1',
-#                          'method': 'initialize',
-#                          'params':
-#                              {
-#                                  'processId': 1,
-#                                  'rootUri': 'file:///D:/work/httpfile/scrap.py',
-#                                  'capabilities': {
-#                                      'textDocument': {
-#                                          'completion': {},
-#                                          'hover': {},
-#                                          'definition': {},
-#                                          'references': {},
-#                                          'documentHighlight': {},
-#                                          'signatureHelp': {}
-#                                      }
-#                                  }
-#                              }
-#                      })
-# print('---------------')
-# print(resp.text)
-# print(resp.status_code)
+import socket
+import pyls
+import json_lsp
 data = {
     'jsonrpc': '2.0',
     'id': '1',
@@ -108,7 +23,6 @@ data = {
             }
         }
 }
-import socket
 
 file = Path(r'D:/work/httpfile/scrap.py').read_bytes()
 # headers = {'Content-Length': str(len(file))}
@@ -136,20 +50,120 @@ data = r'''Content-Length: %s
 }
 ''' % len(file)
 
-print(repr(data))
-server_ip_port = ('127.0.0.1', 2087)  # 不写本机ip会拿1个可用的ip来用
+port = 3999
+server_ip_port = ('127.0.0.1', port)  # 不写本机ip会拿1个可用的ip来用, 2087
 
-sk = socket.socket()
-sk.connect(server_ip_port)
-sk.sendall(data.encode('utf-8'))  # 向服务端发送数据，以字节流的方式发送
+# sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# sk.connect(server_ip_port)
 
-txt = ''
-while True:
-    server_reply = sk.recv(1024).decode()  # 接受服务端的返回结果,反解成字符串
-    print('get ---', server_reply)
-    txt += server_reply
-    if not server_reply:
-        break
+d2 = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "textDocument/refer",
+    "params":
+        {
+            "processId": 1,
+            "rootUri": "file:///D:/work/httpfile/scrap.py",
+            "capabilities": {
+                "textDocument": {
+                    "completion": {},
+                    "hover": {},
+                    "definition": {},
+                    "references": {},
+                    "documentHighlight": {},
+                    "signatureHelp": {}
+                }
+            }
+        }}
+d2 = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params":
+        {
+            "processId": 1,
+            "rootUri": "file:///D:/work/httpfile/.env.json",
+            "capabilities": {
+                "textDocument": {
+                    "completion": {},
+                    "hover": {},
+                    "definition": {},
+                    "references": {},
+                    "documentHighlight": {},
+                    "signatureHelp": {}
+                }
+            }
+        }
+}
+d2 = json.dumps(d2, ensure_ascii=False)
+d1 = 'Content-Length: %s\r\n\r\n' % len(d2.encode())
+print(d1)
+print(d2)
+# sk.send(d1.encode())
+# sk.send(d2.encode())
+#
+# txt = ''
+# while True:
+#     server_reply = sk.recv(1024).decode()  # 接受服务端的返回结果,反解成字符串
+#     txt += server_reply
+#     if not server_reply:
+#         break
+#     print('res ', repr(txt))
+#
+# sk.close()
 
-sk.close()
-print('res ', txt)
+from jsonrpcx import acall
+import pyls_jsonrpc
+import asyncio
+
+params = {
+    "processId": 1,
+    "rootUri": "file:///D:/work/httpfile/scrap.py",
+    "capabilities": {
+        "textDocument": {
+            "completion": {},
+            "hover": {},
+            "definition": {},
+            "references": {},
+            "documentHighlight": {},
+            "signatureHelp": {}
+        }
+    }
+}
+
+async def main():
+    d2 = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params":
+            {
+                "processId": 1,
+                "rootUri": "file:///D:/work/httpfile/.env.json",
+                "capabilities": {
+                    "textDocument": {
+                        "completion": {},
+                        "hover": {},
+                        "definition": {},
+                        "references": {},
+                        "documentHighlight": {},
+                        "signatureHelp": {}
+                    }
+                }
+            }
+    }
+    # from jsonrpcx import acall
+    # result1 = await acall("http://127.0.0.1:2087", method="initialize", params=d2['params'])
+    # print(result1)
+    import httpx
+    # length = len(json.dumps(d2, ensure_ascii=False).encode())
+    # t= None
+    async with httpx.AsyncClient() as client:
+        client: httpx.AsyncClient
+        resp = await client.post('https://127.0.0.1:3999', json=d2, )
+
+        print(resp.text)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

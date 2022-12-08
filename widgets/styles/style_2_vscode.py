@@ -199,7 +199,7 @@ class VsCodeDarkStyle(BaseStyle):
     }
 
     editor_python = {
-        'font': dict(default='JetBrains Mono'),
+        'font': dict(default='Microsoft YaHei'), #JetBrains Mono
         'color': {
             QsciLexerPython.Default: '#C8CDCB',  # = ...  # type: int
             QsciLexerPython.Comment: '#5B9140',  # = ...  # type: int
@@ -212,7 +212,7 @@ class VsCodeDarkStyle(BaseStyle):
             QsciLexerPython.ClassName: '#39C8B0',  # = ...  # type: int
             QsciLexerPython.FunctionMethodName: '#BCDB84',  # = ...  # type: int
             QsciLexerPython.Operator: '#A97CF8',  # = ...  # type: int
-            QsciLexerPython.Identifier: '#F8F5ED',  # = ...  # type: int
+            QsciLexerPython.Identifier: '#D4D4D4',  # = ...  # type: int
             QsciLexerPython.CommentBlock: '#5B9140',  # = ...  # type: int
             QsciLexerPython.UnclosedString: '#FFD866',  # = ...  # type: int
             QsciLexerPython.HighlightedIdentifier: 'red',  # = ...  # type: int

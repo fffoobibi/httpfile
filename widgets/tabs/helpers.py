@@ -499,9 +499,6 @@ class LanguageServerMixIn(object):
 
     __flags__ = 200
 
-    def capacities(self) -> int:
-        return 0
-
     def support_enabled(self, flags: int):
         self.language_mask |= flags
 
@@ -517,6 +514,44 @@ class LanguageServerMixIn(object):
             if inspect.isfunction(v) and v.__name__ in self.__setup_targets__:
                 bound_method = types.MethodType(v, self)
                 setattr(self, k, bound_method)
+
+    #### language server protocol ###
+
+    def capacities(self) -> int:
+        return 0
+
+    def onInitialize(self):
+        pass
+
+    def onTextDocumentFormatting(self):
+        pass
+
+    def onTextDocumentDocumentHighlight(self):
+        pass
+
+    def onTextDocumentDocumentSymbol(self):
+        pass
+
+    def onTextDocumentFolding(self):
+        pass
+
+    def onTextDocumentDocumentLink(self):
+        pass
+
+    def onTextDocumentDidSave(self):
+        pass
+
+    def onTextDocumentSignatureHelp(self):
+        pass
+
+    def onTextDocumentDidChange(self, word: str, line, col):
+        pass
+
+    def onTextDocumentDidOpen(self, word: str, line, col):
+        pass
+
+    def onTextDocumentDidClose(self, word: str, line, col):
+        pass
 
     def onTextDocumentInfer(self, word: str, line, col):
         pass
@@ -535,3 +570,5 @@ class LanguageServerMixIn(object):
 
     def onTextDocumentSyntaxCheck(self, word: str, line, col):
         pass
+
+# import lsprotocol.types
