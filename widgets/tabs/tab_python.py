@@ -15,7 +15,9 @@ from cached_property import cached_property
 from jedi.api import errors
 from jedi.api.classes import Completion, Name
 from jedi.api.environment import SameEnvironment
+from lsprotocol.types import ClientCapabilities
 
+from lsp.utils import LspContext
 from pyqt5utils.components.helper import ObjectsHelper
 from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.components.widgets.dialogs import ShadowDialog
@@ -525,205 +527,225 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
 
     def capacities(self) -> int:
         editor = self.code
-        return editor.ref_flag | editor.rename_flag | editor.infer_flag | editor.hover_flag
+        return editor.ref_flag | editor.rename_flag | editor.infer_flag  # | editor.hover_flag
 
-    def onTextDocumentHover(self, word: str, line: int, col: int):
+    def lsp_init_kw(self) -> dict:
+        return dict(host='127.0.0.1', port=2087)
 
-        def _infer():
-            script = jedi.Script(self.code.text(), path=self.file_path())
-            refs = script.infer(line + 1, col + 1)
-            return refs
+    def lsp_serve_name(self) -> str:
+        return 'jedi-language-serve'
 
-        def _call(ret: List[Name]):
-            for ref in ret:
-                define_info = (ref.full_name or '').replace(word, '').rstrip('.')
-                if ref.type == 'function':
-                    describe = 'def ' + ref._get_docstring_signature()
-                else:
-                    describe = ref.description
-                doc_string = ''.join(
-                    [f'<p>{line_doc}</p>' for line_doc in ref.docstring(raw=True).splitlines(keepends=False)])
-                hr_line = f'<hr>'
-                full = f"""<p style="color:#49BDF8">{define_info}</p>{describe}\n{hr_line}{doc_string}"""
-                if self.code.wordAtPoint(self.code.mapFromGlobal(QCursor.pos())):
-                    self._render_tip(full, when_close=_when_close, line_str=describe)
-                self.code.stop_hover = False
-                return
+    def clientCapacities(self) -> ClientCapabilities:
+        with LspContext() as c:
+            t = c.type
+            r = t.ClientCapabilities(text_document=t.TextDocumentClientCapabilities(
+                references=t.ReferenceClientCapabilities(dynamic_registration=True)
+            ))
+            return r
 
-        def _when_close():
-            try:
-                self.code.stop_hover = False
-            except:
-                pass
+    # def on_initialize(self):
+    #     rt = super(PythonCodeWidget, self).on_initialize()
+    #     return rt
 
-        def _err(error):
-            try:
-                print('error ', error)
-                self.code.stop_hover = False
-            except:
-                import traceback
-                traceback.print_exc()
+    # def on_textdocumentreferences(self, word: str, line, col):
+    #     pass
 
-        position = self.code.positionFromLineIndex(line, col)
-        hover_position = self.code.styleAt(position)
-        if hover_position not in [
-            StyledPythonLexer.NoWarning,
-            StyledPythonLexer.Spaces,
-            StyledPythonLexer.Operator,
-            StyledPythonLexer.Tabs,
-            StyledPythonLexer.TabsAfterSpaces,
-            StyledPythonLexer.Number,
-            StyledPythonLexer.Comment,
-            StyledPythonLexer.CommentBlock,
-            StyledPythonLexer.SingleQuotedString,
-            StyledPythonLexer.SingleQuotedFString,
-            StyledPythonLexer.DoubleQuotedString,
-            StyledPythonLexer.DoubleQuotedFString,
-            StyledPythonLexer.UnclosedString,
-            StyledPythonLexer.TripleSingleQuotedString,
-            StyledPythonLexer.TripleSingleQuotedFString,
-            StyledPythonLexer.TripleDoubleQuotedString,
-            StyledPythonLexer.TripleDoubleQuotedFString,
-        ]:
-            if self.code.stop_hover is False:
-                self.code.stop_hover = True
-                print('parse hover', hover_position)
-                self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
-
-    def onTextDocumentReferences(self, word: str, line, col):
-
-        def _ref():
-            script = jedi.Script(self.code.text(), path=self.file_path())
-            refs = script.get_references(line + 1, col + 1, scope='file')
-            return refs
-
-        def _call(ret: List[Name]):
-            self.code.clearAllIndicators(self.code.indic_ref)
-            self.code.clearAllIndicators(self.code.indic_ref_class)
-            self.code.clearAllIndicators(self.code.indic_ref_define)
-            self.code.current_refs.clear()
-            current_file = (self.file_path() or '').replace('\\', '/')
-            label, next_btn, pre_btn = self.peek_store_data('action')[0]
-            if ret:
-                label.setText(f' {len(ret)}个引用')
-                next_btn.show()
-                pre_btn.show()
-            else:
-                label.setText('')
-                next_btn.hide()
-                pre_btn.hide()
-            for ref in ret:
-                if ref.module_path and (ref.module_path.__str__().replace('\\', '/') == current_file):
-                    # print('ref --> ', ref.type, ref.is_definition())
-                    if ref.column is not None and ref.line is not None:
-                        indic_type = self.code.indic_ref
-                        if ref.is_definition() and ref.type == 'class':
-                            indic_type = self.code.indic_ref_class
-                        elif ref.is_definition():
-                            indic_type = self.code.indic_ref_define
-                        pos = self.code.positionFromLineIndex(ref.line - 1, ref.column)
-                        self.code.setIndicatorRange(indic_type, pos, len(word))
-                        self.code.current_refs.append(ref)
-
-        def _err(error):
-            print('error --', error, self.code.stop_hover)
-            self.code.stop_hover = False
-
-        position = self.code.positionFromLineIndex(line, col)
-        hover_position = self.code.styleAt(position)
-        if hover_position not in [
-            StyledPythonLexer.NoWarning,
-            StyledPythonLexer.Spaces,
-            StyledPythonLexer.Operator,
-            StyledPythonLexer.Tabs,
-            StyledPythonLexer.TabsAfterSpaces,
-            StyledPythonLexer.Number,
-            StyledPythonLexer.Comment,
-            StyledPythonLexer.CommentBlock,
-            StyledPythonLexer.SingleQuotedString,
-            StyledPythonLexer.SingleQuotedFString,
-            StyledPythonLexer.DoubleQuotedString,
-            StyledPythonLexer.DoubleQuotedFString,
-            StyledPythonLexer.UnclosedString,
-            StyledPythonLexer.TripleSingleQuotedString,
-            StyledPythonLexer.TripleSingleQuotedFString,
-            StyledPythonLexer.TripleDoubleQuotedString,
-            StyledPythonLexer.TripleDoubleQuotedFString,
-        ]:
-            print('parse reference')
-            self.jedi_worker.add_task(_ref, call_back=_call, err_back=_err)
-        # self.onTextDocumentSyntaxCheck(word, line, col)
-
-    def onTextDocumentRename(self, word: str, line, col):
-        def confirm(renamed: str):
-            print('rename check', renamed)
-            local_cursor_point = self.code.local_pos
-            current_value = self.code.verticalScrollBar().value()
-            position = self.code.positionFromLineIndex(line, col)
-            start = self.code.getIndicatorStartPos(self.code.indic_ref, position)
-            word_length = len(word)
-            self.code.replaceRange(start, word_length, renamed)
-            for i in range(len(self.code.current_refs) - 1):
-                if self.code.gotoNextIndicator(self.code.indic_ref, True):
-                    next_start = self.code.getIndicatorStartPos(self.code.indic_ref, self.code.currentPosition() - 1)
-                    if next_start is not None:
-                        self.code.replaceRange(next_start, word_length, renamed)
-
-            self.code.verticalScrollBar().setValue(current_value)
-            nl, nc = self.code.lineIndexFromPoint(local_cursor_point)
-            self.code.setCursorPosition(nl, nc)
-
-        self._render_rename(word, confirm)
-
-    def onTextDocumentInfer(self, word: str, line, col):
-
-        def _infer():
-            script = jedi.Script(self.code.text(), path=self.file_path())
-            refs = script.infer(line + 1, col + 1)
-            return refs
-
-        def _goto_file(ref: Name, timer: QTimer):
-            try:
-                signal_manager.emit(signal_manager.openFileAndMoveCursor, ref.module_path.__str__(),
-                                    ref.line - 1, ref.column - 1
-                                    )
-
-            finally:
-                self.code._has_alt_control = False
-                timer.stop()
-
-        def _call(ret: List[Name]):
-            current_file = (self.file_path() or '').replace('\\', '/')
-            print('ret ====', ret)
-            for ref in ret:
-                self._timer = QTimer()
-                self._timer.timeout.connect(lambda: _goto_file(ref, self._timer))
-                self._timer.start(150)
-                break
-
-        def _err(error):
-            print('error --', error)
-
-        print('infer --', word, line, col)
-        self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
-
-    def onTextDocumentSyntaxCheck(self, word: str, line, col):
-
-        def _syntax_check():
-            script = jedi.Script(self.code.text(), path=self.file_path())
-            refs = script.get_syntax_errors()
-            return refs
-
-        def _call(ret: List[errors.SyntaxError]):
-            print('ret ====', ret)
-            for error in ret:
-                print('error ', error._parso_error.code, error._parso_error.message)
-                # print(error.get_message(), error.line, error.column, error.until_line, error.until_column)
-            # parso.normalizer.Issue
-
-        def _err(error):
-            print('error --', error)
-
-        print('infer --', word, line, col)
-        self.jedi_worker.add_task(_syntax_check, call_back=_call, err_back=_err)
-
+    # def onTextDocumentHover(self, word: str, line: int, col: int):
+    #
+    #     def _infer():
+    #         script = jedi.Script(self.code.text(), path=self.file_path())
+    #         refs = script.infer(line + 1, col + 1)
+    #         return refs
+    #
+    #     def _call(ret: List[Name]):
+    #         for ref in ret:
+    #             define_info = (ref.full_name or '').replace(word, '').rstrip('.')
+    #             if ref.type == 'function':
+    #                 describe = 'def ' + ref._get_docstring_signature()
+    #             else:
+    #                 describe = ref.description
+    #             doc_string = ''.join(
+    #                 [f'<p>{line_doc}</p>' for line_doc in ref.docstring(raw=True).splitlines(keepends=False)])
+    #             hr_line = f'<hr>'
+    #             full = f"""<p style="color:#49BDF8">{define_info}</p>{describe}\n{hr_line}{doc_string}"""
+    #             if self.code.wordAtPoint(self.code.mapFromGlobal(QCursor.pos())):
+    #                 self._render_tip(full, when_close=_when_close, line_str=describe)
+    #             self.code.stop_hover = False
+    #             return
+    #
+    #     def _when_close():
+    #         try:
+    #             self.code.stop_hover = False
+    #         except:
+    #             pass
+    #
+    #     def _err(error):
+    #         try:
+    #             print('error ', error)
+    #             self.code.stop_hover = False
+    #         except:
+    #             import traceback
+    #             traceback.print_exc()
+    #
+    #     position = self.code.positionFromLineIndex(line, col)
+    #     hover_position = self.code.styleAt(position)
+    #     if hover_position not in [
+    #         StyledPythonLexer.NoWarning,
+    #         StyledPythonLexer.Spaces,
+    #         StyledPythonLexer.Operator,
+    #         StyledPythonLexer.Tabs,
+    #         StyledPythonLexer.TabsAfterSpaces,
+    #         StyledPythonLexer.Number,
+    #         StyledPythonLexer.Comment,
+    #         StyledPythonLexer.CommentBlock,
+    #         StyledPythonLexer.SingleQuotedString,
+    #         StyledPythonLexer.SingleQuotedFString,
+    #         StyledPythonLexer.DoubleQuotedString,
+    #         StyledPythonLexer.DoubleQuotedFString,
+    #         StyledPythonLexer.UnclosedString,
+    #         StyledPythonLexer.TripleSingleQuotedString,
+    #         StyledPythonLexer.TripleSingleQuotedFString,
+    #         StyledPythonLexer.TripleDoubleQuotedString,
+    #         StyledPythonLexer.TripleDoubleQuotedFString,
+    #     ]:
+    #         if self.code.stop_hover is False:
+    #             self.code.stop_hover = True
+    #             print('parse hover', hover_position)
+    #             self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
+    #
+    # def onTextDocumentReferences(self, word: str, line, col):
+    #
+    #     def _ref():
+    #         script = jedi.Script(self.code.text(), path=self.file_path())
+    #         refs = script.get_references(line + 1, col + 1, scope='file')
+    #         return refs
+    #
+    #     def _call(ret: List[Name]):
+    #         self.code.clearAllIndicators(self.code.indic_ref)
+    #         self.code.clearAllIndicators(self.code.indic_ref_class)
+    #         self.code.clearAllIndicators(self.code.indic_ref_define)
+    #         self.code.current_refs.clear()
+    #         current_file = (self.file_path() or '').replace('\\', '/')
+    #         label, next_btn, pre_btn = self.peek_store_data('action')[0]
+    #         if ret:
+    #             label.setText(f' {len(ret)}个引用')
+    #             next_btn.show()
+    #             pre_btn.show()
+    #         else:
+    #             label.setText('')
+    #             next_btn.hide()
+    #             pre_btn.hide()
+    #         for ref in ret:
+    #             if ref.module_path and (ref.module_path.__str__().replace('\\', '/') == current_file):
+    #                 # print('ref --> ', ref.type, ref.is_definition())
+    #                 if ref.column is not None and ref.line is not None:
+    #                     indic_type = self.code.indic_ref
+    #                     if ref.is_definition() and ref.type == 'class':
+    #                         indic_type = self.code.indic_ref_class
+    #                     elif ref.is_definition():
+    #                         indic_type = self.code.indic_ref_define
+    #                     pos = self.code.positionFromLineIndex(ref.line - 1, ref.column)
+    #                     self.code.setIndicatorRange(indic_type, pos, len(word))
+    #                     self.code.current_refs.append(ref)
+    #
+    #     def _err(error):
+    #         print('error --', error, self.code.stop_hover)
+    #         self.code.stop_hover = False
+    #
+    #     position = self.code.positionFromLineIndex(line, col)
+    #     hover_position = self.code.styleAt(position)
+    #     if hover_position not in [
+    #         StyledPythonLexer.NoWarning,
+    #         StyledPythonLexer.Spaces,
+    #         StyledPythonLexer.Operator,
+    #         StyledPythonLexer.Tabs,
+    #         StyledPythonLexer.TabsAfterSpaces,
+    #         StyledPythonLexer.Number,
+    #         StyledPythonLexer.Comment,
+    #         StyledPythonLexer.CommentBlock,
+    #         StyledPythonLexer.SingleQuotedString,
+    #         StyledPythonLexer.SingleQuotedFString,
+    #         StyledPythonLexer.DoubleQuotedString,
+    #         StyledPythonLexer.DoubleQuotedFString,
+    #         StyledPythonLexer.UnclosedString,
+    #         StyledPythonLexer.TripleSingleQuotedString,
+    #         StyledPythonLexer.TripleSingleQuotedFString,
+    #         StyledPythonLexer.TripleDoubleQuotedString,
+    #         StyledPythonLexer.TripleDoubleQuotedFString,
+    #     ]:
+    #         print('parse reference')
+    #         self.jedi_worker.add_task(_ref, call_back=_call, err_back=_err)
+    #     # self.onTextDocumentSyntaxCheck(word, line, col)
+    #
+    # def onTextDocumentRename(self, word: str, line, col):
+    #     def confirm(renamed: str):
+    #         print('rename check', renamed)
+    #         local_cursor_point = self.code.local_pos
+    #         current_value = self.code.verticalScrollBar().value()
+    #         position = self.code.positionFromLineIndex(line, col)
+    #         start = self.code.getIndicatorStartPos(self.code.indic_ref, position)
+    #         word_length = len(word)
+    #         self.code.replaceRange(start, word_length, renamed)
+    #         for i in range(len(self.code.current_refs) - 1):
+    #             if self.code.gotoNextIndicator(self.code.indic_ref, True):
+    #                 next_start = self.code.getIndicatorStartPos(self.code.indic_ref, self.code.currentPosition() - 1)
+    #                 if next_start is not None:
+    #                     self.code.replaceRange(next_start, word_length, renamed)
+    #
+    #         self.code.verticalScrollBar().setValue(current_value)
+    #         nl, nc = self.code.lineIndexFromPoint(local_cursor_point)
+    #         self.code.setCursorPosition(nl, nc)
+    #
+    #     self._render_rename(word, confirm)
+    #
+    # def onTextDocumentInfer(self, word: str, line, col):
+    #
+    #     def _infer():
+    #         script = jedi.Script(self.code.text(), path=self.file_path())
+    #         refs = script.infer(line + 1, col + 1)
+    #         return refs
+    #
+    #     def _goto_file(ref: Name, timer: QTimer):
+    #         try:
+    #             signal_manager.emit(signal_manager.openFileAndMoveCursor, ref.module_path.__str__(),
+    #                                 ref.line - 1, ref.column - 1
+    #                                 )
+    #
+    #         finally:
+    #             self.code._has_alt_control = False
+    #             timer.stop()
+    #
+    #     def _call(ret: List[Name]):
+    #         current_file = (self.file_path() or '').replace('\\', '/')
+    #         print('ret ====', ret)
+    #         for ref in ret:
+    #             self._timer = QTimer()
+    #             self._timer.timeout.connect(lambda: _goto_file(ref, self._timer))
+    #             self._timer.start(150)
+    #             break
+    #
+    #     def _err(error):
+    #         print('error --', error)
+    #
+    #     print('infer --', word, line, col)
+    #     self.jedi_worker.add_task(_infer, call_back=_call, err_back=_err)
+    #
+    # def onTextDocumentSyntaxCheck(self, word: str, line, col):
+    #
+    #     def _syntax_check():
+    #         script = jedi.Script(self.code.text(), path=self.file_path())
+    #         refs = script.get_syntax_errors()
+    #         return refs
+    #
+    #     def _call(ret: List[errors.SyntaxError]):
+    #         print('ret ====', ret)
+    #         for error in ret:
+    #             print('error ', error._parso_error.code, error._parso_error.message)
+    #             # print(error.get_message(), error.line, error.column, error.until_line, error.until_column)
+    #         # parso.normalizer.Issue
+    #
+    #     def _err(error):
+    #         print('error --', error)
+    #
+    #     print('infer --', word, line, col)
+    #     self.jedi_worker.add_task(_syntax_check, call_back=_call, err_back=_err)

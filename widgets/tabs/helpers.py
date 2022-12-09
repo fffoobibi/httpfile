@@ -1,3 +1,4 @@
+import collections
 import inspect
 import time
 import types
@@ -18,16 +19,126 @@ from widgets.factorys import add_styled
 from widgets.interfaces import ILanguageInterFace
 from widgets.styles import current_styles
 
+from lsp.lsp_interface import LanguageServerMixIn as IL
+from lsp.lsp_interface import ILanguageServe
+
+
+@implementer(ILanguageInterFace)
+class LanguageServerMixIn(object):
+    support_language_parse: bool = False
+
+    language_mask = 0
+    rename_flag = 1
+    infer_flag = 1 << 1
+    completion_flag = 1 << 2
+    hover_flag = 1 << 3
+    ref_flag = 1 << 4
+    syntax_flag = 1 << 5
+
+    __setup_targets__ = [
+        'onTextDocumentInfer', 'onTextDocumentCompletion', 'onTextDocumentHover', 'onTextDocumentReferences',
+        'onTextDocumentRename', 'onTextDocumentSyntaxCheck', 'capacities'
+    ]
+
+    __flags__ = 200
+
+    def support_enabled(self, flags: int):
+        self.language_mask |= flags
+
+    def supported(self, flag: int):
+        return self.language_mask & flag
+
+    def support_disabled(self, flag: int):
+        self.language_mask &= ~flag
+
+    def set_up_from_obj(self, obj):
+        clz = obj.__class__
+        for k, v in clz.__dict__.items():
+            if inspect.isfunction(v) and v.__name__ in self.__setup_targets__:
+                bound_method = types.MethodType(v, self)
+                setattr(self, k, bound_method)
+
+    #### language server protocol ###
+
+    def capacities(self) -> int:
+        return 0
+
+    def onInitialize(self):
+        pass
+
+    def onTextDocumentFormatting(self):
+        pass
+
+    def onTextDocumentDocumentHighlight(self):
+        pass
+
+    def onTextDocumentDocumentSymbol(self):
+        pass
+
+    def onTextDocumentFolding(self):
+        pass
+
+    def onTextDocumentDocumentLink(self):
+        pass
+
+    def onTextDocumentDidSave(self):
+        pass
+
+    def onTextDocumentSignatureHelp(self):
+        pass
+
+    def onTextDocumentDidChange(self, word: str, line, col):
+        pass
+
+    def onTextDocumentDidOpen(self, word: str, line, col):
+        pass
+
+    def onTextDocumentDidClose(self, word: str, line, col):
+        pass
+
+    def onTextDocumentInfer(self, word: str, line, col):
+        pass
+
+    def onTextDocumentCompletion(self, word: str, line, col):
+        pass
+
+    def onTextDocumentHover(self, word: str, line: int, col: int):
+        pass
+
+    def onTextDocumentReferences(self, word: str, line, col):
+        pass
+
+    def onTextDocumentRename(self, word: str, line, col):
+        pass
+
+    def onTextDocumentSyntaxCheck(self, word: str, line, col):
+        pass
+
 
 def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support, custom_menu_policy, set_apis,
-                find_self=None, render_style=None, multi_line=False, simple_search=False, cap=None):
+                find_self=None, render_style=None, multi_line=False, simple_search=False, cap=None,
+                language_server_factory=IL
+                ):
     from widgets.mainwidget import MainWidget
-    class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn, LanguageServerMixIn):
+    class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn, language_server_factory):
+        support_language_parse: bool = False
+
         click_signal = pyqtSignal()
         file_styled = pyqtSignal()
         run_margin_signal = pyqtSignal(int)
         mouse_move_signal = pyqtSignal(str, int, int)
         indic_brace = 20
+
+        indic_infer = 26
+        indic_Completion = 27
+        indic_hover = 28
+
+        indic_ref = 29
+        indic_ref_class = 25
+        indic_ref_define = 24
+
+        indic_rename = 30
+        indic_syntax_check = 31
 
         if render_style:
             def render_custom_style(self):
@@ -401,7 +512,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
 
 
 class _Queue(object):
-    # def __getitem__
+
     def __init__(self):
         self._queue = deque()
         self._pos = 0
@@ -442,6 +553,29 @@ class _Queue(object):
         return self._queue[self._pos]
 
 
+class StoreDataMixIn(object):
+
+    @cached_property
+    def _store_data(self):
+        return collections.defaultdict(lambda: deque())
+
+    def peek_store_data(self, key='default') -> deque:
+        return self._store_data[key]
+
+    def store_data(self, data, key='default'):
+        self._store_data[key].append(data)
+
+    def store_data_clear(self, key='default'):
+        self._store_data[key].clear()
+
+    def restore_data(self, key='default'):
+        if len(self._store_data[key]):
+            return self._store_data[key].pop()
+
+    def restore_clear(self):
+        self._store_data.clear()
+
+
 def widget_debounce(self: QWidget, trigger_func: Callable, trigger_signal: pyqtSignal, interval: int = 500) -> None:
     def _trigger(*a):
         self._debounce_args = a
@@ -467,108 +601,5 @@ def get_ref_line_words(refs: _Queue, sci: QsciScintilla):
     for ref in refs:
         line, col = ref.line - 1, ref.column
         yield sci.text(line), sci.wordAtLineIndex(line, col), line, col, ref
-
-
-@implementer(ILanguageInterFace)
-class LanguageServerMixIn(object):
-    support_language_parse: bool = False
-
-    language_mask = 0
-    rename_flag = 1
-    infer_flag = 1 << 1
-    completion_flag = 1 << 2
-    hover_flag = 1 << 3
-    ref_flag = 1 << 4
-    syntax_flag = 1 << 5
-
-    indic_infer = 26
-    indic_Completion = 27
-    indic_hover = 28
-
-    indic_ref = 29
-    indic_ref_class = 25
-    indic_ref_define = 24
-
-    indic_rename = 30
-    indic_syntax_check = 31
-
-    __setup_targets__ = [
-        'onTextDocumentInfer', 'onTextDocumentCompletion', 'onTextDocumentHover', 'onTextDocumentReferences',
-        'onTextDocumentRename', 'onTextDocumentSyntaxCheck', 'capacities'
-    ]
-
-    __flags__ = 200
-
-    def support_enabled(self, flags: int):
-        self.language_mask |= flags
-
-    def supported(self, flag: int):
-        return self.language_mask & flag
-
-    def support_disabled(self, flag: int):
-        self.language_mask &= ~flag
-
-    def setUpFromObj(self, obj):
-        clz = obj.__class__
-        for k, v in clz.__dict__.items():
-            if inspect.isfunction(v) and v.__name__ in self.__setup_targets__:
-                bound_method = types.MethodType(v, self)
-                setattr(self, k, bound_method)
-
-    #### language server protocol ###
-
-    def capacities(self) -> int:
-        return 0
-
-    def onInitialize(self):
-        pass
-
-    def onTextDocumentFormatting(self):
-        pass
-
-    def onTextDocumentDocumentHighlight(self):
-        pass
-
-    def onTextDocumentDocumentSymbol(self):
-        pass
-
-    def onTextDocumentFolding(self):
-        pass
-
-    def onTextDocumentDocumentLink(self):
-        pass
-
-    def onTextDocumentDidSave(self):
-        pass
-
-    def onTextDocumentSignatureHelp(self):
-        pass
-
-    def onTextDocumentDidChange(self, word: str, line, col):
-        pass
-
-    def onTextDocumentDidOpen(self, word: str, line, col):
-        pass
-
-    def onTextDocumentDidClose(self, word: str, line, col):
-        pass
-
-    def onTextDocumentInfer(self, word: str, line, col):
-        pass
-
-    def onTextDocumentCompletion(self, word: str, line, col):
-        pass
-
-    def onTextDocumentHover(self, word: str, line: int, col: int):
-        pass
-
-    def onTextDocumentReferences(self, word: str, line, col):
-        pass
-
-    def onTextDocumentRename(self, word: str, line, col):
-        pass
-
-    def onTextDocumentSyntaxCheck(self, word: str, line, col):
-        pass
 
 # import lsprotocol.types

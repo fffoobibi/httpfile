@@ -1,12 +1,10 @@
-import collections
-from collections import deque
 from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 from types import MethodType
 from typing import List, Union
 
-from PyQt5.QtCore import pyqtSignal, Qt, QFile
+from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont, QFontMetrics, QIcon, QColor, QKeyEvent
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QSpacerItem,
                              QSizePolicy, QFrame, QVBoxLayout, QSplitter, QLabel, QShortcut)
@@ -18,7 +16,9 @@ from pyqt5utils.components.styles import StylesHelper
 from widgets.interfaces import ITabInterFace, ILanguageInterFace
 from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
-from .helpers import _Queue, _make_child
+from lsp.lsp_interface import ILanguageServe
+
+from .helpers import _Queue, _make_child, StoreDataMixIn
 
 __all__ = ('register', 'TabCodeWidget')
 
@@ -47,8 +47,15 @@ def load_tab_widgets():
     return tab_codes
 
 
-@implementer(ITabInterFace, ILanguageInterFace)
-class TabCodeWidget(QWidget):
+# @implementer(ITabInterFace, ILanguageInterFace)
+class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
+
+    def lsp_init_kw(self) -> dict:
+        pass
+
+    def lsp_serve_name(self) -> str:
+        pass
+
     vertical = ConfigProvider.default(ConfigKey.general, 'vertical_width')
     horizontal = ConfigProvider.default(ConfigKey.general, 'horizontal_height')
 
@@ -64,26 +71,26 @@ class TabCodeWidget(QWidget):
     support_code = True
 
     # implement language interface
-    def onTextDocumentInfer(self, word: str, line, col):
-        """"""
-
-    def onTextDocumentCompletion(self, word: str, line, col):
-        """"""
-
-    def onTextDocumentHover(self, word: str, line: int, col: int):
-        """"""
-
-    def onTextDocumentReferences(self, word: str, line, col):
-        """"""
-
-    def onTextDocumentRename(self, word: str, line, col):
-        """"""
-
-    def onTextDocumentSyntaxCheck(self, word: str, line, col):
-        """"""
-
-    def capacities(self) -> int:
-        return 0
+    # def onTextDocumentInfer(self, word: str, line, col):
+    #     """"""
+    #
+    # def onTextDocumentCompletion(self, word: str, line, col):
+    #     """"""
+    #
+    # def onTextDocumentHover(self, word: str, line: int, col: int):
+    #     """"""
+    #
+    # def onTextDocumentReferences(self, word: str, line, col):
+    #     """"""
+    #
+    # def onTextDocumentRename(self, word: str, line, col):
+    #     """"""
+    #
+    # def onTextDocumentSyntaxCheck(self, word: str, line, col):
+    #     """"""
+    #
+    # def capacities(self) -> int:
+    #     return 0
 
     @property
     def type(self):
@@ -217,25 +224,8 @@ class TabCodeWidget(QWidget):
                     QColor(styles['selection'].get('background')))
                 self.code.resetSelectionForegroundColor()
 
-    def peek_store_data(self, key='default') -> deque:
-        return self.__data[key]
-
-    def store_data(self, data, key='default'):
-        self.__data[key].append(data)
-
-    def store_data_clear(self, key='default'):
-        self.__data[key].clear()
-
-    def restore_data(self, key='default'):
-        if len(self.__data[key]):
-            return self.__data[key].pop()
-
-    def restore_clear(self):
-        self.__data.clear()
-
     def __init__(self):
         super(TabCodeWidget, self).__init__()
-        self.__data = collections.defaultdict(lambda: deque())
         self.__main_lay = QHBoxLayout(self)
         self.__main_lay.setContentsMargins(0, 0, 0, 0)
         self.__main_lay.setSpacing(1)
@@ -250,7 +240,7 @@ class TabCodeWidget(QWidget):
         if self.support_code:
             self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
                                     self.custom_menu_support, self.custom_menu_policy, self.set_apis, find_self=True, cap=self.capacities)()
-            self.code.setUpFromObj(self)
+            self.code.set_up_from_obj(self)
             self._is_remote = False
             self._update_time = None
             self._file_loaded = False

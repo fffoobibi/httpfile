@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from PyQt5.QtCore import QPoint, QSize, Qt
 from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QColor, QPalette, QFontMetrics
@@ -8,6 +8,8 @@ from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup
 from jedi.api.environment import SameEnvironment
 from pydantic import BaseModel, Field
 
+from lsp.interface import LSPAppMixIn, TCPLanguageClient
+from lsp.lsp_interface import LanguageServerMixIn
 from pyqt5utils import color_widget
 from pyqt5utils.components import Message
 from ui.main2ui import Ui_MainWindow
@@ -20,6 +22,7 @@ from widgets.interfaces import ITabInterFace
 from widgets.signals import app_exit, app_start_up
 from widgets.styles import current_styles
 from widgets.utils import ConfigProvider, ConfigKey, IconProvider
+from widgets.handler import handler_lsp_msg
 
 icon = r'D:\work\httpfile\sources\编辑.svg'
 plugins = collect_plugins()
@@ -31,10 +34,36 @@ class AppRunTime(BaseModel):
     font_src: List[int] = Field(default_factory=list)
 
 
-@color_widget(title='FEditor', icon=icon, bar_color=current_styles.background_lighter,
+@color_widget(title='FEditor', icon=icon,
+              bar_color=current_styles.background_lighter,
               text_color=current_styles.foreground,
-              back_ground_color=Qt.transparent, border_color=current_styles.border, set_bkg=False, nestle_enable=False)
-class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
+              back_ground_color=Qt.transparent,
+              border_color=current_styles.border,
+              set_bkg=False, nestle_enable=False)
+class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
+    __lsp_initials__ = {}
+
+    def lsp_initial(self, lsp_serve_name: str):
+        cur = self.current_tab()
+        if cur.support_code and cur.code.support_language_parse:
+            if self.__lsp_initials__.get(lsp_serve_name) is None:
+                self.__lsp_initials__[lsp_serve_name] = True
+                cur.code.onInitialize()
+
+    def lsp_current_line_col(self) -> Tuple[int]:
+        tab = self.current_tab()
+        if tab and tab.support_code:
+            return tab.code.current_line_col
+
+    def dispatch_lsp_msg(self, msg: dict, lsp_serve_name: str):
+        handler_lsp_msg(self, msg, lsp_serve_name)
+
+    def lsp_root_uri(self):
+        return str(self.r_run_time.current.resolve())
+
+    def lsp_current_document_uri(self) -> str:
+        return f'file:///{self.current_file_path()}'
+
     model: FileSystemModel = None
     plugins: Collections  # type hint
     fdb: QFontDatabase  # type hint
@@ -126,7 +155,6 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
         print(self.r_run_time.font_src)
 
     def after_init(self):
-        # render style sheet
         add_styled(self.tabWidget, 'tab')
         add_styled(self, 'custom-style')
         add_styled(self.statusbar, 'status-bar')
@@ -347,7 +375,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
     def load_dir_path(self, path: str):
         pass
 
-    #### add tab ####
+    ####  tab ####
     def add_tab_widget(self, file_type, file_name, file_path: str, url: str = None, content: str = None):
         icon = IconProvider.get_icon(file_name)
         if url is None:
@@ -366,6 +394,13 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                 tab_index = self.tabWidget.addTab(tab, icon, file_name)
                 self.tabWidget.setCurrentWidget(tab)
                 self.tabWidget.setTabToolTip(tab_index, file_path)
+
+                # tab: LanguageServerMixIn
+                if tab.support_code:
+                    tab.code.language_client_class = TCPLanguageClient
+                    tab.code.register_to_app(self)
+                    self.lsp_initial(tab.code.lsp_serve_name())
+
             return tab
         else:
             file_type = url.split('.')[-1] + ' File'
@@ -386,6 +421,11 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn):
                 self.tabWidget.setTabToolTip(tab_index, file_path)
 
             return tab
+
+    def current_tab(self):
+        widget = self.tabWidget.currentWidget()
+        if widget:
+            return widget
 
     def open_file(self, file_path: str, line: int = None, col: int = None):
         path = Path(file_path)
