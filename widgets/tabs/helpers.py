@@ -1,7 +1,8 @@
 import collections
 import inspect
-import time
 import types
+import typing
+import weakref
 from collections import deque
 from typing import Callable, Union, List
 
@@ -10,17 +11,22 @@ from PyQt5.QtCore import pyqtSignal, Qt, pyqtSlot, QTimer, QPoint
 from PyQt5.QtGui import QColor, QFont, QIcon, QFontMetrics, QKeyEvent, QMouseEvent
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QLabel, QFrame, QShortcut
 from cached_property import cached_property
-from jedi.api.classes import Name
+from lsprotocol.types import Diagnostic
 from zope.interface import implementer
 
+from lsp.lsp_interface import LanguageServerMixIn as IL
+from lsp.utils import lsp_context
 from pyqt5utils.qsci.base import BaseCodeWidget
 from widgets.base import PluginBaseMixIn
 from widgets.factorys import add_styled
 from widgets.interfaces import ILanguageInterFace
 from widgets.styles import current_styles
 
-from lsp.lsp_interface import LanguageServerMixIn as IL
-from lsp.lsp_interface import ILanguageServe
+_code_refs = weakref.WeakValueDictionary()
+
+
+def get_code_refs():
+    return _code_refs
 
 
 @implementer(ILanguageInterFace)
@@ -138,7 +144,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
         indic_ref_define = 24
 
         indic_rename = 30
-        indic_syntax_check = 31
+        indic_diagnostics = 31
 
         if render_style:
             def render_custom_style(self):
@@ -360,9 +366,15 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             return list(self._current_refs)
 
         @property
-        def current_refs(self) -> Union[_Queue, list]:
+        def current_refs(self) -> Union[_Queue[t.Location], list]:
             if self.support_language_parse:
                 return self._current_refs
+            return []
+
+        @property
+        def current_diagnostics(self) -> Union[_Queue[t.Diagnostic], list]:
+            if self.support_language_parse:
+                return self._current_diagnostics
             return []
 
         @property
@@ -379,6 +391,12 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                         line, index = self.current_line_col
                         word = self.wordAtLineIndex(line, index)
                         self.onTextDocumentRename(word, line, index)
+            if a0.key() == Qt.Key_Period:
+                if self.support_language_parse and self.supported(self.completion_flag):
+                    line, index = self.current_line_col
+                    word = self.wordAtLineIndex(line, index)
+                    print('complet ----')
+                    self.onTextDocumentCompletion(word, line, index, self.code_container.file_path())
 
         def keyReleaseEvent(self, a0: QKeyEvent) -> None:
             super().keyReleaseEvent(a0)
@@ -437,7 +455,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                            self.hasIndicator(self.indic_ref_define, pos)
                            ])
             if word and not has_ref:
-                self.onTextDocumentHover(word, line, col)
+                self.onTextDocumentHover(word, line, col, instance.file_path())
 
         def __init__(self):
             super(BaseCodeChild, self).__init__()
@@ -477,7 +495,10 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
 
             self.click_signal.connect(self._mouse_click_language_parse_event)
             self._current_refs = _Queue()
+            self._current_diagnostics = _Queue()
             self._current_pos = QPoint()
+
+            _code_refs[id(self)] = self
             widget_debounce(self, self._mouse_hover_language_parse_event, self.mouse_move_signal)
 
         def capacities(self) -> int:
@@ -511,18 +532,25 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
     return BaseCodeChild
 
 
-class _Queue(object):
+T = typing.TypeVar('T')
+
+
+class _Queue(typing.Generic[T]):
 
     def __init__(self):
-        self._queue = deque()
+        self._queue: typing.Deque[T] = deque()
         self._pos = 0
         self._len = 0
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._len
 
     def __iter__(self):
         yield from self._queue
+
+    def extend(self, seq: typing.Sequence[T]):
+        self._queue.extend(seq)
+        self._len += len(seq)
 
     def current_pos(self):
         return self._pos
@@ -530,7 +558,7 @@ class _Queue(object):
     def is_empty(self):
         return not bool(self._len)
 
-    def first(self):
+    def first(self) -> T:
         return self._queue[0]
 
     def clear(self):
@@ -542,15 +570,99 @@ class _Queue(object):
         self._queue.append(v)
         self._len += 1
 
-    def next(self):
+    def next(self) -> T:
         self._pos += 1
         self._pos %= self._len
         return self._queue[self._pos]
 
-    def previous(self):
+    def previous(self) -> T:
         self._pos -= 1
         self._pos %= self._len
         return self._queue[self._pos]
+
+
+t = lsp_context.type
+c = lsp_context.converter
+
+
+class LspResultProcessHandler(object):
+    def __init__(self, tab):
+        self.tab = tab
+
+    def parse_uri(self, uri: str) -> str:
+        return uri.strip('file:///').replace('\\', '/')
+
+    def render_diagnostics(self, uri: str, diagnostics: List[Diagnostic]):
+        parse_uri = self.parse_uri
+        from . import TabCodeWidget
+        self: TabCodeWidget
+        self = self.tab
+        puri = parse_uri(uri)
+        current_file = (self.file_path() or '').replace('\\', '/')
+        # print('eol : ', self.code.setEolVisibility(True))
+        self.code.clearAllIndicators(self.code.indic_diagnostics)
+        self.code.current_diagnostics.clear()
+        self.code.current_diagnostics.extend(diagnostics)
+        if puri == current_file:
+            for diagnostic in diagnostics:
+                # if diagnostic.severity == t.DiagnosticSeverity.Error:
+                l1, c1 = diagnostic.range.start.line, diagnostic.range.start.character,
+                l2, c2 = diagnostic.range.end.line, diagnostic.range.end.character,
+                p1 = self.code.positionFromLineIndex(l1, c1)
+                p2 = self.code.positionFromLineIndex(l2, c2)
+                print(l1, c1, l2, c2)
+                print('sss: ', diagnostic.severity, 'word: ', self.code.text(p1, p2), 'message: ', diagnostic.message)
+                self.code.fillIndicatorRange(l1, c1, l2, c2, self.code.indic_diagnostics)
+
+    def render_references(self, ret: List[t.Location]):
+        parse_uri = self.parse_uri
+
+        from . import TabCodeWidget
+        self: TabCodeWidget
+        self = self.tab
+        print('clas -----', self.code)
+        self.code.clearAllIndicators(self.code.indic_ref)
+        self.code.clearAllIndicators(self.code.indic_ref_class)
+        self.code.clearAllIndicators(self.code.indic_ref_define)
+        self.code.current_refs.clear()
+        current_file = (self.file_path() or '').replace('\\', '/')
+        label, next_btn, pre_btn = self.peek_store_data('action')[0]
+
+        l = 0
+        for ref in ret:
+            pri = parse_uri(ref.uri)
+            if ref.uri and (pri.lower() == current_file.lower()):
+                l += 1
+                indic_type = self.code.indic_ref
+                # if ref.is_definition() and ref.type == 'class':
+                #     indic_type = self.code.indic_ref_class
+                # elif ref.is_definition():
+                #     indic_type = self.code.indic_ref_define
+                # pos = self.code.positionFromLineIndex(ref.line - 1, ref.column)
+                # self.code.setIndicatorRange(indic_type, pos, len(word))
+                l1, c1 = ref.range.start.line, ref.range.start.character
+                l2, c2 = ref.range.end.line, ref.range.end.character
+                self.code.fillIndicatorRange(l1, c1, l2, c2, indic_type)
+                self.code.current_refs.append(ref)
+        if l:
+            label.setText(f' {l}个引用')
+            label.show()
+            next_btn.show()
+            pre_btn.show()
+        else:
+            label.setText('')
+            label.hide()
+            next_btn.hide()
+            pre_btn.hide()
+
+    def render_renames(self, results):
+        pass
+
+    def render_hover(self, results):
+        pass
+
+    def render_complete(self, results):
+        pass
 
 
 class StoreDataMixIn(object):
@@ -596,10 +708,9 @@ def widget_debounce(self: QWidget, trigger_func: Callable, trigger_signal: pyqtS
     trigger_signal.connect(_trigger)
 
 
-def get_ref_line_words(refs: _Queue, sci: QsciScintilla):
-    refs: List[Name]
+def get_ref_line_words(refs: _Queue[t.Location], sci: QsciScintilla):
+    # refs: List[Name]
     for ref in refs:
-        line, col = ref.line - 1, ref.column
-        yield sci.text(line), sci.wordAtLineIndex(line, col), line, col, ref
-
-# import lsprotocol.types
+        yield ref, ref.uri.strip('file:///').replace('\\', '/').split('/')[-1]
+        # line, col = ref.line - 1, ref.column
+        # yield sci.text(line), sci.wordAtLineIndex(line, col), line, col, ref

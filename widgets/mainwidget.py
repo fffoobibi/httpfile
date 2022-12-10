@@ -1,4 +1,5 @@
 import sys
+from contextlib import suppress
 from pathlib import Path
 from typing import Optional, List, Tuple
 
@@ -6,10 +7,10 @@ from PyQt5.QtCore import QPoint, QSize, Qt
 from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QColor, QPalette, QFontMetrics
 from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget, qApp, QWidgetAction
 from jedi.api.environment import SameEnvironment
+from lsprotocol.types import ServerCapabilities
 from pydantic import BaseModel, Field
 
-from lsp.interface import LSPAppMixIn, TCPLanguageClient
-from lsp.lsp_interface import LanguageServerMixIn
+from lsp.interface import LSPAppMixIn
 from pyqt5utils import color_widget
 from pyqt5utils.components import Message
 from ui.main2ui import Ui_MainWindow
@@ -18,11 +19,12 @@ from widgets.collect import collect_plugins, Collections
 from widgets.components import FileSystemModel
 from widgets.factorys import add_styled
 from widgets.fonts import DirFontLoader
+from widgets.handler import handler_lsp_msg
+from widgets.hooks import run_lsp_hook
 from widgets.interfaces import ITabInterFace
 from widgets.signals import app_exit, app_start_up
 from widgets.styles import current_styles
 from widgets.utils import ConfigProvider, ConfigKey, IconProvider
-from widgets.handler import handler_lsp_msg
 
 icon = r'D:\work\httpfile\sources\编辑.svg'
 plugins = collect_plugins()
@@ -43,8 +45,7 @@ class AppRunTime(BaseModel):
 class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
     __lsp_initials__ = {}
 
-    def lsp_initial(self, lsp_serve_name: str):
-        cur = self.current_tab()
+    def lsp_initial(self, lsp_serve_name: str, cur):
         if cur.support_code and cur.code.support_language_parse:
             if self.__lsp_initials__.get(lsp_serve_name) is None:
                 self.__lsp_initials__[lsp_serve_name] = True
@@ -55,8 +56,29 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
         if tab and tab.support_code:
             return tab.code.current_line_col
 
-    def dispatch_lsp_msg(self, msg: dict, lsp_serve_name: str):
-        handler_lsp_msg(self, msg, lsp_serve_name)
+    def create_lsp_hook_func(self, serve_name: str, cap: ServerCapabilities, editor):
+        from lsp.lsp_interface import LanguageServerMixIn
+        editor: LanguageServerMixIn
+        print('run hook func, ', serve_name)
+        for k in ['hover_provider',
+                  'document_symbol_provider',
+                  'references_provider',
+                  'rename_provider',
+                  'completion_provider',
+                  'diagnostic_provider', ]:
+            field = getattr(cap, k, None)
+            flag = getattr(editor, editor.lsp_maps[k])
+            if isinstance(field, (bool, None.__class__)):
+                if field:
+                    editor.support_enabled(flag)
+                else:
+                    print('disabled ', k)
+                    editor.support_disabled(flag)
+            else:
+                editor.support_enabled(flag)
+
+    def dispatch_lsp_msg(self, msg: dict, lsp_serve_name: str, file_path: str):
+        handler_lsp_msg(self, msg, lsp_serve_name, file_path)
 
     def lsp_root_uri(self):
         return str(self.r_run_time.current.resolve())
@@ -201,6 +223,17 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
         def _open_file_and_move(file_path, line=None, col=None):
             self.open_file(file_path, line, col)
 
+        def _run_lsp_hook(serve_name: str):
+            from widgets.tabs.helpers import get_code_refs
+            for k, code in get_code_refs().items():
+                QApplication.processEvents()
+                try:
+                    if code.code_container.lsp_serve_name() == serve_name:
+                        run_lsp_hook(serve_name, code)
+                except:
+                    import traceback
+                    traceback.print_exc()
+
         from widgets.signals import signal_manager
         signal_manager.add_event(signal_manager.openUrlFile, None,
                                  call_back=lambda url, content: self.add_tab_widget(None, None, None, url,
@@ -218,6 +251,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
         signal_manager.add_event(signal_manager.createHookFileAndOpen, None, call_back=_create_hook_file_and_open)
         signal_manager.add_event(signal_manager.openProjectFile, None, call_back=_open_project_file)
         signal_manager.add_event(signal_manager.openFileAndMoveCursor, None, call_back=_open_file_and_move)
+        signal_manager.add_event(signal_manager.runLspHook, None, call_back=_run_lsp_hook)
         self.sm = signal_manager
 
     def init_project(self):
@@ -381,12 +415,18 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
         if url is None:
             def _create_tab_code_widget():
                 for k, v in self.plugins.tabs.items():
-                    # print('imp by: ', ITabInterFace.implementedBy(k))
                     if file_type in v:
-                        code = k()
-                        code.is_remote = False
-                        code.load_file(file_path)
-                        return code
+                        tab_ = k()
+                        tab_.is_remote = False
+                        if tab_.support_code:
+                            # tab_.code.language_client_class = TCPLanguageClient
+                            tab_.code.register_to_app(self)
+                            lsp_name = tab_.code.lsp_serve_name()
+                            # important
+                            self.get_client(lsp_name)
+                            self.lsp_initial(lsp_name, tab_)
+                        tab_.load_file(file_path)
+                        return tab_
 
             tab: ITabInterFace = _create_tab_code_widget()
             if tab:
@@ -394,12 +434,6 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
                 tab_index = self.tabWidget.addTab(tab, icon, file_name)
                 self.tabWidget.setCurrentWidget(tab)
                 self.tabWidget.setTabToolTip(tab_index, file_path)
-
-                # tab: LanguageServerMixIn
-                if tab.support_code:
-                    tab.code.language_client_class = TCPLanguageClient
-                    tab.code.register_to_app(self)
-                    self.lsp_initial(tab.code.lsp_serve_name())
 
             return tab
         else:
@@ -426,6 +460,15 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
         widget = self.tabWidget.currentWidget()
         if widget:
             return widget
+
+    def file_has_open(self, file_path: str) -> bool:
+        count = self.tabWidget.count()
+        for i in range(count):
+            tab = self.tabWidget.widget(i)
+            if tab:
+                if tab.file_path().replace('\\', '/') == file_path.replace('\\', '/'):
+                    return True
+        return False
 
     def open_file(self, file_path: str, line: int = None, col: int = None):
         path = Path(file_path)

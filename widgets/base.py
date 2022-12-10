@@ -143,7 +143,9 @@ class PluginBaseMixIn(object):
             self.__worker_instances__[self.worker_name] = self.worker_factory_class().get(self.worker_name)
         return self.__worker_instances__.get(self.worker_name)
 
-    def config_name(self, key_name: str, clz=None) -> str:
+    def config_name(self, key_name: str, clz=None, group_name: str = None) -> str:
+        if group_name is not None:
+            return f'{group_name}/{key_name}'
         if clz:
             return f'{clz.__name__}/{key_name}'
         return f'{self.__class__.__name__}/{key_name}'

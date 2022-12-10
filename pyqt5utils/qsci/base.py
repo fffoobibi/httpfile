@@ -533,18 +533,18 @@ class BaseCodeWidget(QsciScintillaCompat):
     def load_file(self, file_path):
         with suppress(Exception):
             # method1
-            # import mmap
-            # with open(file_path, 'r+b') as f:
-            #     with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-            #         contents = mm.read()
-            #         self.setText(contents.decode('utf-8'))
+            import mmap
+            with open(file_path, 'r+b') as f:
+                with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+                    contents = mm.read()
+                    self.setText(contents.decode('utf-8'))
 
             # method2
-            file = QFile(file_path)
-            if not file.open(QFile.ReadOnly | QFile.Unbuffered):
-                return
-            self.read(file)
-            file.close()
+            # file = QFile(file_path)
+            # if not file.open(QFile.ReadOnly | QFile.Unbuffered):
+            #     return
+            # self.read(file)
+            # file.close()
 
             # from pathlib import Path
             # self.setText(Path(file_path).read_text(encoding='utf-8'))

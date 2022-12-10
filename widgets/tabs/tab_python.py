@@ -1,6 +1,7 @@
 import difflib
 import keyword
 import subprocess
+import sys
 from abc import abstractmethod
 from pathlib import Path
 from types import MethodType
@@ -17,6 +18,7 @@ from jedi.api.classes import Completion, Name
 from jedi.api.environment import SameEnvironment
 from lsprotocol.types import ClientCapabilities
 
+from lsp.interface import StdIoLanguageClient, TCPLanguageClient
 from lsp.utils import LspContext
 from pyqt5utils.components.helper import ObjectsHelper
 from pyqt5utils.components.styles import StylesHelper
@@ -161,6 +163,7 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
 
     # save_changed_marker_handler: int  # type hint
     after_saved = pyqtSignal()
+    file_loaded = pyqtSignal()
 
     def define_file_trace_margins(self):
         editor: QsciScintilla
@@ -230,6 +233,17 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         self.code.setMouseTracking(True)
         self.after_saved.connect(self.reset_file_tracer)
         self.define_jedi_indicators()
+        self.file_loaded.connect(self.when_file_loaded)
+
+    def when_file_loaded(self):
+        self.code.onTextDocumentDidOpen(self.file_path(),
+                                        'python', 0, self.code.text()
+                                        )
+
+    def when_remove(self):
+        if getattr(self.code, '_debounce_timer', None):
+            self.code._debounce_timer.stop()
+        self.code.onTextDocumentDidClose(self.file_path())
 
     def __format_code(self):
         pass
@@ -359,6 +373,10 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         editor.setIndicatorForegroundColor(QColor(current_styles.editor_python['statics'].get('indic_ref_define')
                                                   ), self.code.indic_ref_define)
 
+        editor.indicatorDefine(editor.SquigglePixmapIndicator, self.code.indic_diagnostics)
+        editor.setIndicatorDrawUnder(True, self.code.indic_diagnostics)
+        editor.setIndicatorForegroundColor(QColor('red'), self.code.indic_diagnostics)
+
         # editor.setIndicatorOutlineColor(Qt.green, self.code.indic_ref)
 
     def create_dynamic_actions(self):
@@ -380,24 +398,22 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         def _next_action():
             if self.code.current_refs:
                 ref = self.code.current_refs.next()
-                self.move_to(ref.line - 1, ref.column, True)
+                self.move_to(ref.range.start.line, ref.range.start.character, True)
 
         def _previous_action():
             if self.code.current_refs:
                 ref = self.code.current_refs.previous()
-                self.move_to(ref.line, ref.column, True)
+                self.move_to(ref.range.start.line, ref.range.start.character, True)
 
         def _show_refs():
             style_sheet = '#FrameLess{background:%s;border:1px solid %s}' % (current_styles.background_darker,
                                                                              current_styles.border)
             sh = ShadowDialog(frame_less_style=style_sheet, shadow_color='transparent')
             listview = QListWidget()
-            for ltext, word, _, col, ref in get_ref_line_words(self.code.current_refs, self.code):
-                if ref.module_path:
-                    file = Path(ref.module_path).name
-                else:
-                    file = ''
-                listview.addItem(f'{file} {ref.line}:{ref.column} : {ltext}')
+            for ref, file_name in get_ref_line_words(self.code.current_refs, self.code):
+                line = self.code.text(ref.range.start.line).strip()
+                listview.addItem(f'{file_name}({ref.range.start.line}:{ref.range.start.character}): {line}')
+
             listview.setStyleSheet(
                 'QListWidget{border:none;background:%s;color:%s}' % (
                     current_styles.background_lighter, current_styles.foreground))
@@ -525,22 +541,44 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         tip_shadow.pop_with_position(self, dx=point.x(), dy=point.y())
         text.setFocus(True)
 
+    language_client_class = StdIoLanguageClient  # , TCPLanguageClient
+
     def capacities(self) -> int:
         editor = self.code
-        return editor.ref_flag | editor.rename_flag | editor.infer_flag  # | editor.hover_flag
+        return editor.ref_flag | editor.rename_flag | editor.infer_flag | editor.completion_flag  # | editor.hover_flag
 
     def lsp_init_kw(self) -> dict:
-        return dict(host='127.0.0.1', port=2087)
+        if self.language_client_class is StdIoLanguageClient:
+            proc = subprocess.Popen([
+                'pylsp',
+                # '--tcp',
+                # 'jedi-language-server',
+                # '-v'
+            ],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+            )
+            return dict(reader=proc.stdout, writer=proc.stdin)
+        else:  # tcp
+            return dict(host='127.0.0.1', port=2087)
 
     def lsp_serve_name(self) -> str:
-        return 'jedi-language-serve'
+        return 'pylsp'
 
     def clientCapacities(self) -> ClientCapabilities:
         with LspContext() as c:
             t = c.type
-            r = t.ClientCapabilities(text_document=t.TextDocumentClientCapabilities(
-                references=t.ReferenceClientCapabilities(dynamic_registration=True)
-            ))
+            r = t.ClientCapabilities(
+                window=t.WindowClientCapabilities(
+                    work_done_progress=True,
+                    show_message=t.ShowMessageRequestClientCapabilities(),
+                    show_document=t.ShowDocumentClientCapabilities(support=True)
+                ),
+                text_document=t.TextDocumentClientCapabilities(
+                    references=t.ReferenceClientCapabilities(dynamic_registration=True),
+                    color_provider=t.DocumentColorClientCapabilities(dynamic_registration=True),
+                    publish_diagnostics=t.PublishDiagnosticsClientCapabilities()
+                ))
             return r
 
     # def on_initialize(self):

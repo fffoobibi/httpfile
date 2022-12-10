@@ -4,8 +4,8 @@
 # @Email   : 2836204894@qq.com
 # @File    : utils.py
 # @Software: PyCharm
-from enum import IntEnum, auto
-from typing import Tuple
+from enum import IntEnum, auto, Enum
+from typing import Tuple, Union
 
 from cached_property import cached_property
 from lsprotocol import types
@@ -30,8 +30,15 @@ class LspContext(object):
     def method_id(self):
         return LspMethodId
 
-    def body(self, obj) -> dict:
-        return get_converter().unstructure(obj)
+    @cached_property
+    def token(self):
+        return LspToken
+
+    def body(self, obj, method_name: str = None) -> Union[dict, tuple]:
+        obj = get_converter().unstructure(obj)
+        if method_name is not None:
+            return obj, method_name
+        return obj
 
     @cached_property
     def converter(self):
@@ -45,14 +52,25 @@ class LspMethodId(IntEnum):
     textdocumentdocumentsymbol_id = auto()
     textdocumentfolding_id = auto()
     textdocumentdocumentlink_id = auto()
-    textdocumentdidsave_id = auto()
     textdocumentsignaturehelp_id = auto()
-    textdocumentdidchange_id = auto()
-    textdocumentdidopen_id = auto()
-    textdocumentdidclose_id = auto()
     textdocumentinfer_id = auto()
     textdocumentcompletion_id = auto()
     textdocumenthover_id = auto()
     textdocumentreferences_id = auto()
     textdocumentrename_id = auto()
-    textdocumentsyntaxcheck_id = auto()
+    textdocumentcolor_id = auto()
+
+    # notification
+    textdocumentdidchange_id = auto()
+    textdocumentdidopen_id = auto()
+    textdocumentdidclose_id = auto()
+    textdocumentdidsave_id = auto()
+    textdocumentpublishdiagnostics_id = auto()
+
+
+class LspToken(str, Enum):
+    initialize_token = '1'
+    formatting_token = '2'
+
+
+lsp_context = LspContext()

@@ -126,6 +126,8 @@ class SignalManager(object):
 
     themeChange = 'themeChange'
 
+    runLspHook = 'runLspHook'
+
     def __init__(self):
         self._signals = {}
 

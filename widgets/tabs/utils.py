@@ -37,3 +37,21 @@ def make_h_panel(spacing=0, margins=0):
     lay.setSpacing(spacing)
     lay.setContentsMargins(margins, margins, margins, margins)
     return lay, frame
+
+
+class ObjDict(dict):
+    def __getattr__(self, item):
+        return self[item]
+
+
+def dict_to_obj(dic):
+    return ObjDict(**dic)
+
+
+if __name__ == '__main__':
+    # dic = {'uri': 'file:///c:/Users/fqk12/Desktop/httpfile/scrap.py', 'start': {'line': 17, 'character': 48},
+    #        'end': {'line': 17, 'character': 55}}
+    s = ObjDict(uri='file:///c:/Users/fqk12/Desktop/httpfile/scrap.py',
+                start=ObjDict(**{'line': 17, 'character': 48}),
+                end=ObjDict(**{'line': 17, 'character': 55}))
+    print(s.start.line)

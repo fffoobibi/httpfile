@@ -199,7 +199,7 @@ class VsCodeDarkStyle(BaseStyle):
     }
 
     editor_python = {
-        'font': dict(default='Microsoft YaHei'), #JetBrains Mono
+        'font': dict(default='JetBrains Mono'),  # JetBrains Mono
         'color': {
             QsciLexerPython.Default: '#C8CDCB',  # = ...  # type: int
             QsciLexerPython.Comment: '#5B9140',  # = ...  # type: int
@@ -452,3 +452,5 @@ class VsCodeDarkStyle(BaseStyle):
             line_info='#C6DBE9',
             file_trace='red'
         )}
+
+import pyls

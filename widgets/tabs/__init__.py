@@ -18,7 +18,7 @@ from widgets.signals import signal_manager
 from widgets.utils import ConfigProvider, ConfigKey
 from lsp.lsp_interface import ILanguageServe
 
-from .helpers import _Queue, _make_child, StoreDataMixIn
+from .helpers import _Queue, _make_child, StoreDataMixIn, LspResultProcessHandler
 
 __all__ = ('register', 'TabCodeWidget')
 
@@ -50,6 +50,10 @@ def load_tab_widgets():
 # @implementer(ITabInterFace, ILanguageInterFace)
 class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
 
+    @cached_property
+    def lsp_render(self):
+        return LspResultProcessHandler(self)
+
     def lsp_init_kw(self) -> dict:
         pass
 
@@ -69,28 +73,6 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
 
     # flag
     support_code = True
-
-    # implement language interface
-    # def onTextDocumentInfer(self, word: str, line, col):
-    #     """"""
-    #
-    # def onTextDocumentCompletion(self, word: str, line, col):
-    #     """"""
-    #
-    # def onTextDocumentHover(self, word: str, line: int, col: int):
-    #     """"""
-    #
-    # def onTextDocumentReferences(self, word: str, line, col):
-    #     """"""
-    #
-    # def onTextDocumentRename(self, word: str, line, col):
-    #     """"""
-    #
-    # def onTextDocumentSyntaxCheck(self, word: str, line, col):
-    #     """"""
-    #
-    # def capacities(self) -> int:
-    #     return 0
 
     @property
     def type(self):
@@ -239,7 +221,8 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
         self.lay.setSpacing(0)
         if self.support_code:
             self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
-                                    self.custom_menu_support, self.custom_menu_policy, self.set_apis, find_self=True, cap=self.capacities)()
+                                    self.custom_menu_support, self.custom_menu_policy, self.set_apis, find_self=True,
+                                    cap=self.capacities)()
             self.code.set_up_from_obj(self)
             self._is_remote = False
             self._update_time = None
@@ -373,9 +356,22 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
         def __save_slot(self):
             if self.file_path() and not self.is_remote:
                 try:
-                    Path(self._file).write_text(self.code.text(), encoding='utf-8')
+                    print('save ------')
+                    print(repr(self.code.text()))
+
+                    import mmap
+                    with open(self._file, 'w+b') as f:
+                        decode_text = self.code.text().encode()
+                        with mmap.mmap(f.fileno(), len(decode_text), access=mmap.ACCESS_WRITE) as mm:
+                            mm[:] = decode_text
+
+                            # self.setText(contents.decode('utf-8'))
+
+                    # Path(self._file).write_text(self.code.text(), encoding='utf-8')
+
                     save_time = datetime.now()
                     msg = f'{self.file_path()} 已保存, {save_time.strftime("%H:%M:%S")}'
+
                     signal_manager.emit(signal_manager.statusMsg, msg, 3000)
                     with suppress(Exception):
                         self.after_saved.emit()
