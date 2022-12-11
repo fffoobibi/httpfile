@@ -1,5 +1,6 @@
 import collections
 import inspect
+import pprint
 import types
 import typing
 import weakref
@@ -17,6 +18,7 @@ from zope.interface import implementer
 from lsp.lsp_interface import LanguageServerMixIn as IL
 from lsp.utils import lsp_context
 from pyqt5utils.qsci.base import BaseCodeWidget
+from pyqt5utils.qsci.scintillacompat import QsciScintillaCompat
 from widgets.base import PluginBaseMixIn
 from widgets.factorys import add_styled
 from widgets.interfaces import ILanguageInterFace
@@ -585,17 +587,38 @@ t = lsp_context.type
 c = lsp_context.converter
 
 
+class tab_code_context(object):
+    def __init__(self, target):
+        from . import TabCodeWidget
+        self.target: TabCodeWidget = target
+
+    def __enter__(self):
+        return self.target
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class _LspHandlerHelper(object):
+    @classmethod
+    def get_position_range(cls, code: QsciScintillaCompat, t_range: t.Range) -> typing.Tuple[int]:
+        l1, c1 = t_range.start.line, t_range.start.character
+        l2, c2 = t_range.end.line, t_range.end.character
+        return code.positionFromLineIndex(l1, c1), code.positionFromLineIndex(l2, c2)
+
+
 class LspResultProcessHandler(object):
     def __init__(self, tab):
         self.tab = tab
+        if typing.TYPE_CHECKING:
+            from . import TabCodeWidget
+            self.tab: TabCodeWidget = tab
 
     def parse_uri(self, uri: str) -> str:
         return uri.strip('file:///').replace('\\', '/')
 
     def render_diagnostics(self, uri: str, diagnostics: List[Diagnostic]):
         parse_uri = self.parse_uri
-        from . import TabCodeWidget
-        self: TabCodeWidget
         self = self.tab
         puri = parse_uri(uri)
         current_file = (self.file_path() or '').replace('\\', '/')
@@ -614,11 +637,33 @@ class LspResultProcessHandler(object):
                 print('sss: ', diagnostic.severity, 'word: ', self.code.text(p1, p2), 'message: ', diagnostic.message)
                 self.code.fillIndicatorRange(l1, c1, l2, c2, self.code.indic_diagnostics)
 
+    def render_symbols(self, symbols: List[t.DocumentSymbol], line: int, col: int, position: int):
+
+        def find_symbol_pointer(sym: t.DocumentSymbol):
+            sp = _LspHandlerHelper.get_position_range(self.tab.code, sym.range)
+            pointers_ = []
+            if sp[0] <= position <= sp[-1]:
+                pointers_.append(sym.name)
+                if not sym.children:
+                    return pointers_
+                else:
+                    for ch in sym.children:
+                        c_pointers = find_symbol_pointer(ch)
+                        pointers_.extend(c_pointers)
+            return pointers_
+
+        print('get symbols ,', len(symbols))
+        pointers = []
+        for symbol in symbols:
+            pointers = find_symbol_pointer(symbol)
+            if pointers:
+                break
+
+        print('finded: ', pointers)
+        self.tab.set_navigator_items(pointers)
+
     def render_references(self, ret: List[t.Location]):
         parse_uri = self.parse_uri
-
-        from . import TabCodeWidget
-        self: TabCodeWidget
         self = self.tab
         print('clas -----', self.code)
         self.code.clearAllIndicators(self.code.indic_ref)

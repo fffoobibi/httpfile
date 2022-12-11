@@ -139,16 +139,17 @@ class VsCodeDarkStyle(BaseStyle):
     }
 
     editor_json = {
+        'font': dict(default='JetBrains Mono'),
         'color': {
             QsciLexerJSON.Default: "lightgray",  # =
             QsciLexerJSON.Number: "#0078D7",  # = ...  # type: int
-            QsciLexerJSON.String: "#FFD866",  # = ...  # type: int
-            QsciLexerJSON.UnclosedString: "#FFD866",  # = ...  # type: int
-            QsciLexerJSON.Property: "#7C79FA",  # = ...  # type: int
+            QsciLexerJSON.String: "#CD9069",  # = ...  # type: int
+            QsciLexerJSON.UnclosedString: "#CD9069",  # = ...  # type: int
+            QsciLexerJSON.Property: "#61BCFB",  # = ...  # type: int
             QsciLexerJSON.EscapeSequence: "#57D1EB",  # = ...  # type: int, 转义符
             QsciLexerJSON.CommentLine: "gray",  # = ...  # type: int
             QsciLexerJSON.CommentBlock: "gray",  # = ...  # type: int
-            QsciLexerJSON.Operator: "#FD971F",  # = ...  # type: int
+            QsciLexerJSON.Operator: "white",  # = ...  # type: int
             QsciLexerJSON.IRI: "#FFD866",  # = ...  # type: int
             QsciLexerJSON.IRICompact: "#FFD866",  # = ...  # type: int
             QsciLexerJSON.Keyword: "#00D3E9",  # = ...  # type: int
@@ -452,5 +453,6 @@ class VsCodeDarkStyle(BaseStyle):
             line_info='#C6DBE9',
             file_trace='red'
         )}
+
 
 import pyls

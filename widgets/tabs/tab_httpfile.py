@@ -484,6 +484,7 @@ class HTTPFileCodeWidget(TabCodeWidget):
             return []
         return [_create_panel()]
 
+
     def set_splitter_widgets(self) -> List[QWidget]:
         def _fresh_indicators(loading):
             self.fresh_search_panel()

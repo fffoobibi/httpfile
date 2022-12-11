@@ -420,11 +420,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
                         tab_.is_remote = False
                         if tab_.support_code:
                             # tab_.code.language_client_class = TCPLanguageClient
-                            tab_.code.register_to_app(self)
-                            lsp_name = tab_.code.lsp_serve_name()
-                            # important
-                            self.get_client(lsp_name)
-                            self.lsp_initial(lsp_name, tab_)
+                            flag = tab_.code.register_to_app(self)
+                            if flag:
+                                lsp_name = tab_.code.lsp_serve_name()
+                                # important
+                                self.get_client(lsp_name)
+                                self.lsp_initial(lsp_name, tab_)
                         tab_.load_file(file_path)
                         return tab_
 

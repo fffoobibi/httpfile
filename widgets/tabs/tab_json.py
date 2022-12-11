@@ -7,9 +7,9 @@ from typing import List
 import jmespath
 from PyQt5.Qsci import QsciLexerJSON
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QIcon
+from PyQt5.QtGui import QColor, QIcon, QFontMetricsF, QFont
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSplitter, QTextEdit, QHBoxLayout, QPushButton, \
-    QSpacerItem, QSizePolicy
+    QSpacerItem, QSizePolicy, QLabel, QFrame, QListWidget
 from attrs import asdict
 from cached_property import cached_property
 from lsprotocol.types import ClientCapabilities
@@ -33,6 +33,15 @@ class StyledJsonLexer(QsciLexerJSON):
         if color:
             return QColor(color)
         return QColor('')
+
+    def defaultFont(self, p_int):
+        font: QFont = super().defaultFont(p_int)
+        font_family = current_styles.editor_json.get('font', {}).get('default', None)
+        if font_family is not None:
+            font.setFamily(font_family)
+            font.setPointSizeF(10)
+            font.setBold(False)
+        return font
 
 
 @register(file_types=['json', 'ipynb'])
@@ -77,25 +86,10 @@ class JsonCodeWidget(TabCodeWidget):
     def after_init(self):
         def clicked():
             cap = self.main_app.get_lsp_capacities(self.lsp_serve_name())
-            print('can format ', cap.document_formatting_provider)
-            pprint.pprint(asdict(cap))
-            if cap.document_formatting_provider:
-                self.code.onTextDocumentFormatting(self.file_path())
-            # print(self.code.currentPosition())
-            # posi = self.code.currentPosition()
-            # for index, ast_value in enumerate(self.parser, 0):
-            #     # print(ast_value)
-            #     if ast_value['start'] <= posi <= ast_value['end']:
-            #         print(self.parser[:index])
-            #         # ret = vistor.visit(ast_value)
-            #         # print('vst ==> ', ret)
-            #         print('.'.join(
-            #             map(
-            #                 lambda e: e['value'],
-            #                 filter(lambda e: e['type'] == 'quoted_identifier', self.parser[:index])
-            #             )
-            #         ))
-            #         break
+            # print('server cap:', )
+            # pprint.pprint(asdict(cap))
+            if cap and cap.document_symbol_provider:
+                self.code.onTextDocumentDocumentSymbol(self.file_path())
 
         self.code.click_signal.connect(clicked)
         self.define_indicators()
@@ -243,20 +237,46 @@ class JsonCodeWidget(TabCodeWidget):
             self.code._debounce_timer.stop()
         self.code.onTextDocumentDidClose(self.file_path())
 
+    def set_bottom_code_widgets(self) -> List[QWidget]:
+
+        return [self.navigator_bar]
+
+    @cached_property
+    def navigator_bar(self):
+        f = QListWidget()
+        f.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        f.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        f.setLayoutDirection(Qt.LeftToRight)
+        f.setFlow(QListWidget.LeftToRight)
+        f.setSpacing(0)
+        f.setStyleSheet('QListWidget{background: %s;color: %s;font-family:微软雅黑}' % (
+            current_styles.editor_json['paper']['background'], current_styles.foreground))
+        fm = QFontMetricsF(QFont('微软雅黑'))
+        # fl = QHBoxLayout(f)
+        # fl.setSpacing(0)
+        # fl.setContentsMargins(0, 0, 0, 0)
+        f.setFixedHeight(fm.height() + 4)
+        return f
+
+    def set_navigator_items(self, items: List[str]):
+        self.navigator_bar.clear()
+        self.navigator_bar.addItems(items)
+        self.navigator_bar.setCurrentRow(len(items) - 1)
+        self.navigator_bar.update()
+
     language_client_class = StdIoLanguageClient
 
     def lsp_init_kw(self) -> dict:
         if self.language_client_class is StdIoLanguageClient:
             from json_lsp.main import NODE, PATH_TO_BIN_JS
             commands = [
-                r'C:\Users\fqk12\AppData\Roaming\npm\vscode-json-languageserver.cmd', '--stdio'
+                r'vscode-json-languageserver.cmd', '--stdio'
             ]
             cmd2 = [NODE, PATH_TO_BIN_JS, '--stdio', ]
             p = subprocess.Popen(
                 commands,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                # stdin=sys.stdin, stdout=sys.stdout
             )
             return dict(reader=p.stdout, writer=p.stdin)
 
@@ -271,6 +291,9 @@ class JsonCodeWidget(TabCodeWidget):
             r = t.ClientCapabilities(text_document=t.TextDocumentClientCapabilities(
                 references=t.ReferenceClientCapabilities(dynamic_registration=True),
                 color_provider=t.DocumentColorClientCapabilities(dynamic_registration=True),
-                publish_diagnostics=t.PublishDiagnosticsClientCapabilities()
+                publish_diagnostics=t.PublishDiagnosticsClientCapabilities(),
+                document_symbol=t.DocumentSymbolClientCapabilities(
+                    hierarchical_document_symbol_support=True
+                )
             ))
             return r

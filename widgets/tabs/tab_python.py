@@ -1,9 +1,7 @@
 import difflib
 import keyword
 import subprocess
-import sys
 from abc import abstractmethod
-from pathlib import Path
 from types import MethodType
 from typing import Any, List
 
@@ -13,12 +11,11 @@ from PyQt5.QtCore import Qt, QDir, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QCursor, QKeySequence, QColor, QIcon, QFont
 from PyQt5.QtWidgets import QMenu, QAction, QTextEdit, QTextBrowser, QLineEdit, QPushButton, QLabel, QListWidget
 from cached_property import cached_property
-from jedi.api import errors
-from jedi.api.classes import Completion, Name
+from jedi.api.classes import Completion
 from jedi.api.environment import SameEnvironment
 from lsprotocol.types import ClientCapabilities
 
-from lsp.interface import StdIoLanguageClient, TCPLanguageClient
+from lsp.interface import StdIoLanguageClient
 from lsp.utils import LspContext
 from pyqt5utils.components.helper import ObjectsHelper
 from pyqt5utils.components.styles import StylesHelper
@@ -234,11 +231,17 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
         self.after_saved.connect(self.reset_file_tracer)
         self.define_jedi_indicators()
         self.file_loaded.connect(self.when_file_loaded)
+        self.code.click_signal.connect(self.when_code_clicked)
 
     def when_file_loaded(self):
         self.code.onTextDocumentDidOpen(self.file_path(),
                                         'python', 0, self.code.text()
                                         )
+
+    def when_code_clicked(self):
+        cap = self.main_app.get_lsp_capacities(self.lsp_serve_name())
+        if cap and cap.document_symbol_provider:
+            self.code.onTextDocumentDocumentSymbol(self.file_path())
 
     def when_remove(self):
         if getattr(self.code, '_debounce_timer', None):
@@ -577,8 +580,12 @@ class PythonCodeWidget(TabCodeWidget, FileTracerMixIn):
                 text_document=t.TextDocumentClientCapabilities(
                     references=t.ReferenceClientCapabilities(dynamic_registration=True),
                     color_provider=t.DocumentColorClientCapabilities(dynamic_registration=True),
-                    publish_diagnostics=t.PublishDiagnosticsClientCapabilities()
-                ))
+                    publish_diagnostics=t.PublishDiagnosticsClientCapabilities(),
+                    document_symbol=t.DocumentSymbolClientCapabilities(
+                        hierarchical_document_symbol_support=True
+                    )
+                ),
+            )
             return r
 
     # def on_initialize(self):

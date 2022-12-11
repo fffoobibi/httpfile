@@ -33,7 +33,6 @@ def base_lsp_handler(app, msg: dict, lsp_serve_name: str, file_path: str):
     if msg_id == LspMethodId.initialize_id:
         app.register_lsp_serve_capacities(lsp_serve_name, msg['result']['capabilities'])
     if current_tab and current_file_path == file_path:
-        print('get msg ', msg)
         if msg_id:
             if msg_id == LspMethodId.initialize_id:
                 print('init msg: ', msg)
@@ -46,9 +45,15 @@ def base_lsp_handler(app, msg: dict, lsp_serve_name: str, file_path: str):
             elif msg_id == LspMethodId.textdocumentdocumenthighlight_id:
                 print('hiligh: ', msg)
             elif msg['id'] == LspMethodId.textdocumentdocumentsymbol_id:
-                print('symbols: ')
-                import pprint
-                pprint.pprint(msg)
+                if msg['result']:
+                    print('get symbol msg: ')
+                    print(msg['result'])
+                    if not msg['result'][0].get('location', None):
+                        symbols = lsp_context.converter.structure(msg['result'], List[lsp_context.type.DocumentSymbol])
+                        line, col = current_tab.code.current_line_col
+                        position = current_tab.code.currentPosition()
+                        current_tab.lsp_render.render_symbols(symbols, line, col, position)
+
             elif msg_id == LspMethodId.textdocumentcolor_id:
                 print('colors: ')
                 import pprint
@@ -57,6 +62,7 @@ def base_lsp_handler(app, msg: dict, lsp_serve_name: str, file_path: str):
                 print('complete')
                 import pprint
                 print(msg)
+
         # notification
         else:
             notification_method = msg.get('method', None)

@@ -14,6 +14,7 @@ from lsprotocol.types import ClientCapabilities, InitializeParamsClientInfoType
 from lsp.interface import LSPAppMixIn, TCPLanguageClient, StdIoLanguageClient
 from lsp.utils import LspContext
 from pyqt5utils.workers import WorkerManager
+from widgets.loggers import with_trace_back, lsp_logger
 
 
 class ILanguageServe(object):
@@ -149,15 +150,21 @@ class LanguageServerMixIn(ILanguageServe):
         pass
 
     def client_init_params(self) -> Tuple:
-        params = self.lsp_serve_name(), self.lsp_init_kw()
-        return params
+        lsp_name = None
+        try:
+            lsp_name = self.lsp_serve_name()
+            start_lsp = self.lsp_init_kw()
+            return lsp_name, start_lsp
+        except:
+            name = lsp_name or '[default]'
+            lsp_logger.warning(f'{name} start fail', exc_info=True)
 
-    def register_to_app(self, main_app: LSPAppMixIn):
+    def register_to_app(self, main_app: LSPAppMixIn) -> bool:
         self.app = main_app
         if self.language_client_class is TCPLanguageClient:
-            main_app.register_lsp_serve_params(self.client_init_params(), self._client, 'tcp')
+            return main_app.register_lsp_serve_params(self.client_init_params(), self._client, 'tcp')
         elif self.language_client_class is StdIoLanguageClient:
-            main_app.register_lsp_serve_params(self.client_init_params(), self._client, 'stdio')
+            return main_app.register_lsp_serve_params(self.client_init_params(), self._client, 'stdio')
 
     def capacities(self) -> int:
         return 0
@@ -182,18 +189,13 @@ class LanguageServerMixIn(ILanguageServe):
                     resp = await client.send_lsg_msg(body)
                     return resp
                 except:
-                    import traceback
-                    traceback.print_exc()
                     raise
 
             def _call(msg):
                 self.app.dispatch_lsp_msg(msg, serve_name, path)
-                # if method.__name__ == 'onInitialize':
-                #     server_cap = _lsp_context.converter.structure(msg['result']['capabilities'],
-                #                                                   _lsp_context.type.ServerCapabilities)
 
             def _err(error):
-                print('error :', error)
+                pass
 
             try:
                 method_name: str = method.__name__
@@ -391,6 +393,7 @@ class LanguageServerMixIn(ILanguageServe):
             id=_method_id.textdocumentdocumentsymbol_id,
             params=params
         )
+        resp =_t.TextDocumentDocumentSymbolResponse
         return _lsp_context.body(r)
 
     def on_textdocumentcolor(self, file_path: str):

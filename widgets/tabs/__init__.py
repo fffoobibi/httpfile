@@ -244,7 +244,11 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
             self.lay.addWidget(self.__search_widget)
             for w in self.set_code_widgets():
                 self.lay.addWidget(w)
+
             self.lay.addWidget(self.code)
+
+            for bw in self.set_bottom_code_widgets():
+                self.lay.addWidget(bw)
 
             self.code.cursor_signal.connect(self.__update_line_col)
             self.code.SCN_MODIFIED.connect(self.when_modify)
@@ -564,4 +568,7 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
         return []
 
     def set_code_widgets(self) -> List[QWidget]:
+        return []
+
+    def set_bottom_code_widgets(self) -> List[QWidget]:
         return []

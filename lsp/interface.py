@@ -15,6 +15,7 @@ from lsprotocol.types import ServerCapabilities
 from lsprotocol.converters import get_converter
 
 from widgets.hooks import register_lsp_hook
+from widgets.loggers import with_trace_back
 
 
 class LanguageClientBase(object):
@@ -171,13 +172,19 @@ class LSPAppMixIn(object):
     def get_lsp_capacities(self, lsp_name: str) -> Optional[ServerCapabilities]:
         return self.__lsp_serve_capacities__.get(lsp_name)
 
-    def register_lsp_serve_params(self, info: tuple, factory, flag: str):
+    def register_lsp_serve_params(self, info: tuple, factory, flag: str) -> bool:
+        try:
+            _, __ = info
+        except:
+            return False
         if flag == 'tcp':
             serve_name, init_kw = info
             self.__lsp_serves__.setdefault(serve_name, factory)
+            return True
         elif flag == 'stdio':
             serve_name, init_kw = info
             self.__lsp_serves__.setdefault(serve_name, factory)
+            return True
 
     def get_client(self, serve_name: str) -> LanguageClientBase:
         if self.__lsp_clients__.get(serve_name, None) is None:
