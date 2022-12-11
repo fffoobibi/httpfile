@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import QApplication
 from lazy_object_proxy import Proxy
 
 from widgets.base import get_app_settings
-from widgets.signals import signal_manager
 
 module_name = 'widgets.styles'
 
@@ -111,6 +110,7 @@ class BaseStyle(object):
     run_tab: str = None  # run_tab
     splitter: str = None  # splitter qss
 
+    title_background: str = None
     menubar_background: str = None
     toolbar_background: str = None
     left_background: str = None

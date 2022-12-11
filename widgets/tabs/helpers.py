@@ -380,6 +380,12 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             return []
 
         @property
+        def current_symbols(self) -> Union[_Queue[t.DocumentSymbol], _Queue[t.SymbolInformation], list]:
+            if self.support_language_parse:
+                return self._current_symbols
+            return []
+
+        @property
         def local_pos(self) -> QPoint:
             return self._current_pos
 
@@ -498,6 +504,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             self.click_signal.connect(self._mouse_click_language_parse_event)
             self._current_refs = _Queue()
             self._current_diagnostics = _Queue()
+            self._current_symbols = _Queue()
             self._current_pos = QPoint()
 
             _code_refs[id(self)] = self
@@ -652,14 +659,14 @@ class LspResultProcessHandler(object):
                         pointers_.extend(c_pointers)
             return pointers_
 
-        print('get symbols ,', len(symbols))
+        # print('get symbols ,', len(symbols))
+        if len(self.tab.code.current_symbols) == 0:
+            self.tab.code.current_symbols.extend(symbols)
         pointers = []
         for symbol in symbols:
             pointers = find_symbol_pointer(symbol)
             if pointers:
                 break
-
-        print('finded: ', pointers)
         self.tab.set_navigator_items(pointers)
 
     def render_references(self, ret: List[t.Location]):

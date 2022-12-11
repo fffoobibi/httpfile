@@ -345,7 +345,7 @@ class BaseCodeWidget(QsciScintillaCompat):
         self.setAutoCompletionSource(self.AcsAll)  # 自动补全。对于所有Ascii字符
         self.setAutoCompletionCaseSensitivity(False)  # 自动补全大小写敏感
         self.setAutoCompletionThreshold(1)  # 输入多少个字符才弹出补全提示
-        self.setFolding(True)  # 代码可折叠
+        self.setFolding(self.BoxedTreeFoldStyle)  # 代码可折叠
         self.setFont(self.set_font() or QFont('微软雅黑', 10))  # 设置默认字体
         self.setTabWidth(4)
         self.setTabletTracking(True)

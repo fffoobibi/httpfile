@@ -52,7 +52,7 @@ from widgets.mainwidget import run
 code = '''
 1+2
 
-import time
+import time     
 try:
     1/0
 except:

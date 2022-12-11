@@ -97,6 +97,7 @@ class VsCodeDarkStyle(BaseStyle):
     background_darker = '#242425'
     background_lighter = '#323232'
 
+    title_background = background_lighter
     toolbar_background = background_lighter
     menubar_background = background_lighter
 

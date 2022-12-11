@@ -1,4 +1,5 @@
 import sys
+import typing
 from contextlib import suppress
 from pathlib import Path
 from typing import Optional, List, Tuple
@@ -37,7 +38,7 @@ class AppRunTime(BaseModel):
 
 
 @color_widget(title='FEditor', icon=icon,
-              bar_color=current_styles.background_lighter,
+              bar_color=current_styles.title_background,
               text_color=current_styles.foreground,
               back_ground_color=Qt.transparent,
               border_color=current_styles.border,
@@ -110,6 +111,16 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
         self.tabWidget.setFont(QFont('微软雅黑'))
 
     def render_custom_style(self):
+        self.setAutoFillBackground(True)
+        palette = self.palette()  # type: QPalette
+        palette.setColor(QPalette.Window, QColor(current_styles.background_lighter))
+        palette.setColor(QPalette.Foreground, QColor(current_styles.foreground))
+        self.setPalette(palette)
+        self.root
+        if typing.TYPE_CHECKING:
+            from pyqt5utils.components import TitleWidget
+            self.root: TitleWidget
+        self.root.setTitleBarColor(QColor(current_styles.title_background))
         self.menubar.setStyleSheet(
             'QMenuBar{background:%s;color:%s;border-top:1px solid %s;border-bottom: 0px solid %s}' % (
                 current_styles.menubar_background, current_styles.foreground, current_styles.border,
@@ -122,11 +133,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
                 current_styles.toolbar_background, current_styles.foreground, current_styles.border,
                 current_styles.border,  # current_styles.border
             ))
-        self.setAutoFillBackground(True)
-        palette = self.palette()  # type: QPalette
-        palette.setColor(QPalette.Window, QColor(current_styles.background_lighter))
-        palette.setColor(QPalette.Foreground, QColor(current_styles.foreground))
-        self.setPalette(palette)
+        self.widget.setStyleSheet(
+            'QWidget{background:%s;color:%s;border-top:1px solid %s;border-bottom: 0px solid %s}' % (
+                current_styles.left_background, current_styles.foreground, current_styles.border,
+                current_styles.border
+            ))
+        self.update()
 
     def init_run_time(self):
         self.r_run_time: AppRunTime = AppRunTime()

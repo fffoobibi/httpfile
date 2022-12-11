@@ -47,7 +47,6 @@ def load_tab_widgets():
     return tab_codes
 
 
-# @implementer(ITabInterFace, ILanguageInterFace)
 class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
 
     @cached_property
@@ -60,6 +59,7 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
     def lsp_serve_name(self) -> str:
         pass
 
+    language_client_class = None
     vertical = ConfigProvider.default(ConfigKey.general, 'vertical_width')
     horizontal = ConfigProvider.default(ConfigKey.general, 'horizontal_height')
 
@@ -192,11 +192,25 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
         if styles:
             StylesHelper.set_v_history_style_dynamic(self.code, color=handler, background='transparent', width=10)
             StylesHelper.set_h_history_style_dynamic(self.code, color=handler, background='transparent', height=10)
+
+            if styles.get('fold_markers'):
+                fore = styles['fold_markers'].get('foreground')
+                back = styles['fold_markers'].get('background')
+                if fore and back:
+                    self.code.setFoldMarkersColors(QColor(fore), QColor(back))
+            # set fold marker colors
             if styles['margin'].get('background', None):
                 self.code.setMarginsBackgroundColor(QColor(styles['margin'].get('background')))
                 self.code.setFoldMarginColors(QColor('#404040'), QColor('#404040'))
+            # set line margin colors
             if styles['margin'].get('foreground', None):
                 self.code.setMarginsForegroundColor(QColor(styles['margin'].get('foreground')))
+            # set fold margin colors
+            if styles['margin'].get('foldmargin', None):
+                self.code.setFoldMarginColors(QColor(styles['margin'].get('foldmargin')),
+                                              QColor(styles['margin'].get('foldmargin')))
+            else:
+                self.code.setFoldMarginColors(QColor('#404040'), QColor('#404040'))
             if styles['caret'].get('foreground', None):
                 self.code.setCaretLineBackgroundColor(QColor(styles['caret'].get('foreground')))
             if styles['caret'].get('background', None):
@@ -360,17 +374,12 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
         def __save_slot(self):
             if self.file_path() and not self.is_remote:
                 try:
-                    print('save ------')
-                    print(repr(self.code.text()))
-
                     import mmap
                     with open(self._file, 'w+b') as f:
                         decode_text = self.code.text().encode()
                         with mmap.mmap(f.fileno(), len(decode_text), access=mmap.ACCESS_WRITE) as mm:
                             mm[:] = decode_text
-
                             # self.setText(contents.decode('utf-8'))
-
                     # Path(self._file).write_text(self.code.text(), encoding='utf-8')
 
                     save_time = datetime.now()

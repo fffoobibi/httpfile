@@ -86,10 +86,11 @@ class JsonCodeWidget(TabCodeWidget):
     def after_init(self):
         def clicked():
             cap = self.main_app.get_lsp_capacities(self.lsp_serve_name())
-            # print('server cap:', )
-            # pprint.pprint(asdict(cap))
             if cap and cap.document_symbol_provider:
-                self.code.onTextDocumentDocumentSymbol(self.file_path())
+                if len(self.code.current_symbols) == 0:
+                    self.code.onTextDocumentDocumentSymbol(self.file_path())
+                else:
+                    self.lsp_render.render_symbols(self.code.current_symbols, 0, 0, self.code.currentPosition())
 
         self.code.click_signal.connect(clicked)
         self.define_indicators()
