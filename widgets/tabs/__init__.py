@@ -205,7 +205,6 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
             # set fold marker colors
             if styles['margin'].get('background', None):
                 self.code.setMarginsBackgroundColor(QColor(styles['margin'].get('background')))
-                self.code.setFoldMarginColors(QColor('#404040'), QColor('#404040'))
             # set line margin colors
             if styles['margin'].get('foreground', None):
                 self.code.setMarginsForegroundColor(QColor(styles['margin'].get('foreground')))

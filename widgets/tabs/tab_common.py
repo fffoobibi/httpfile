@@ -285,8 +285,6 @@ class TextCodeWidget(TabCodeWidget):
 
     def when_insert(self, position: int, text: bytes, length: int, linesAdded: int, line: int):
         if self._file_loaded:
-            # file = QFile(self.file_path())
-            # ptr = file.map(0, file.size() + length)
             import mmap
             fsize = os.stat(self.file_path()).st_size + length
             fp = open(self.file_path(), 'a+b')
@@ -303,52 +301,18 @@ class TextCodeWidget(TabCodeWidget):
 
     def when_delete(self, position: int, text: bytes, length: int, linesAdded: int, line: int):
         if self._file_loaded:
-            if position == self.code.length():
-                print('delete form end')
-                print('position ', position, self.code.length(), text, linesAdded, line)
-
+            if text is not None:
+                print('position ', position, length, text, linesAdded, line)
+                fp = open(self.file_path(), "a+b")
                 import mmap
-                # fsize = os.stat(self.file_path()).st_size - length
-                fp = open(self.file_path(), 'ab+')
-                # mm = mmap.mmap(fp.fileno(), 0)
-                # mm[position - length:position] = b' ' * length
-                # mm.move(position, )
-                # mm.seek(self.code.currentPosition())
-                fp.seek(self.code.currentPosition())
+                mm = mmap.mmap(fp.fileno(), 0, access=mmap.ACCESS_WRITE)
+                f_size = mm.size()
+                mm[position:] = mm[position + length:] + b' ' * length
+                mm.flush()
+                mm.close()
+                fp.seek(f_size-length, 0)
                 fp.truncate()
-                # mm.close()
                 fp.close()
-            else:
-                if text is not None:
-                    print('position ', position, length, text, linesAdded, line)
-                    #
-                    fp = open(self.file_path(), "a+b")
-                    # # fsize = os.stat(self.file_path()).st_size
-                    import mmap
-                    mm = mmap.mmap(fp.fileno(), 0, access=mmap.ACCESS_WRITE)
-                    mm.move(position, position + length, length)
-                    mm.flush()
-                    mm.close()
-
-                    # fp.seek(position)
-                    fp.truncate(length)
-                    fp.close()
-
-                # VDATA = mmap.mmap(f.fileno(), 0)
-
-                # def deleteFromMmap(start, end):
-                #     nonlocal VDATA
-                #     length = end - start
-                #     size = len(VDATA)
-                #     newsize = size - length
-                #
-                #     VDATA.move(start, end, size - end)
-                #     VDATA.flush()
-                #     VDATA.close()
-                #     f.truncate(newsize)
-                #     VDATA = mmap.mmap(f.fileno(), 0)
-                #
-                # deleteFromMmap(position-1, position-1 + length)
 
     @pyqtSlot()
     def _io_demo(self):

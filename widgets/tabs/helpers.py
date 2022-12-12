@@ -443,8 +443,8 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             super().keyReleaseEvent(a0)
             self._has_alt_control = False
 
-        def mousePressEvent(self, event):
-            super(BaseCodeChild, self).mousePressEvent(event)
+        def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+            super(BaseCodeChild, self).mouseReleaseEvent(event)
             self.click_with_pos_signal.emit(event.pos())
             if event.pos().x() > self.get_invalid_margins_width():
                 if self.support_language_parse and self.supported(
@@ -456,47 +456,6 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                         if word:
                             self.onTextDocumentInfer(word, line, index)
 
-        # def hook_code_mouseMoveEvent(self, a0: QMouseEvent) -> None:
-        #     pos = a0.pos()
-        #     # self: BaseCodeWidget
-        #     # parent: HTTPFileCodeWidget = self.code_container
-        #     # margin_0 = self.marginWidth(0)
-        #     # margin_1 = self.marginWidth(parent.run_margin_type)
-        #     # margin_2 = self.marginWidth(parent.info_margin_type)
-        #     # margin_3 = self.marginWidth(3)
-        #
-        #     margins = []
-        #     for i in range(self.mar())
-        #     viewport = self.viewport()
-        #
-        #     if pos.x() <= margin_0:
-        #         if viewport.cursor().shape() != Qt.ArrowCursor:
-        #             viewport.setCursor(Qt.ArrowCursor)
-        #     elif margin_0 + margin_1 + margin_2 >= pos.x() > margin_0:
-        #         if parent.line_has_marker(parent.run_margin_type, parent.run_margin_handle, pos):
-        #             if viewport.cursor().shape() != Qt.PointingHandCursor:
-        #                 viewport.setCursor(Qt.PointingHandCursor)
-        #         elif parent.line_has_marker(parent.info_margin_type, parent.success_marker_handle, pos):
-        #             if viewport.cursor().shape() != Qt.PointingHandCursor:
-        #                 viewport.setCursor(Qt.PointingHandCursor)
-        #         elif parent.line_has_marker(parent.info_margin_type, parent.fail_marker_handle, pos):
-        #             if viewport.cursor().shape() != Qt.PointingHandCursor:
-        #                 viewport.setCursor(Qt.PointingHandCursor)
-        #             # QToolTip.showText(pos, '请求失败', self)
-        #             # Tips.pop('请求失败', self, place='t', dxy=pos)
-        #         else:
-        #             viewport.setCursor(Qt.ArrowCursor)
-        #     elif margin_0 + margin_1 + margin_2 + margin_3 >= pos.x() > margin_0 + margin_1 + margin_2:
-        #         if viewport.cursor().shape() != Qt.ArrowCursor:
-        #             viewport.setCursor(Qt.ArrowCursor)
-        #     else:
-        #         self.__class__.mouseMoveEvent(self, a0)  # Qt.IBeamCursor
-        #     position = self.positionFromPoint(pos)
-        #     if self.hasIndicator(self.lexer().url_indicator, position):
-        #         QToolTip.showText(QCursor.pos(), '跳转网页(ctrl + 点击)', parent)
-        #     else:
-        #         QToolTip.hideText()
-
         def get_invalid_margins_width(self):
             c = 0
             for i in range(self.margins_count + 1):
@@ -507,6 +466,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             if a0.pos().x() <= self.get_invalid_margins_width():
                 self.viewport().setCursor(Qt.ArrowCursor)
             else:
+                super().mouseMoveEvent(a0)
                 if self.support_language_parse and self.supported(
                         self.hover_flag):
                     word = self.wordAtPoint(a0.pos())
@@ -517,8 +477,8 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                         self.viewport().setCursor(Qt.IBeamCursor)
                     if word:
                         self.mouse_move_signal.emit(word, line, index)
-                else:
-                    super().mouseMoveEvent(a0)
+                # else:
+                #     super().mouseMoveEvent(a0)
 
         @pyqtSlot(QPoint)
         def _mouse_click_language_parse_event(self, pos: QPoint):

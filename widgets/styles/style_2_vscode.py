@@ -119,7 +119,7 @@ class VsCodeDarkStyle(BaseStyle):
     editor_globals = {
         'selection': dict(background="#264E77"),
         'caret': dict(background='white', foreground='#262626'),  # 光标颜色, 背景色
-        'margin': dict(background='#1E1E1E', foreground='#A4A3A3'),
+        'margin': dict(background='#1E1E1E', foreground='#A4A3A3', foldmargin='#1E1E1E'),
         'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono'),
         'fold_markers': dict(background='gray', foreground='#1E1E1E'),
         'paper': dict(background='#1E1E1E'),
