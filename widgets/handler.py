@@ -62,6 +62,11 @@ def base_lsp_handler(app, msg: dict, lsp_serve_name: str, file_path: str):
                 print('complete')
                 import pprint
                 print(msg)
+            elif msg_id == LspMethodId.textdocumentformatting_id:
+                print('get formart msg')
+                response = lsp_context.converter.structure(msg, lsp_context.type.TextDocumentFormattingResponse)
+                if response.result:
+                    current_tab.lsp_render.render_format(response.result)
 
         # notification
         else:

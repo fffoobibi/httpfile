@@ -122,6 +122,7 @@ class BaseStyle(object):
     background_lighter: str = None
 
     foreground: str = None
+    un_focus_foreground: str = None
 
     hover: str = None
     button_hover: str = None

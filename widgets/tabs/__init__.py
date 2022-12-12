@@ -162,6 +162,10 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
     def file_path(self) -> str:
         return getattr(self, '_file', '')
 
+    def file_name(self) -> str:
+        file_path = self.file_path()
+        return Path(file_path).name
+
     @cached_property
     def real_file_type(self):
         return self.file_path().split('.')[-1]

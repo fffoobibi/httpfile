@@ -59,6 +59,7 @@ class LspMethodId(IntEnum):
     textdocumentreferences_id = auto()
     textdocumentrename_id = auto()
     textdocumentcolor_id = auto()
+    textdocumentdiagnosticrequest_id = auto()
 
     # notification
     textdocumentdidchange_id = auto()
@@ -69,8 +70,9 @@ class LspMethodId(IntEnum):
 
 
 class LspToken(str, Enum):
-    initialize_token = '1'
-    formatting_token = '2'
+    initialize_token = 'initialize_token'
+    formatting_token = 'formatting_token'
+    diagnosticrequest_token = 'diagnosticrequest_token'
 
 
 lsp_context = LspContext()

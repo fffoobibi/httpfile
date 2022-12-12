@@ -93,6 +93,7 @@ class VsCodeDarkStyle(BaseStyle):
     border_lighter = '#606060'
 
     foreground = '#BAB9B8'
+    un_focus_foreground = 'gray'
 
     background_darker = '#242425'
     background_lighter = '#323232'
@@ -120,6 +121,7 @@ class VsCodeDarkStyle(BaseStyle):
         'caret': dict(background='white', foreground='#262626'),  # 光标颜色, 背景色
         'margin': dict(background='#1E1E1E', foreground='#A4A3A3'),
         'font': dict(default='Microsoft YaHei UI', jetbrain='JetBrains Mono'),
+        'fold_markers': dict(background='gray', foreground='#1E1E1E'),
         'paper': dict(background='#1E1E1E'),
         'statics': dict(indic_ref='gray', indic_ref_class='#264E77', indic_ref_define='#9B3A24')
     }

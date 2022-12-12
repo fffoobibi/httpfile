@@ -1,94 +1,188 @@
-<RCC>
+<RCC>
+
   <qresource prefix="icon">
 	<file>font_sub.svg</file>
-	<file>font_add.svg</file>
-    <file>browser.svg</file>
-	<file>log.svg</file>
-	<file>theme.svg</file>
-    <file>fenxi.svg</file>
-    <file>新建文件.svg</file>
-    <file>新建文件夹.svg</file>
-    <file>关闭-tab.svg</file>
-    <file>关闭实心-tab.svg</file>
-    <file>远程管理.svg</file>
-    <file>网络配套服务.svg</file>
-    <file>API管理.svg</file>
-    <file>折叠.svg</file>
-    <file>减号.svg</file>
-    <file>换行.svg</file>
-    <file>服务01.svg</file>
-    <file>配置.svg</file>
-    <file>成功.svg</file>
-    <file>感叹号.svg</file>
-    <file>icons_next.svg</file>
-    <file>扳手.svg</file>
-    <file>清空.svg</file>
-    <file>zhengzeshi.svg</file>
-    <file>zifuxiao.svg</file>
-    <file>guanbi.svg</file>
-    <file>jiantou_liebiaoshouqi.svg</file>
-    <file>jiantou_liebiaozhankai.svg</file>
-    <file>重新开始,恢复_jurassic.svg</file>
-    <file>停止.svg</file>
-    <file>24gf-expandVertical2.svg</file>
-    <file>24gf-shrinkVertical2.svg</file>
-    <file>API.svg</file>
-    <file>baocun.svg</file>
-    <file>crosshairmiaozhun.svg</file>
-    <file>miaozhun.svg</file>
-    <file>shezhixitongshezhigongnengshezhishuxing.svg</file>
-    <file>shuaxin.svg</file>
-    <file>target-full.svg</file>
-    <file>tianjia.svg</file>
-    <file>icon-refresh.svg</file>
-    <file>24gf-expandVertical2.svg</file>
-    <file>24gf-shrinkVertical2.svg</file>
-    <file>baocun.svg</file>
-    <file>crosshairmiaozhun.svg</file>
-    <file>icon-refresh.svg</file>
-    <file>miaozhun.svg</file>
-    <file>shezhixitongshezhigongnengshezhishuxing.svg</file>
-    <file>target-full.svg</file>
-    <file>tianjia.svg</file>
-    <file>ide_sources.qrc</file>
-    <file>icon_6pamy6mo45b.zip</file>
-    <file>tianjia.svg</file>
-    <file>24gf-expandVertical2.svg</file>
-    <file>24gf-shrinkVertical2.svg</file>
-    <file>crosshairmiaozhun.svg</file>
-    <file>miaozhun.svg</file>
-    <file>shezhixitongshezhigongnengshezhishuxing.svg</file>
-    <file>target-full.svg</file>
-    <file>html.svg</file>
-    <file>HTTP.svg</file>
-    <file>固定,图钉.svg</file>
-    <file>箭头_列表向右.svg</file>
-    <file>下箭头.svg</file>
-    <file>箭头_列表展开(1).svg</file>
-    <file>右箭头.svg</file>
-    <file>file-xml.svg</file>
-    <file>css.svg</file>
-    <file>json.svg</file>
-    <file>txt.svg</file>
-    <file>txt文件.svg</file>
-    <file>icf_gear.svg</file>
-    <file>icf_lever.svg</file>
-    <file>icf_lock.svg</file>
-    <file>icf_lock_open.svg</file>
-    <file>错误.svg</file>
-    <file>运行，调试.svg</file>
-    <file>24gf-folderOpen.svg</file>
-    <file>python-misc.svg</file>
-    <file>文件夹.svg</file>
-    <file>解锁.svg</file>
-    <file>锁定.svg</file>
-    <file>编辑.svg</file>
-  </qresource>
-  <qresource prefix="gif">
-    <file>gif/5-121204193935-51.gif</file>
-    <file>gif/loading2.gif</file>
-    <file>gif/loading3.gif</file>
-    <file>gif/loading4.gif</file>
-    <file>gif/加载2.gif</file>
-  </qresource>
-</RCC>
+	<file>font_add.svg</file>
+	<file>diag_warn.svg</file>
+	<file>diag_error.svg</file>
+
+    <file>browser.svg</file>
+
+	<file>log.svg</file>
+
+	<file>theme.svg</file>
+
+    <file>fenxi.svg</file>
+
+    <file>新建文件.svg</file>
+
+    <file>新建文件夹.svg</file>
+
+    <file>关闭-tab.svg</file>
+
+    <file>关闭实心-tab.svg</file>
+
+    <file>远程管理.svg</file>
+
+    <file>网络配套服务.svg</file>
+
+    <file>API管理.svg</file>
+
+    <file>折叠.svg</file>
+
+    <file>减号.svg</file>
+
+    <file>换行.svg</file>
+
+    <file>服务01.svg</file>
+
+    <file>配置.svg</file>
+
+    <file>成功.svg</file>
+
+    <file>感叹号.svg</file>
+
+    <file>icons_next.svg</file>
+
+    <file>扳手.svg</file>
+
+    <file>清空.svg</file>
+
+    <file>zhengzeshi.svg</file>
+
+    <file>zifuxiao.svg</file>
+
+    <file>guanbi.svg</file>
+
+    <file>jiantou_liebiaoshouqi.svg</file>
+
+    <file>jiantou_liebiaozhankai.svg</file>
+
+    <file>重新开始,恢复_jurassic.svg</file>
+
+    <file>停止.svg</file>
+
+    <file>24gf-expandVertical2.svg</file>
+
+    <file>24gf-shrinkVertical2.svg</file>
+
+    <file>API.svg</file>
+
+    <file>baocun.svg</file>
+
+    <file>crosshairmiaozhun.svg</file>
+
+    <file>miaozhun.svg</file>
+
+    <file>shezhixitongshezhigongnengshezhishuxing.svg</file>
+
+    <file>shuaxin.svg</file>
+
+    <file>target-full.svg</file>
+
+    <file>tianjia.svg</file>
+
+    <file>icon-refresh.svg</file>
+
+    <file>24gf-expandVertical2.svg</file>
+
+    <file>24gf-shrinkVertical2.svg</file>
+
+    <file>baocun.svg</file>
+
+    <file>crosshairmiaozhun.svg</file>
+
+    <file>icon-refresh.svg</file>
+
+    <file>miaozhun.svg</file>
+
+    <file>shezhixitongshezhigongnengshezhishuxing.svg</file>
+
+    <file>target-full.svg</file>
+
+    <file>tianjia.svg</file>
+
+    <file>ide_sources.qrc</file>
+
+    <file>icon_6pamy6mo45b.zip</file>
+
+    <file>tianjia.svg</file>
+
+    <file>24gf-expandVertical2.svg</file>
+
+    <file>24gf-shrinkVertical2.svg</file>
+
+    <file>crosshairmiaozhun.svg</file>
+
+    <file>miaozhun.svg</file>
+
+    <file>shezhixitongshezhigongnengshezhishuxing.svg</file>
+
+    <file>target-full.svg</file>
+
+    <file>html.svg</file>
+
+    <file>HTTP.svg</file>
+
+    <file>固定,图钉.svg</file>
+
+    <file>箭头_列表向右.svg</file>
+
+    <file>下箭头.svg</file>
+
+    <file>箭头_列表展开(1).svg</file>
+
+    <file>右箭头.svg</file>
+
+    <file>file-xml.svg</file>
+
+    <file>css.svg</file>
+
+    <file>json.svg</file>
+
+    <file>txt.svg</file>
+
+    <file>txt文件.svg</file>
+
+    <file>icf_gear.svg</file>
+
+    <file>icf_lever.svg</file>
+
+    <file>icf_lock.svg</file>
+
+    <file>icf_lock_open.svg</file>
+
+    <file>错误.svg</file>
+
+    <file>运行，调试.svg</file>
+
+    <file>24gf-folderOpen.svg</file>
+
+    <file>python-misc.svg</file>
+
+    <file>文件夹.svg</file>
+
+    <file>解锁.svg</file>
+
+    <file>锁定.svg</file>
+
+    <file>编辑.svg</file>
+
+  </qresource>
+
+  <qresource prefix="gif">
+
+    <file>gif/5-121204193935-51.gif</file>
+
+    <file>gif/loading2.gif</file>
+
+    <file>gif/loading3.gif</file>
+
+    <file>gif/loading4.gif</file>
+
+    <file>gif/加载2.gif</file>
+
+  </qresource>
+
+</RCC>
+

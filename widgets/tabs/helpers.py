@@ -9,8 +9,10 @@ from typing import Callable, Union, List
 
 from PyQt5.Qsci import QsciScintilla
 from PyQt5.QtCore import pyqtSignal, Qt, pyqtSlot, QTimer, QPoint
-from PyQt5.QtGui import QColor, QFont, QIcon, QFontMetrics, QKeyEvent, QMouseEvent
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QLabel, QFrame, QShortcut
+from PyQt5.QtGui import QColor, QFont, QIcon, QFontMetrics, QKeyEvent, \
+    QMouseEvent
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QButtonGroup, \
+    QPushButton, QLabel, QFrame, QShortcut
 from cached_property import cached_property
 from lsprotocol.types import Diagnostic
 from zope.interface import implementer
@@ -44,7 +46,8 @@ class LanguageServerMixIn(object):
     syntax_flag = 1 << 5
 
     __setup_targets__ = [
-        'onTextDocumentInfer', 'onTextDocumentCompletion', 'onTextDocumentHover', 'onTextDocumentReferences',
+        'onTextDocumentInfer', 'onTextDocumentCompletion',
+        'onTextDocumentHover', 'onTextDocumentReferences',
         'onTextDocumentRename', 'onTextDocumentSyntaxCheck', 'capacities'
     ]
 
@@ -123,15 +126,19 @@ class LanguageServerMixIn(object):
         pass
 
 
-def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support, custom_menu_policy, set_apis,
-                find_self=None, render_style=None, multi_line=False, simple_search=False, cap=None,
+def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
+                custom_menu_policy, set_apis,
+                find_self=None, render_style=None, multi_line=False,
+                simple_search=False, cap=None,
                 language_server_factory=IL
                 ):
     from widgets.mainwidget import MainWidget
-    class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn, language_server_factory):
+    class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn,
+                        language_server_factory):
         support_language_parse: bool = False
 
         click_signal = pyqtSignal()
+        click_with_pos_signal = pyqtSignal(QPoint)
         file_styled = pyqtSignal()
         run_margin_signal = pyqtSignal(int)
         mouse_move_signal = pyqtSignal(str, int, int)
@@ -146,7 +153,10 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
         indic_ref_define = 24
 
         indic_rename = 30
-        indic_diagnostics = 31
+        indic_diagnostics = 31  # error
+        indic_diagnostics_warn = 21
+
+        margins_count = 2
 
         if render_style:
             def render_custom_style(self):
@@ -183,33 +193,41 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                     self.__search_widget.move(w - fixed_width, 0)
 
             def __define_search_indicator(self):
-                self.code.indicatorDefine(self.code.INDIC_FULLBOX, self.search_result_indicator)
-                self.code.setIndicatorForegroundColor(QColor(255, 95, 0, 80), self.search_result_indicator)
+                self.code.indicatorDefine(self.code.INDIC_FULLBOX,
+                                          self.search_result_indicator)
+                self.code.setIndicatorForegroundColor(QColor(255, 95, 0, 80),
+                                                      self.search_result_indicator)
 
-                self.code.indicatorDefine(self.code.INDIC_FULLBOX, self.search_result_active_indicator)
-                self.code.setIndicatorForegroundColor(QColor(241, 26, 5, 70), self.search_result_active_indicator)
+                self.code.indicatorDefine(self.code.INDIC_FULLBOX,
+                                          self.search_result_active_indicator)
+                self.code.setIndicatorForegroundColor(QColor(241, 26, 5, 70),
+                                                      self.search_result_active_indicator)
 
             def __search_file(self, st):
                 if self.__search is False:
                     self.code.clearAllIndicators(self.search_result_indicator)
-                    self.code.clearAllIndicators(self.search_result_active_indicator)
+                    self.code.clearAllIndicators(
+                        self.search_result_active_indicator)
                     self.__search_count = 0
                     self.__search = True
                     self.__search_results.clear()
                     text: str = self.sender().text().strip()
                     if text:
-                        flag = self.code.findFirstTarget(text, False, False, False, 0, 0)
+                        flag = self.code.findFirstTarget(text, False, False,
+                                                         False, 0, 0)
                         if flag:
                             self.__search_count += 1
                             founded = self.code.getFoundTarget()  # position, len
-                            self.code.setIndicatorRange(self.search_result_indicator, *founded)
+                            self.code.setIndicatorRange(
+                                self.search_result_indicator, *founded)
                             self.__search_results.append(founded)
                         while flag:
                             flag = self.code.findNextTarget()
                             if flag:
                                 self.__search_count += 1
                                 founded = self.code.getFoundTarget()
-                                self.code.setIndicatorRange(self.search_result_indicator, *founded)
+                                self.code.setIndicatorRange(
+                                    self.search_result_indicator, *founded)
                                 self.__search_results.append(founded)
                     self.__search_display.setText(f'{self.__search_count}项结果')
                     if self.__search_count:
@@ -240,30 +258,36 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
 
                 def _next():
                     if not self.__search_results.is_empty():
-                        self.code.clearAllIndicators(self.search_result_active_indicator)
+                        self.code.clearAllIndicators(
+                            self.search_result_active_indicator)
                         founded = self.__search_results.next()
                         line, col = self.code.lineIndexFromPosition(founded[0])
                         self.move_to(line, col)
                         count = self.__search_count
                         current = self.__search_results.current_pos()
-                        self.__search_display.setText(f'{current + 1} / {count}')
+                        self.__search_display.setText(
+                            f'{current + 1} / {count}')
                         self.code.setFirstVisibleLine(line)
-                        self.code.setIndicatorRange(self.search_result_active_indicator, *founded)
+                        self.code.setIndicatorRange(
+                            self.search_result_active_indicator, *founded)
 
                         search_line.setFocus(True)
                         search_line.deselect()
 
                 def _pre():
                     if not self.__search_results.is_empty():
-                        self.code.clearAllIndicators(self.search_result_active_indicator)
+                        self.code.clearAllIndicators(
+                            self.search_result_active_indicator)
                         founded = self.__search_results.previous()
                         line, col = self.code.lineIndexFromPosition(founded[0])
                         self.move_to(line, col)
                         count = self.__search_count
                         current = self.__search_results.current_pos()
-                        self.__search_display.setText(f'{current + 1} / {count}')
+                        self.__search_display.setText(
+                            f'{current + 1} / {count}')
                         self.code.setFirstVisibleLine(line)
-                        self.code.setIndicatorRange(self.search_result_active_indicator, *founded)
+                        self.code.setIndicatorRange(
+                            self.search_result_active_indicator, *founded)
 
                         search_line.setFocus(True)
                         search_line.deselect()
@@ -279,19 +303,23 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                         this.__class__.keyPressEvent(this, event)
 
                 def _render_custom_style(this):
-                    this.setStyleSheet('#CodeSearch{background: %s;border:1px solid %s}'
-                                       'QLineEdit{border:none;background:%s;color:%s;padding:2px 0px}'
-                                       'QPushButton{background:transparent;padding:0px}'
-                                       'QPushButton:hover{background: lightgray;border:none}' % (
-                                           current_styles.background_darker, current_styles.border,
-                                           current_styles.background_lighter, current_styles.foreground
-                                       ))
+                    this.setStyleSheet(
+                        '#CodeSearch{background: %s;border:1px solid %s}'
+                        'QLineEdit{border:none;background:%s;color:%s;padding:2px 0px}'
+                        'QPushButton{background:transparent;padding:0px}'
+                        'QPushButton:hover{background: lightgray;border:none}' % (
+                            current_styles.background_darker,
+                            current_styles.border,
+                            current_styles.background_lighter,
+                            current_styles.foreground
+                        ))
 
                 base_font = QFont('微软雅黑', 9)
                 w = QWidget(self)
 
                 w.setObjectName('CodeSearch')
-                w.render_custom_style = types.MethodType(_render_custom_style, w)
+                w.render_custom_style = types.MethodType(_render_custom_style,
+                                                         w)
                 add_styled(w, 'custom-style')
 
                 lay = QHBoxLayout(w)
@@ -303,7 +331,8 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                 search_line.textChanged.connect(self.__search_file)
                 search_line.setStyleSheet('font-family:微软雅黑')
                 search_line.returnPressed.connect(_next)
-                search_line.keyPressEvent = types.MethodType(_keyPressEvent, search_line)
+                search_line.keyPressEvent = types.MethodType(_keyPressEvent,
+                                                             search_line)
 
                 lay.addWidget(search_line)
                 groups = QButtonGroup()
@@ -380,7 +409,8 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             return []
 
         @property
-        def current_symbols(self) -> Union[_Queue[t.DocumentSymbol], _Queue[t.SymbolInformation], list]:
+        def current_symbols(self) -> Union[
+            _Queue[t.DocumentSymbol], _Queue[t.SymbolInformation], list]:
             if self.support_language_parse:
                 return self._current_symbols
             return []
@@ -394,17 +424,20 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             if a0.modifiers() & Qt.AltModifier:
                 self._has_alt_control = True
             if a0.key() == Qt.Key_F1:
-                if self.support_language_parse and self.supported(self.rename_flag):
-                    if self.hasIndicator(self.indic_ref, self.currentPosition()):
+                if self.support_language_parse and self.supported(
+                        self.rename_flag):
+                    if self.hasIndicator(self.indic_ref,
+                                         self.currentPosition()):
                         line, index = self.current_line_col
                         word = self.wordAtLineIndex(line, index)
                         self.onTextDocumentRename(word, line, index)
             if a0.key() == Qt.Key_Period:
-                if self.support_language_parse and self.supported(self.completion_flag):
+                if self.support_language_parse and self.supported(
+                        self.completion_flag):
                     line, index = self.current_line_col
                     word = self.wordAtLineIndex(line, index)
-                    print('complet ----')
-                    self.onTextDocumentCompletion(word, line, index, self.code_container.file_path())
+                    self.onTextDocumentCompletion(word, line, index,
+                                                  self.code_container.file_path())
 
         def keyReleaseEvent(self, a0: QKeyEvent) -> None:
             super().keyReleaseEvent(a0)
@@ -412,39 +445,98 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
 
         def mousePressEvent(self, event):
             super(BaseCodeChild, self).mousePressEvent(event)
-            if self.support_language_parse and self.supported(self.infer_flag):
-                self._current_pos = event.pos()
-                if self._has_alt_control and event.button() == Qt.LeftButton:
-                    line, index = self.current_line_col
-                    word = self.wordAtLineIndex(line, index)
-                    if word:
-                        self.onTextDocumentInfer(word, line, index)
+            self.click_with_pos_signal.emit(event.pos())
+            if event.pos().x() > self.get_invalid_margins_width():
+                if self.support_language_parse and self.supported(
+                        self.infer_flag):
+                    self._current_pos = event.pos()
+                    if self._has_alt_control and event.button() == Qt.LeftButton:
+                        line, index = self.current_line_col
+                        word = self.wordAtLineIndex(line, index)
+                        if word:
+                            self.onTextDocumentInfer(word, line, index)
+
+        # def hook_code_mouseMoveEvent(self, a0: QMouseEvent) -> None:
+        #     pos = a0.pos()
+        #     # self: BaseCodeWidget
+        #     # parent: HTTPFileCodeWidget = self.code_container
+        #     # margin_0 = self.marginWidth(0)
+        #     # margin_1 = self.marginWidth(parent.run_margin_type)
+        #     # margin_2 = self.marginWidth(parent.info_margin_type)
+        #     # margin_3 = self.marginWidth(3)
+        #
+        #     margins = []
+        #     for i in range(self.mar())
+        #     viewport = self.viewport()
+        #
+        #     if pos.x() <= margin_0:
+        #         if viewport.cursor().shape() != Qt.ArrowCursor:
+        #             viewport.setCursor(Qt.ArrowCursor)
+        #     elif margin_0 + margin_1 + margin_2 >= pos.x() > margin_0:
+        #         if parent.line_has_marker(parent.run_margin_type, parent.run_margin_handle, pos):
+        #             if viewport.cursor().shape() != Qt.PointingHandCursor:
+        #                 viewport.setCursor(Qt.PointingHandCursor)
+        #         elif parent.line_has_marker(parent.info_margin_type, parent.success_marker_handle, pos):
+        #             if viewport.cursor().shape() != Qt.PointingHandCursor:
+        #                 viewport.setCursor(Qt.PointingHandCursor)
+        #         elif parent.line_has_marker(parent.info_margin_type, parent.fail_marker_handle, pos):
+        #             if viewport.cursor().shape() != Qt.PointingHandCursor:
+        #                 viewport.setCursor(Qt.PointingHandCursor)
+        #             # QToolTip.showText(pos, '请求失败', self)
+        #             # Tips.pop('请求失败', self, place='t', dxy=pos)
+        #         else:
+        #             viewport.setCursor(Qt.ArrowCursor)
+        #     elif margin_0 + margin_1 + margin_2 + margin_3 >= pos.x() > margin_0 + margin_1 + margin_2:
+        #         if viewport.cursor().shape() != Qt.ArrowCursor:
+        #             viewport.setCursor(Qt.ArrowCursor)
+        #     else:
+        #         self.__class__.mouseMoveEvent(self, a0)  # Qt.IBeamCursor
+        #     position = self.positionFromPoint(pos)
+        #     if self.hasIndicator(self.lexer().url_indicator, position):
+        #         QToolTip.showText(QCursor.pos(), '跳转网页(ctrl + 点击)', parent)
+        #     else:
+        #         QToolTip.hideText()
+
+        def get_invalid_margins_width(self):
+            c = 0
+            for i in range(self.margins_count + 1):
+                c += self.marginWidth(i)
+            return c
 
         def mouseMoveEvent(self, a0: QMouseEvent) -> None:
-            if self.support_language_parse and self.supported(self.hover_flag):
-                word = self.wordAtPoint(a0.pos())
-                line, index = self.lineIndexFromPoint(a0.pos())
-                if self._has_alt_control and word:
-                    self.viewport().setCursor(Qt.PointingHandCursor)
+            if a0.pos().x() <= self.get_invalid_margins_width():
+                self.viewport().setCursor(Qt.ArrowCursor)
+            else:
+                if self.support_language_parse and self.supported(
+                        self.hover_flag):
+                    word = self.wordAtPoint(a0.pos())
+                    line, index = self.lineIndexFromPoint(a0.pos())
+                    if self._has_alt_control and word:
+                        self.viewport().setCursor(Qt.PointingHandCursor)
+                    else:
+                        self.viewport().setCursor(Qt.IBeamCursor)
+                    if word:
+                        self.mouse_move_signal.emit(word, line, index)
                 else:
-                    self.viewport().setCursor(Qt.IBeamCursor)
-                if word:
-                    self.mouse_move_signal.emit(word, line, index)
+                    super().mouseMoveEvent(a0)
 
-        @pyqtSlot()
-        def _mouse_click_language_parse_event(self):
-            if self.support_language_parse:
+        @pyqtSlot(QPoint)
+        def _mouse_click_language_parse_event(self, pos: QPoint):
+            if self.support_language_parse and pos.x() > self.get_invalid_margins_width():
                 line, col = self.current_line_col
                 word = self.wordAtLineIndex(line, col)
                 pos = self.currentPosition()
-                if self._has_alt_control and word and self.supported(self.infer_flag):
+                if self._has_alt_control and word and self.supported(
+                        self.infer_flag):
                     self.onTextDocumentInfer(word, line, col)
                 else:
                     flag = self.supported(self.ref_flag)
                     if word and flag:
                         if not any([self.hasIndicator(self.indic_ref, pos),
-                                    self.hasIndicator(self.indic_ref_class, pos),
-                                    self.hasIndicator(self.indic_ref_define, pos)
+                                    self.hasIndicator(self.indic_ref_class,
+                                                      pos),
+                                    self.hasIndicator(self.indic_ref_define,
+                                                      pos)
                                     ]):
                             self._current_refs.clear()
                             self.onTextDocumentReferences(word, line, col)
@@ -467,7 +559,8 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
 
         def __init__(self):
             super(BaseCodeChild, self).__init__()
-            self.SendScintilla(self.SCI_SETFONTQUALITY, self.SC_EFF_QUALITY_ANTIALIASED)
+            self.SendScintilla(self.SCI_SETFONTQUALITY,
+                               self.SC_EFF_QUALITY_ANTIALIASED)
 
             self.code_container = instance
             self.find_from = find_self
@@ -481,7 +574,8 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             self.setCaretLineAlwaysVisible(True)
             self.enableMultiCursorSupport()
             self.setAutoCompletionSource(self.AcsAPIs)
-            self.setStyleSheet('BaseCodeChild{border:none}')  # QToolTip{background:red;color:white}')
+            self.setStyleSheet(
+                'BaseCodeChild{border:none}')  # QToolTip{background:red;color:white}')
             if instance is None:
                 out = custom_menu_support(instance)
             else:
@@ -495,20 +589,23 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                 self.__search = False
                 self.__search_count = 0
                 self.__search_results = _Queue()
-                self.__search_action = QShortcut('ctrl+f', self, member=self.__search_action_slot,
+                self.__search_action = QShortcut('ctrl+f', self,
+                                                 member=self.__search_action_slot,
                                                  context=Qt.WidgetShortcut)  # QAction()
                 self.__search_widget, self.__search_line, self.__search_display = self.__create_search_widget()
                 self.__search_widget.hide()
                 self.__define_search_indicator()
 
-            self.click_signal.connect(self._mouse_click_language_parse_event)
+            self.click_with_pos_signal.connect(
+                self._mouse_click_language_parse_event)
             self._current_refs = _Queue()
             self._current_diagnostics = _Queue()
             self._current_symbols = _Queue()
             self._current_pos = QPoint()
 
             _code_refs[id(self)] = self
-            widget_debounce(self, self._mouse_hover_language_parse_event, self.mouse_move_signal)
+            widget_debounce(self, self._mouse_hover_language_parse_event,
+                            self.mouse_move_signal)
 
         def capacities(self) -> int:
             if hasattr(cap, '__func__'):
@@ -608,10 +705,12 @@ class tab_code_context(object):
 
 class _LspHandlerHelper(object):
     @classmethod
-    def get_position_range(cls, code: QsciScintillaCompat, t_range: t.Range) -> typing.Tuple[int]:
+    def get_position_range(cls, code: QsciScintillaCompat, t_range: t.Range) -> \
+            typing.Tuple[int]:
         l1, c1 = t_range.start.line, t_range.start.character
         l2, c2 = t_range.end.line, t_range.end.character
-        return code.positionFromLineIndex(l1, c1), code.positionFromLineIndex(l2, c2)
+        return code.positionFromLineIndex(l1, c1), code.positionFromLineIndex(
+            l2, c2)
 
 
 class LspResultProcessHandler(object):
@@ -629,22 +728,63 @@ class LspResultProcessHandler(object):
         self = self.tab
         puri = parse_uri(uri)
         current_file = (self.file_path() or '').replace('\\', '/')
-        # print('eol : ', self.code.setEolVisibility(True))
         self.code.clearAllIndicators(self.code.indic_diagnostics)
         self.code.current_diagnostics.clear()
         self.code.current_diagnostics.extend(diagnostics)
-        if puri == current_file:
-            for diagnostic in diagnostics:
-                # if diagnostic.severity == t.DiagnosticSeverity.Error:
-                l1, c1 = diagnostic.range.start.line, diagnostic.range.start.character,
-                l2, c2 = diagnostic.range.end.line, diagnostic.range.end.character,
-                p1 = self.code.positionFromLineIndex(l1, c1)
-                p2 = self.code.positionFromLineIndex(l2, c2)
-                print(l1, c1, l2, c2)
-                print('sss: ', diagnostic.severity, 'word: ', self.code.text(p1, p2), 'message: ', diagnostic.message)
-                self.code.fillIndicatorRange(l1, c1, l2, c2, self.code.indic_diagnostics)
 
-    def render_symbols(self, symbols: List[t.DocumentSymbol], line: int, col: int, position: int):
+        if puri == current_file:
+            error_count = 0
+            warn_count = 0
+            info_count = 0
+            hint_count = 0
+            for diagnostic in diagnostics:
+                if diagnostic.severity == t.DiagnosticSeverity.Error:
+                    error_count += 1
+                    l1, c1 = diagnostic.range.start.line, diagnostic.range.start.character,
+                    l2, c2 = diagnostic.range.end.line, diagnostic.range.end.character,
+                    self.code.fillIndicatorRange(l1, c1, l2, c2,
+                                                 self.code.indic_diagnostics)
+                elif diagnostic.severity == t.DiagnosticSeverity.Warning:
+                    warn_count += 1
+                    print(diagnostic.source, diagnostic.code,
+                          diagnostic.message)
+                    l1, c1 = diagnostic.range.start.line, diagnostic.range.start.character,
+                    l2, c2 = diagnostic.range.end.line, diagnostic.range.end.character,
+                    self.code.fillIndicatorRange(l1, c1, l2, c2,
+                                                 self.code.indic_diagnostics_warn)
+                elif diagnostic.severity == t.DiagnosticSeverity.Information:
+                    info_count += 1
+                elif diagnostic.severity == t.DiagnosticSeverity.Hint:
+                    hint_count += 1
+            if self.file_type == 'python':
+                _, __, ___, diag_error, diag_warn, diag_error_msg, diag_warn_msg, diagnostics_frame = \
+                    self.peek_store_data('action')[0]
+                if any([error_count, warn_count]):
+                    diagnostics_frame.show()
+                    msg = []
+                    if error_count:
+                        diag_error.show()
+                        diag_error_msg.show()
+                        diag_error_msg.setText(f'{error_count}')
+                        msg.append(f'{error_count}个错误')
+                    else:
+                        diag_error.hide()
+                        diag_error_msg.hide()
+                    if warn_count:
+                        msg.append(f'{warn_count}个警告')
+                        diag_warn.show()
+                        diag_warn_msg.show()
+                        diag_warn_msg.setText(f'{warn_count}')
+                    else:
+                        diag_warn.hide()
+                        diag_warn_msg.hide()
+                    if msg:
+                        diagnostics_frame.setToolTip(f'{",".join(msg)}')
+                else:
+                    diagnostics_frame.hide()
+
+    def render_symbols(self, symbols: List[t.DocumentSymbol], line: int,
+                       col: int, position: int):
 
         def find_symbol_pointer(sym: t.DocumentSymbol):
             sp = _LspHandlerHelper.get_position_range(self.tab.code, sym.range)
@@ -672,13 +812,14 @@ class LspResultProcessHandler(object):
     def render_references(self, ret: List[t.Location]):
         parse_uri = self.parse_uri
         self = self.tab
-        print('clas -----', self.code)
+        # print('clas -----', self.code)
         self.code.clearAllIndicators(self.code.indic_ref)
         self.code.clearAllIndicators(self.code.indic_ref_class)
         self.code.clearAllIndicators(self.code.indic_ref_define)
         self.code.current_refs.clear()
         current_file = (self.file_path() or '').replace('\\', '/')
-        label, next_btn, pre_btn = self.peek_store_data('action')[0]
+        label, next_btn, pre_btn, a1, a2, a3, a4, a5 = \
+            self.peek_store_data('action')[0]
 
         l = 0
         for ref in ret:
@@ -716,6 +857,20 @@ class LspResultProcessHandler(object):
     def render_complete(self, results):
         pass
 
+    def render_format(self, results: List[t.TextEdit]):
+        for text in results:
+            print(text.new_text)
+            self.tab.code.setText(text.new_text)
+
+        self.tab.code.onTextDocumentDidChange(
+            self.tab.file_path(), self.tab.code.text(), 1
+        )
+        # end_line, end_col = self.tab.code.lineIndexFromPosition(
+        #     self.tab.code.length())
+        # self.tab.code.onTextDocumentPublishDiagnostics(self.tab.file_path(), 1,
+        #                                                0, 0, end_line, end_col
+        #                                                )
+
 
 class StoreDataMixIn(object):
 
@@ -740,7 +895,8 @@ class StoreDataMixIn(object):
         self._store_data.clear()
 
 
-def widget_debounce(self: QWidget, trigger_func: Callable, trigger_signal: pyqtSignal, interval: int = 500) -> None:
+def widget_debounce(self: QWidget, trigger_func: Callable,
+                    trigger_signal: pyqtSignal, interval: int = 500) -> None:
     def _trigger(*a):
         self._debounce_args = a
         timer.stop()

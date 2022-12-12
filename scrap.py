@@ -42,12 +42,14 @@ def login():
         btn_ele.click()
 
         time.sleep(5)
-        save_ele = browser.find_element_by_css_selector('button[class="_acan _acap _acas"]')
+        save_ele = browser.find_element_by_css_selector(
+            'button[class="_acan _acap _acas"]')
         save_ele.click()
 
         time.sleep(5)
         # time.sleep(1000)
-        look_ele = browser.find_element_by_css_selector('button[class="_acan _acap _acau _acav"]')
+        look_ele = browser.find_element_by_css_selector(
+            'button[class="_acan _acap _acau _acav"]')
         look_ele.click()
         time.sleep(5)
         time.sleep(20 * 3600)

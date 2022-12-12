@@ -7,6 +7,7 @@ from typing import Optional, List, Tuple
 from PyQt5.QtCore import QPoint, QSize, Qt
 from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QColor, QPalette, QFontMetrics
 from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QButtonGroup, QAction, QWidget, qApp, QWidgetAction
+from cached_property import cached_property
 from jedi.api.environment import SameEnvironment
 from lsprotocol.types import ServerCapabilities
 from pydantic import BaseModel, Field
@@ -140,6 +141,10 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
             ))
         self.update()
 
+    @cached_property
+    def basic_fm(self):
+        return QFontMetrics(QFont('微软雅黑', 10))
+
     def init_run_time(self):
         self.r_run_time: AppRunTime = AppRunTime()
 
@@ -170,7 +175,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
                         self.toolbar.addAction(ac)
                     else:
                         self.toolbar.addWidget(ac)
-        basic_fm = QFontMetrics(QFont('微软雅黑', 10))
+        basic_fm = self.basic_fm
         height = basic_fm.height() * 1.8
         icon_size = basic_fm.height()
         self.toolbar.setIconSize(QSize(icon_size, icon_size))

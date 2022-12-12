@@ -33,6 +33,9 @@ class ILanguageServe(object):
     def on_initialize(self):
         raise NotImplementedError
 
+    def on_textdocumentdiagnosticrequest(self, file_path: str):
+        raise NotImplementedError
+
     def on_textdocumentformatting(self, file_path: str):
         raise NotImplementedError
 
@@ -57,7 +60,8 @@ class ILanguageServe(object):
     def on_textdocumentdidchange(self, file_path: str, text: str, version: int):
         raise NotImplementedError
 
-    def on_textdocumentdidopen(self, file_path: str, language_id: str, version: int, text: str):
+    def on_textdocumentdidopen(self, file_path: str, language_id: str,
+                               version: int, text: str):
         raise NotImplementedError
 
     def on_textdocumentdidclose(self, file_path: str):
@@ -69,7 +73,8 @@ class ILanguageServe(object):
     def on_textdocumentcompletion(self, word: str, line, col):
         raise NotImplementedError
 
-    def on_textdocumenthover(self, word: str, line: int, col: int, file_path: str):
+    def on_textdocumenthover(self, word: str, line: int, col: int,
+                             file_path: str):
         raise NotImplementedError
 
     def on_textdocumentreferences(self, word: str, line: int, col: int):
@@ -78,7 +83,9 @@ class ILanguageServe(object):
     def on_textdocumentrename(self, word: str, line, col):
         raise NotImplementedError
 
-    def on_textdocumentpublishdiagnostics(self, file_path: str, version: int):
+    def on_textdocumentpublishdiagnostics(self, file_path: str, version: int,
+                                          start_line: int, start_col: int,
+                                          end_line: int, end_col: int):
         raise NotImplementedError
 
     def on_textdocumentcolor(self, file_path: str):
@@ -136,10 +143,11 @@ class LanguageServerMixIn(ILanguageServe):
     def set_up_from_obj(self, obj):
         clz = obj.__class__
         for k, v in clz.__dict__.items():
-            if inspect.isfunction(v) and (v.__name__.startswith('on_') or v.__name__ in ['capacities',
-                                                                                         'lsp_init_kw',
-                                                                                         'clientCapacities',
-                                                                                         'lsp_serve_name']):
+            if inspect.isfunction(v) and (
+                    v.__name__.startswith('on_') or v.__name__ in ['capacities',
+                                                                   'lsp_init_kw',
+                                                                   'clientCapacities',
+                                                                   'lsp_serve_name']):
                 bound_method = types.MethodType(v, self)
                 setattr(self, k, bound_method)
 
@@ -162,9 +170,11 @@ class LanguageServerMixIn(ILanguageServe):
     def register_to_app(self, main_app: LSPAppMixIn) -> bool:
         self.app = main_app
         if self.language_client_class is TCPLanguageClient:
-            return main_app.register_lsp_serve_params(self.client_init_params(), self._client, 'tcp')
+            return main_app.register_lsp_serve_params(self.client_init_params(),
+                                                      self._client, 'tcp')
         elif self.language_client_class is StdIoLanguageClient:
-            return main_app.register_lsp_serve_params(self.client_init_params(), self._client, 'stdio')
+            return main_app.register_lsp_serve_params(self.client_init_params(),
+                                                      self._client, 'stdio')
 
     def capacities(self) -> int:
         return 0
@@ -202,7 +212,8 @@ class LanguageServerMixIn(ILanguageServe):
                 prefix, m = method_name.split('on', maxsplit=1)
                 true_call = getattr(self, f'on_{m.lower()}')
                 msg = true_call(*a, **kw)
-                self.lsp_worker.add_coro(_send(msg), call_back=_call, err_back=_err)
+                self.lsp_worker.add_coro(_send(msg), call_back=_call,
+                                         err_back=_err)
             except:
                 import traceback
                 traceback.print_exc()
@@ -213,6 +224,10 @@ class LanguageServerMixIn(ILanguageServe):
     # region
     @send_to_language_serve
     def onInitialize(self):
+        pass
+
+    @send_to_language_serve
+    def onTextDocumentDiagnosticRequest(self, file_path: str):
         pass
 
     @send_to_language_serve
@@ -252,7 +267,8 @@ class LanguageServerMixIn(ILanguageServe):
         pass
 
     @send_to_language_serve
-    def onTextDocumentHover(self, word: str, line: int, col: int, file_path: str):
+    def onTextDocumentHover(self, word: str, line: int, col: int,
+                            file_path: str):
         pass
 
     @send_to_language_serve
@@ -269,11 +285,12 @@ class LanguageServerMixIn(ILanguageServe):
 
     # notifations
     @send_to_language_serve
-    def onTextDocumentDidOpen(self, file_path: str, language_id: str, version: int, text: str):
+    def onTextDocumentDidOpen(self, file_path: str, language_id: str,
+                              version: int, text: str):
         pass
 
     @send_to_language_serve
-    def onTextDocumentDidChange(self, file_path: str, text: str):
+    def onTextDocumentDidChange(self, file_path: str, text: str, version: int):
         pass
 
     @send_to_language_serve
@@ -285,25 +302,35 @@ class LanguageServerMixIn(ILanguageServe):
         pass
 
     @send_to_language_serve
-    def onTextDocumentPublishDiagnostics(self, file_path: str, version: int):
+    def onTextDocumentPublishDiagnostics(self, file_path: str, version: int,
+                                         start_line: int, start_col: int,
+                                         end_line: int, end_col: int):
         pass
 
     # endregion
 
     # notifications
-    def on_textdocumentpublishdiagnostics(self, file_path: str, version: int):
+    def on_textdocumentpublishdiagnostics(self, file_path: str, version: int,
+                                          start_line: int, start_col: int,
+                                          end_line: int, end_col: int
+                                          ):
         params = _t.PublishDiagnosticsParams(
             uri=f'file:///{file_path}',
-            diagnostics=_t.Diagnostic(),
-            # version=version,
+            diagnostics=[_t.Diagnostic(
+                range=_t.Range(
+                    start=_t.Position(line=start_line, character=start_col),
+                    end=_t.Position(line=end_line, character=end_col)
+                ),
+                message='test'
+            )],
         )
         r = _t.TextDocumentPublishDiagnosticsNotification(
             params=params
         )
-        _t.TextDocumentDiagnosticResponse
         return _lsp_context.body(r)
 
-    def on_textdocumentdidopen(self, file_path: str, language_id: str, version: int, text: str):
+    def on_textdocumentdidopen(self, file_path: str, language_id: str,
+                               version: int, text: str):
         params = _t.DidOpenTextDocumentParams(
             text_document=_t.TextDocumentItem(uri=f'file:///{file_path}',
                                               language_id=language_id,
@@ -320,7 +347,8 @@ class LanguageServerMixIn(ILanguageServe):
             text_document=_t.VersionedTextDocumentIdentifier(
                 version=version,
                 uri=f'file:///{file_path}'),
-            content_changes=_t.TextDocumentContentChangeEvent_Type2(text=text)  # full
+            content_changes=[_t.TextDocumentContentChangeEvent_Type2(text=text)]
+            # full
         )
         r = _t.TextDocumentDidChangeNotification(
             params=params
@@ -357,26 +385,40 @@ class LanguageServerMixIn(ILanguageServe):
                 root_uri=self.app.lsp_root_uri(),
                 work_done_token=c.token.initialize_token
             )
-            req = t.InitializeRequest(id=c.method_id.initialize_id, params=params)
+            req = t.InitializeRequest(id=c.method_id.initialize_id,
+                                      params=params)
             return c.body(req, method_name=t.INITIALIZE)
 
+    def on_textdocumentdiagnosticrequest(self, file_path: str):
+        params = _t.DocumentDiagnosticParams(
+            text_document=_t.TextDocumentIdentifier(uri=f'file:///{file_path}'),
+            work_done_token=_lsp_context.token.diagnosticrequest_token
+        )
+        r = _t.TextDocumentDiagnosticRequest(
+            id=_method_id.textdocumentdiagnosticrequest_id,
+            params=params
+        )
+        return _lsp_context.body(r)
+
     def on_textdocumentreferences(self, word, line, col):
-        # if self.app.get_lsp_capacities(self.lsp_serve_name())
         with LspContext() as c:
             t = c.type
             params = t.ReferenceParams(
                 context=t.ReferenceContext(include_declaration=True),
-                text_document=t.TextDocumentIdentifier(uri=self.app.lsp_current_document_uri()),
+                text_document=t.TextDocumentIdentifier(
+                    uri=self.app.lsp_current_document_uri()),
                 position=t.Position(line=line, character=col)
             )
-            r = t.TextDocumentReferencesRequest(id=c.method_id.textdocumentreferences_id, params=params)
+            r = t.TextDocumentReferencesRequest(
+                id=c.method_id.textdocumentreferences_id, params=params)
             return c.body(r)
 
     def on_textdocumentdocumenthighlight(self, file_path: str):
         with LspContext() as c:
             t = c.type
             params = t.DocumentHighlightParams(
-                text_document=t.TextDocumentIdentifier(uri=f'file:///{file_path}'),
+                text_document=t.TextDocumentIdentifier(
+                    uri=f'file:///{file_path}'),
                 position=t.Position(line=8, character=43)
             )
             r = t.TextDocumentDocumentHighlightRequest(
@@ -393,7 +435,7 @@ class LanguageServerMixIn(ILanguageServe):
             id=_method_id.textdocumentdocumentsymbol_id,
             params=params
         )
-        resp =_t.TextDocumentDocumentSymbolResponse
+        resp = _t.TextDocumentDocumentSymbolResponse
         return _lsp_context.body(r)
 
     def on_textdocumentcolor(self, file_path: str):
@@ -445,7 +487,8 @@ class LanguageServerMixIn(ILanguageServe):
         )
         return _lsp_context.body(r)
 
-    def on_textdocumenthover(self, word: str, line: int, col: int, file_path: str):
+    def on_textdocumenthover(self, word: str, line: int, col: int,
+                             file_path: str):
         params = _t.HoverParams(
             text_document=_t.TextDocumentIdentifier(uri=f'file:///{file_path}'),
             position=_t.Position(line=line, character=col - 1)
