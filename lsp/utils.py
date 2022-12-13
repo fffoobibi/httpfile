@@ -5,7 +5,7 @@
 # @File    : utils.py
 # @Software: PyCharm
 from enum import IntEnum, auto, Enum
-from typing import Tuple, Union
+from typing import Union
 
 from cached_property import cached_property
 from lsprotocol import types

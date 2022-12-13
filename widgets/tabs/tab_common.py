@@ -7,9 +7,8 @@ from PyQt5.Qsci import QsciLexerCustom
 from PyQt5.QtCore import Qt, pyqtSlot, QFile, QSize, pyqtSignal
 from PyQt5.QtGui import QIcon, QCursor, QFont, QColor
 from PyQt5.QtWidgets import QPushButton, QProgressBar, QSpacerItem, QSizePolicy, QApplication, QMenu, QListWidget, \
-    QLabel, QListWidgetItem, QLineEdit
+    QLabel, QListWidgetItem
 
-from pyqt5utils.components.helper import ObjectsHelper
 from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.components.widgets.dialogs import ShadowDialog
 from . import register, TabCodeWidget
@@ -95,11 +94,11 @@ class TextCodeWidget(TabCodeWidget):
 
             def enable_multi(checked):
                 self.code.settings.setValue(key1, checked)
-                self.enable_multi(checked)
+                self.code.enable_multi(checked)
 
             def show_line(checked):
                 self.code.settings.setValue(key2, checked)
-                self.disabled_line(checked)
+                self.code.disabled_line(checked)
 
             def create_font_():
                 font_btn = make_styled(QPushButton, 'toolbar-button')
@@ -113,9 +112,6 @@ class TextCodeWidget(TabCodeWidget):
                 font_btn.setText('放大')
                 font_sub_btn.setText('减小')
                 chapter_btn.setText('目录')
-                # line = QLineEdit()
-                # line.setClearButtonEnabled(True)
-                # line.returnPressed.connect(_exec_script)
                 return font_btn, font_sub_btn, chapter_btn  # , line
 
             def _exec_script():
@@ -247,29 +243,29 @@ class TextCodeWidget(TabCodeWidget):
             except:
                 pass
 
-    def when_file_loaded(self):
+    def when_load_file(self):
         if self.real_file_type in ['txt']:
             key1 = self.code.config_name('txtMultiline', self.__class__)
             key2 = self.code.config_name('txtShowline', self.__class__)
+            k1v = self.code.settings.value(key1)
+            k2v = self.code.settings.value(key2)
+            self.code.enable_multi(k1v)
+            self.code.disabled_line(k2v)
+
+    def when_file_loaded(self):
+        if self.real_file_type in ['txt']:
             cfs = self.code.config_name('textPosition', self.__class__)
             current = self.code.currentPosition()
             value = self.code.settings.value(cfs) or {self.file_path(): current,
                                                       'percent': 0}
             current = value.get(self.file_path(), 0)
-            k1v = self.code.settings.value(key1)
-            k2v = self.code.settings.value(key2)
-
-            self.enable_multi(k1v)
-            self.disabled_line(k2v)
-
             line, index = self.code.lineIndexFromPosition(current)
             self.move_to(line, index, True)
             self.code.ensureCursorVisible()
-            # self.code.verticalScrollBar().setValue(value['percent'] * self.code.verticalScrollBar().maximum())
 
     def after_init(self):
         self.file_loaded.connect(self.when_file_loaded)
-        self.code.setEolVisibility(True)
+        # self.code.setEolVisibility(True)
 
     def custom_menu_support(self):
         return True
@@ -310,7 +306,7 @@ class TextCodeWidget(TabCodeWidget):
                 mm[position:] = mm[position + length:] + b' ' * length
                 mm.flush()
                 mm.close()
-                fp.seek(f_size-length, 0)
+                fp.seek(f_size - length, 0)
                 fp.truncate()
                 fp.close()
 

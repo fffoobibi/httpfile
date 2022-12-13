@@ -143,6 +143,7 @@ class VsCodeDarkStyle(BaseStyle):
 
     editor_json = {
         'font': dict(default='JetBrains Mono'),
+        # 'margin': dict(background='#1E1E1E', foreground='#A4A3A3', foldmargin='#1E1E1E'),
         'color': {
             QsciLexerJSON.Default: "lightgray",  # =
             QsciLexerJSON.Number: "#0078D7",  # = ...  # type: int
@@ -410,7 +411,8 @@ class VsCodeDarkStyle(BaseStyle):
     editor_svg = editor_html
     editor_common = {
         'color': {
-        }}
+        }
+    }
 
     editor_markdown = {
         'color': {

@@ -9,15 +9,13 @@ from PyQt5.QtGui import QFont, QFontMetrics, QIcon, QColor, QKeyEvent
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QSpacerItem,
                              QSizePolicy, QFrame, QVBoxLayout, QSplitter, QLabel, QShortcut)
 from cached_property import cached_property
-from zope.interface import implementer
+from lsprotocol.types import ClientCapabilities, ServerCapabilities
 
+from lsp.lsp_interface import ILanguageServe
+from lsp.interface import register_lsp_factory
 from pyqt5utils.components import Toast
 from pyqt5utils.components.styles import StylesHelper
-from widgets.interfaces import ITabInterFace, ILanguageInterFace
 from widgets.signals import signal_manager
-from widgets.utils import ConfigProvider, ConfigKey
-from lsp.lsp_interface import ILanguageServe
-
 from .helpers import _Queue, _make_child, StoreDataMixIn, LspResultProcessHandler
 
 __all__ = ('register', 'TabCodeWidget')
@@ -43,25 +41,30 @@ def load_tab_widgets():
     for path_ in dir_path.iterdir():
         if path_.name.startswith('tab_'):
             file, _ = path_.name.split('.')
-            import_module(f'.{file}', 'widgets.tabs')
+            module = import_module(f'.{file}', 'widgets.tabs')
+            if getattr(module, 'install_lsp_service', None):
+                service_name, factory = module.install_lsp_service()
+                register_lsp_factory(service_name, factory)
+                print('register lsp', service_name, factory)
+
     return tab_codes
 
 
+class GiveToChild(object):
+    def method(self, func):
+        def wrapper(*a, **kw):
+            return func(*a, **kw)
+
+        return wrapper
+
+
+code_initial = GiveToChild()
+
+from lazy_object_proxy import Proxy
+
+
 class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
-
-    @cached_property
-    def lsp_render(self):
-        return LspResultProcessHandler(self)
-
-    def lsp_init_kw(self) -> dict:
-        pass
-
-    def lsp_serve_name(self) -> str:
-        pass
-
     language_client_class = None
-    vertical = ConfigProvider.default(ConfigKey.general, 'vertical_width')
-    horizontal = ConfigProvider.default(ConfigKey.general, 'horizontal_height')
 
     search_result_indicator = 20
     search_result_active_indicator = 21
@@ -73,6 +76,44 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
 
     # flag
     support_code = True
+
+    @classmethod
+    def _object(cls):
+        return cls.__dict__.get('object')
+
+    @classmethod
+    def _make_code_class(cls):
+        if cls.__dict__.get('_make_code_classed', None) is None:
+            cls._make_code_classed = _make_child(Proxy(cls._object), cls.set_lexer, cls.when_app_exit,
+                                               cls.when_app_start_up,
+                                               cls.custom_menu_support, cls.custom_menu_policy, cls.set_apis,
+                                               find_self=True,
+                                               cap=cls.capacities,
+                                               lsp_init_kw=cls.lsp_init_kw,
+                                               lsp_serve_name=cls.lsp_serve_name,
+                                               clientCapacities=cls.clientCapacities,
+                                               client_class=cls.language_client_class
+                                               )
+        return cls._make_code_classed
+
+    def serverCapacities(self) -> ServerCapabilities:
+        return self.main_app.get_lsp_capacities(self.lsp_serve_name())
+
+    @cached_property
+    def lsp_render(self):
+        return LspResultProcessHandler(self)
+
+    @classmethod
+    def clientCapacities(self) -> ClientCapabilities:
+        pass
+
+    @classmethod
+    def lsp_init_kw(cls) -> dict:
+        pass
+
+    @classmethod
+    def lsp_serve_name(cls) -> str:
+        pass
 
     @property
     def type(self):
@@ -87,15 +128,19 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
     def custom_menu_policy(self, pos):
         pass
 
+    @code_initial.method
     def set_lexer(self):
         pass
 
+    @code_initial.method
     def set_apis(self) -> List[str]:
         return []
 
+    @code_initial.method
     def when_app_exit(self, main_app):
         pass
 
+    @code_initial.method
     def when_app_start_up(self, main_app):
         pass
 
@@ -123,37 +168,20 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
     def update_time(self, v: str):
         self._update_time = v
 
-    def enable_multi(self, enabled: bool):
-        if self.support_code:
-            if enabled:
-                self.code.setWrapMode(self.code.WrapCharacter)
-            else:
-                self.code.setWrapMode(self.code.WrapNone)
-
-    def disabled_line(self, enabled):
-        if self.support_code:
-            if enabled:
-                self.store_data(self.code.marginWidth(0))
-                self.code.setMarginWidth(0, 0)
-            else:
-                margin = self.restore_data()
-                if margin is not None:
-                    self.code.setMarginWidth(0, margin)
-
-                # self.code.setMargins(0)
-                # self.code.viewport().update()
-
     def load_file(self, file_path, content: str = None):
         try:
             if self.support_code:
                 if not self.is_remote:
                     self._file = file_path
+                    self.when_load_file()
                     return self.code.load_file(file_path)
                 else:
                     self._file = file_path
+                    self.when_load_file()
                     return self.code.load_content(content)
             else:
                 self._file = file_path
+                self.when_load_file()
         finally:
             self._file_loaded = True
             with suppress(Exception):
@@ -178,6 +206,9 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
         if self.support_code:
             if getattr(self.code, '_debounce_timer', None):
                 self.code._debounce_timer.stop()
+
+    def when_load_file(self):
+        pass
 
     def create_dynamic_actions(self) -> Union[QWidget, List[QWidget]]:
         return []
@@ -225,6 +256,7 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
 
     def __init__(self):
         super(TabCodeWidget, self).__init__()
+        self.__class__.object = self
         self.__main_lay = QHBoxLayout(self)
         self.__main_lay.setContentsMargins(0, 0, 0, 0)
         self.__main_lay.setSpacing(1)
@@ -237,9 +269,18 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
         self.lay.setContentsMargins(0, 0, 0, 0)
         self.lay.setSpacing(0)
         if self.support_code:
-            self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
-                                    self.custom_menu_support, self.custom_menu_policy, self.set_apis, find_self=True,
-                                    cap=self.capacities)()
+            code_class = self._make_code_class()
+            print('make code-class ', code_class)
+            self.code = code_class()
+            print('instance: ', self.code)
+            # self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
+            #                         self.custom_menu_support, self.custom_menu_policy, self.set_apis, find_self=True,
+            #                         cap=self.capacities,
+            #                         lsp_init_kw=self.lsp_init_kw,
+            #                         lsp_serve_name=self.lsp_serve_name,
+            #                         clientCapacities=self.clientCapacities,
+            #                         client_class=self.language_client_class
+            #                         )()
             self.code.set_up_from_obj(self)
             self._is_remote = False
             self._update_time = None

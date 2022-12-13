@@ -8,14 +8,14 @@ import asyncio
 import json
 import re
 import subprocess
-from typing import Tuple, IO, Optional
+from typing import Tuple, IO, Optional, Callable, Dict
 
-from attrs import asdict
-from lsprotocol.types import ServerCapabilities
+from cached_property import cached_property
 from lsprotocol.converters import get_converter
+from lsprotocol.types import ServerCapabilities, ClientCapabilities, InitializeParamsClientInfoType
 
+from pyqt5utils.workers import WorkerManager
 from widgets.hooks import register_lsp_hook
-from widgets.loggers import with_trace_back
 
 
 class LanguageClientBase(object):
@@ -122,10 +122,33 @@ class TCPLanguageClient(LanguageClientBase):
         return self._reader, self._writer
 
 
+lsp_factory: Dict[str, Callable[['LSPAppMixIn'], None]] = {}
+
+
+def register_lsp_factory(lsp_server_name, factory):
+    lsp_factory.setdefault(lsp_server_name, factory)
+
+
 class LSPAppMixIn(object):
     __lsp_serves__ = {}
     __lsp_clients__ = {}
     __lsp_serve_capacities__ = {}
+
+    @cached_property
+    def _lsp_worker(self):
+        return WorkerManager().get('lsp-worker')
+
+    def start_lsp_server(self, lsp_name: str, root_uri: str = None):
+        f = lsp_factory.get(lsp_name, None)
+        if f:
+            self._lsp_worker.add_task(f, args=(self, root_uri,), call_back=self._lsp_server_call,
+                                      err_back=self._lsp_server_err)
+
+    def _lsp_server_call(self, ret):
+        print('success start lsp', ret)
+
+    def _lsp_server_err(self, error):
+        print('error start lsp', error)
 
     def create_lsp_hook_func(self, serve_name: str, cap: ServerCapabilities, editor):
         from lsp.lsp_interface import LanguageServerMixIn
@@ -194,11 +217,15 @@ class LSPAppMixIn(object):
                 self.__lsp_clients__[serve_name] = self.__lsp_serves__.get(serve_name)()
         return self.__lsp_clients__[serve_name]
 
-    def dispatch_lsp_msg(self, msg: dict, lsp_serve_name: str, file_path: str):
+    def dispatch_lsp_msg(self, msg: dict, lsp_serve_name: str, file_path: str = None):
         raise NotImplementedError
 
-    def lsp_initial(self, lsp_serve_name: str):
-        raise NotImplementedError
+    def lsp_initial(self, lsp_serve_name: str, client_cap: ClientCapabilities,
+                    client_info: InitializeParamsClientInfoType = None, root_uri: str = None):
+        from lsp.lsp_interface import ILanguageServeImp, ILanguageServe, LanguageServerMixIn
+        LanguageServerMixIn.onInitialize(
+
+        )
 
     def lsp_root_uri(self):
         raise NotImplementedError

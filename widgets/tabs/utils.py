@@ -5,6 +5,7 @@
 # @File    : utils.py
 # @Software: PyCharm
 from contextlib import contextmanager
+from typing import Type
 
 from PyQt5.QtWidgets import QFrame, QHBoxLayout
 from jedi import RefactoringError
@@ -46,6 +47,20 @@ class ObjDict(dict):
 
 def dict_to_obj(dic):
     return ObjDict(**dic)
+
+
+def must_call_super(parent: Type):
+    def wrapper(func):
+        def inner(self, *a, **kw):
+            super_func = getattr(parent, func.__name__, None)
+            if super_func and super_func != func:
+                super_func(self, *a, **kw)
+            ret = func(self, *a, **kw)
+            return ret
+
+        return inner
+
+    return wrapper
 
 
 if __name__ == '__main__':

@@ -23,6 +23,7 @@ def login():
         browser = test_browser()
         browser.get(url)
         time.sleep(15000)
+        browser.find_elements(By.TAG_NAME, 'input')
         account = '//*[@id="loginForm"]/div/div[1]/div/label/input'
         pwd = '//*[@id="loginForm"]/div/div[2]/div/label/input'
         btn = '//*[@id="loginForm"]/div/div[3]'
@@ -30,7 +31,7 @@ def login():
         acc = 'xxfffoopp'
         pwd_msg = 'qwer147258'
 
-        browser.find_element(By.CSS_SELECTOR, 'input[class="form_control"]')
+        browser.find_element(By.LINK_TEXT, 'input[class="form_control"]')
 
         account_ele = browser.find_element_by_xpath(account)
         account_ele.send_keys(acc)

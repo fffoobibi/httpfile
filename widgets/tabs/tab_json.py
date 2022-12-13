@@ -1,16 +1,14 @@
 import json
-import pprint
 import re
 import subprocess
 from typing import List
 
 import jmespath
 from PyQt5.Qsci import QsciLexerJSON
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QIcon, QFontMetricsF, QFont
+from PyQt5.QtCore import Qt, pyqtSignal, QPoint
+from PyQt5.QtGui import QColor, QIcon, QFontMetricsF, QFont, QCursor
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSplitter, QTextEdit, QHBoxLayout, QPushButton, \
-    QSpacerItem, QSizePolicy, QLabel, QFrame, QListWidget
-from attrs import asdict
+    QSpacerItem, QSizePolicy, QListWidget, QMenu, QApplication
 from cached_property import cached_property
 from lsprotocol.types import ClientCapabilities
 
@@ -19,7 +17,8 @@ from lsp.utils import LspContext
 from pyqt5utils.components.styles import StylesHelper
 from pyqt5utils.qsci.scintillacompat import QsciScintillaCompat
 from . import register, TabCodeWidget
-from ..factorys import add_styled
+from .utils import must_call_super
+from ..factorys import add_styled, make_styled
 from ..styles import current_styles
 
 
@@ -49,28 +48,9 @@ class JsonCodeWidget(TabCodeWidget):
     file_type = 'json'
     file_loaded = pyqtSignal()
 
+    @must_call_super(TabCodeWidget)
     def render_custom_style(self):
-        self.code.setIndentationGuidesForegroundColor(
-            QColor(current_styles.guides_foreground)) if current_styles.guides_background else None
-        self.code.setIndentationGuidesBackgroundColor(
-            QColor(current_styles.guides_background)) if current_styles.guides_background else None
-
         handler = current_styles.handler
-        StylesHelper.set_v_history_style_dynamic(self.code, color=handler, background='transparent', width=10)
-        StylesHelper.set_h_history_style_dynamic(self.code, color=handler, background='transparent', height=10)
-        if current_styles.editor_json['margin'].get('background', None):
-            self.code.setMarginsBackgroundColor(QColor(current_styles.editor_json['margin'].get('background')))
-            self.code.setFoldMarginColors(QColor('#404040'), QColor('#404040'))
-        if current_styles.editor_json['margin'].get('foreground', None):
-            self.code.setMarginsForegroundColor(QColor(current_styles.editor_json['margin'].get('foreground')))
-        if current_styles.editor_json['caret'].get('foreground', None):
-            self.code.setCaretLineBackgroundColor(QColor(current_styles.editor_json['caret'].get('foreground')))
-        if current_styles.editor_json['caret'].get('background', None):
-            self.code.setCaretForegroundColor(QColor(current_styles.editor_json['caret'].get('background')))
-        if current_styles.editor_json['selection'].get('background', None):
-            self.code.setSelectionBackgroundColor(
-                QColor(current_styles.editor_json['selection'].get('background')))
-            self.code.resetSelectionForegroundColor()
         try:
             StylesHelper.set_v_history_style_dynamic(self.expression_line, color=handler, background='transparent',
                                                      width=10)
@@ -220,7 +200,7 @@ class JsonCodeWidget(TabCodeWidget):
         line.textChanged.connect(self._jmes_path_search)
         line.setPlaceholderText('JmesPath 表达式')
         lay.addWidget(line)
-        output = self.make_qsci_widget(self.render_custom_style, simple_search=True)
+        output = self.make_qsci_widget(self.render_custom_style, simple_search=True, multi_line=False)
         lay.addWidget(output)
         lay.setSizes([300, 600])
 
@@ -298,3 +278,24 @@ class JsonCodeWidget(TabCodeWidget):
                 )
             ))
             return r
+
+    def custom_menu_support(self):
+        return True
+
+    def custom_menu_policy(self, pos: QPoint):
+        if pos.x() > self.code.get_invalid_margins_width():
+            menu: QMenu = make_styled(QMenu, 'menu')
+            ac1 = menu.addAction('格式化')
+            ac2 = menu.addAction('复制JSON指针')
+            act = menu.exec_(QCursor.pos())
+            if act == ac1:
+                print(
+                    'canformat: ',
+                    self.serverCapacities.document_formatting_provider,
+                    self.main_app.get_lsp_capacities(self.lsp_serve_name()).document_formatting_provider)
+            elif act == ac2:
+                pointer_str = []
+                for i in range(self.navigator_bar.count()):
+                    txt = self.navigator_bar.item(i).text()
+                    pointer_str.append(txt)
+                QApplication.clipboard().setText('/'.join(pointer_str))

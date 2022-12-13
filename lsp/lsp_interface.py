@@ -14,90 +14,114 @@ from lsprotocol.types import ClientCapabilities, InitializeParamsClientInfoType
 from lsp.interface import LSPAppMixIn, TCPLanguageClient, StdIoLanguageClient
 from lsp.utils import LspContext
 from pyqt5utils.workers import WorkerManager
-from widgets.loggers import with_trace_back, lsp_logger
-
-
-class ILanguageServe(object):
-    def capacities(self) -> int:
-        return 0
-
-    def lsp_serve_name(self) -> str:
-        raise NotImplementedError
-
-    def lsp_init_kw(self) -> dict:
-        raise NotImplementedError
-
-    def clientCapacities(self) -> ClientCapabilities:
-        raise NotImplementedError
-
-    def on_initialize(self):
-        raise NotImplementedError
-
-    def on_textdocumentdiagnosticrequest(self, file_path: str):
-        raise NotImplementedError
-
-    def on_textdocumentformatting(self, file_path: str):
-        raise NotImplementedError
-
-    def on_textdocumentdocumenthighlight(self, file_path: str):
-        raise NotImplementedError
-
-    def on_textdocumentdocumentsymbol(self, file_path: str):
-        raise NotImplementedError
-
-    def on_textdocumentfolding(self):
-        raise NotImplementedError
-
-    def on_textdocumentdocumentlink(self):
-        raise NotImplementedError
-
-    def on_textdocumentdidsave(self, file_path: str):
-        raise NotImplementedError
-
-    def on_textdocumentsignaturehelp(self):
-        raise NotImplementedError
-
-    def on_textdocumentdidchange(self, file_path: str, text: str, version: int):
-        raise NotImplementedError
-
-    def on_textdocumentdidopen(self, file_path: str, language_id: str,
-                               version: int, text: str):
-        raise NotImplementedError
-
-    def on_textdocumentdidclose(self, file_path: str):
-        raise NotImplementedError
-
-    def on_textdocumentinfer(self, word: str, line, col):
-        raise NotImplementedError
-
-    def on_textdocumentcompletion(self, word: str, line, col):
-        raise NotImplementedError
-
-    def on_textdocumenthover(self, word: str, line: int, col: int,
-                             file_path: str):
-        raise NotImplementedError
-
-    def on_textdocumentreferences(self, word: str, line: int, col: int):
-        raise NotImplementedError
-
-    def on_textdocumentrename(self, word: str, line, col):
-        raise NotImplementedError
-
-    def on_textdocumentpublishdiagnostics(self, file_path: str, version: int,
-                                          start_line: int, start_col: int,
-                                          end_line: int, end_col: int):
-        raise NotImplementedError
-
-    def on_textdocumentcolor(self, file_path: str):
-        pass
-
+from widgets.loggers import lsp_logger
 
 _lsp_context = LspContext()
 _t = _lsp_context.type
 _method_id = _lsp_context.method_id
 
 
-class LanguageServerMixIn(ILanguageServe):
+class ILanguageServe(object):
+    def capacities(self) -> int:
+        return 0
+
+    @classmethod
+    def lsp_serve_name(cls) -> str:
+        raise NotImplementedError
+
+    @classmethod
+    def lsp_init_kw(cls) -> dict:
+        raise NotImplementedError
+
+    @classmethod
+    def clientCapacities(cls) -> ClientCapabilities:
+        raise NotImplementedError
+
+
+class ILanguageServeImp(object):
+    @classmethod
+    def on_initialize(cls, client_cap: _t.ClientCapabilities, client_info: _t.InitializeParamsClientInfoType = None,
+                      root_uri: str = None, ):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentdiagnosticrequest(cls, file_path: str):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentformatting(cls, file_path: str):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentdocumenthighlight(cls, file_path: str):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentdocumentsymbol(cls, file_path: str):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentfolding(cls):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentdocumentlink(cls):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentdidsave(cls, file_path: str):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentsignaturehelp(cls):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentdidchange(cls, file_path: str, text: str, version: int):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentdidopen(cls, file_path: str, language_id: str,
+                               version: int, text: str):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentdidclose(cls, file_path: str):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentinfer(cls, word: str, line, col):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentcompletion(cls, word: str, line, col):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumenthover(cls, word: str, line: int, col: int,
+                             file_path: str):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentreferences(cls, word: str, line: int, col: int):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentrename(cls, word: str, line, col):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentpublishdiagnostics(cls, file_path: str, version: int,
+                                          start_line: int, start_col: int,
+                                          end_line: int, end_col: int):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentcolor(cls, file_path: str):
+        pass
+
+
+class LanguageServerMixIn(ILanguageServe, ILanguageServeImp):
     language_client_class: 'TCPLanguageClient'
 
     language_mask = 0
@@ -120,15 +144,19 @@ class LanguageServerMixIn(ILanguageServe):
         'document_formatting_provider': 'format_flag'
     }
 
-    app: LSPAppMixIn  # type hint
+    app: LSPAppMixIn  # type hint,  flag
+
+    def capacities(self) -> int:
+        return 0
 
     @cached_property
     def lsp_worker(self):
         return WorkerManager().get('lsp-worker')
 
-    def _client(self):
-        serve_name, init_kw = self.client_init_params()
-        return self.language_client_class(serve_name, **init_kw)
+    @classmethod
+    def _client(cls):
+        serve_name, init_kw = cls.client_init_params()
+        return cls.language_client_class(serve_name, **init_kw)
 
     def support_enabled(self, flags: int):
         self.language_mask |= flags
@@ -153,56 +181,60 @@ class LanguageServerMixIn(ILanguageServe):
 
     #### language server protocol ###
 
-    ## hook
-    def run_hook(self):
-        pass
-
-    def client_init_params(self) -> Tuple:
+    @classmethod
+    def client_init_params(cls) -> Tuple:
         lsp_name = None
         try:
-            lsp_name = self.lsp_serve_name()
-            start_lsp = self.lsp_init_kw()
+            lsp_name = cls.lsp_serve_name()
+            start_lsp = cls.lsp_init_kw()
             return lsp_name, start_lsp
         except:
             name = lsp_name or '[default]'
             lsp_logger.warning(f'{name} start fail', exc_info=True)
 
-    def register_to_app(self, main_app: LSPAppMixIn) -> bool:
-        self.app = main_app
-        if self.language_client_class is TCPLanguageClient:
-            return main_app.register_lsp_serve_params(self.client_init_params(),
-                                                      self._client, 'tcp')
-        elif self.language_client_class is StdIoLanguageClient:
-            return main_app.register_lsp_serve_params(self.client_init_params(),
-                                                      self._client, 'stdio')
+    @classmethod
+    def register_to_app(cls, main_app: LSPAppMixIn) -> bool:
+        if getattr(cls, 'app', None) is None:
+            cls.app = main_app
+            if cls.language_client_class is TCPLanguageClient:
+                return main_app.register_lsp_serve_params(cls.client_init_params(),
+                                                          cls._client, 'tcp')
+            elif cls.language_client_class is StdIoLanguageClient:
+                return main_app.register_lsp_serve_params(cls.client_init_params(),
+                                                          cls._client, 'stdio')
+        return True
 
-    def capacities(self) -> int:
-        return 0
-
-    def client_info(self) -> InitializeParamsClientInfoType:
+    @classmethod
+    def client_info(cls) -> InitializeParamsClientInfoType:
         return InitializeParamsClientInfoType(
             name='fxk-editor',
             version='1.0.0'
         )
 
     # decorator
-    def send_to_language_serve(method):
+    def send_to_language_serve_in_thread(method):
         def wrapper(self, *a, **kw):
             serve_name = self.lsp_serve_name()
-            path = self.file_path()
+            worker = WorkerManager().get('lsp-worker')
 
             async def _send(body):
                 try:
+                    try:
+                        path = self.app.current_file_path()
+                    except:
+                        path = None
                     if isinstance(body, tuple):
-                        body, method_name = body
+                        body, method_name_ = body
+                    lsp_logger.info(f'{self} request {body.get("method")}')
                     client = self.app.get_client(serve_name)
                     resp = await client.send_lsg_msg(body)
-                    return resp
+                    return resp, path
                 except:
                     raise
 
-            def _call(msg):
-                self.app.dispatch_lsp_msg(msg, serve_name, path)
+            def _call(msg_path):
+                msg_, path = msg_path
+                self.app.dispatch_lsp_msg(msg_, serve_name, path)
 
             def _err(error):
                 pass
@@ -212,97 +244,116 @@ class LanguageServerMixIn(ILanguageServe):
                 prefix, m = method_name.split('on', maxsplit=1)
                 true_call = getattr(self, f'on_{m.lower()}')
                 msg = true_call(*a, **kw)
-                self.lsp_worker.add_coro(_send(msg), call_back=_call,
-                                         err_back=_err)
+                worker.add_coro(_send(msg), call_back=_call,
+                                err_back=_err)
             except:
-                import traceback
-                traceback.print_exc()
                 raise
 
         return wrapper
 
     # region
-    @send_to_language_serve
-    def onInitialize(self):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onInitialize(cls, client_cap: _t.ClientCapabilities, client_info: _t.InitializeParamsClientInfoType = None,
+                     root_uri: str = None):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentDiagnosticRequest(self, file_path: str):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDiagnosticRequest(cls, file_path: str):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentFormatting(self, file_path: str):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentFormatting(cls, file_path: str):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentDocumentHighlight(self, file_path: str):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDocumentHighlight(cls, file_path: str):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentDocumentSymbol(self, file_path: str):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDocumentSymbol(cls, file_path: str):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentFolding(self):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentFolding(cls):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentDocumentLink(self):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDocumentLink(cls):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentDidSave(self):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDidSave(cls):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentSignatureHelp(self):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentSignatureHelp(cls):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentInfer(self, word: str, line, col):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentInfer(cls, word: str, line, col):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentCompletion(self, word: str, line, col, file_path: str):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentCompletion(cls, word: str, line, col, file_path: str):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentHover(self, word: str, line: int, col: int,
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentHover(cls, word: str, line: int, col: int,
                             file_path: str):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentReferences(self, word: str, line, col):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentReferences(cls, word: str, line, col):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentRename(self, word: str, line, col):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentRename(cls, word: str, line, col):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentColor(self, file_path: str):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentColor(cls, file_path: str):
         pass
 
     # notifations
-    @send_to_language_serve
-    def onTextDocumentDidOpen(self, file_path: str, language_id: str,
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDidOpen(cls, file_path: str, language_id: str,
                               version: int, text: str):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentDidChange(self, file_path: str, text: str, version: int):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDidChange(cls, file_path: str, text: str, version: int):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentDidClose(self, file_path: str):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDidClose(cls, file_path: str):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentDidSave(self, file_path: str):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDidSave(cls, file_path: str):
         pass
 
-    @send_to_language_serve
-    def onTextDocumentPublishDiagnostics(self, file_path: str, version: int,
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentPublishDiagnostics(cls, file_path: str, version: int,
                                          start_line: int, start_col: int,
                                          end_line: int, end_col: int):
         pass
@@ -310,7 +361,8 @@ class LanguageServerMixIn(ILanguageServe):
     # endregion
 
     # notifications
-    def on_textdocumentpublishdiagnostics(self, file_path: str, version: int,
+    @classmethod
+    def on_textdocumentpublishdiagnostics(cls, file_path: str, version: int,
                                           start_line: int, start_col: int,
                                           end_line: int, end_col: int
                                           ):
@@ -329,7 +381,8 @@ class LanguageServerMixIn(ILanguageServe):
         )
         return _lsp_context.body(r)
 
-    def on_textdocumentdidopen(self, file_path: str, language_id: str,
+    @classmethod
+    def on_textdocumentdidopen(cls, file_path: str, language_id: str,
                                version: int, text: str):
         params = _t.DidOpenTextDocumentParams(
             text_document=_t.TextDocumentItem(uri=f'file:///{file_path}',
@@ -342,7 +395,8 @@ class LanguageServerMixIn(ILanguageServe):
         )
         return _lsp_context.body(r)
 
-    def on_textdocumentdidchange(self, file_path: str, text: str, version: int):
+    @classmethod
+    def on_textdocumentdidchange(cls, file_path: str, text: str, version: int):
         params = _t.DidChangeTextDocumentParams(
             text_document=_t.VersionedTextDocumentIdentifier(
                 version=version,
@@ -355,7 +409,8 @@ class LanguageServerMixIn(ILanguageServe):
         )
         return _lsp_context.body(r)
 
-    def on_textdocumentdidsave(self, file_path: str):
+    @classmethod
+    def on_textdocumentdidsave(cls, file_path: str):
         params = _t.DidSaveTextDocumentParams(
             text_document=_t.VersionedTextDocumentIdentifier(
                 uri=f'file:///{file_path}'),
@@ -365,7 +420,8 @@ class LanguageServerMixIn(ILanguageServe):
         )
         return _lsp_context.body(r)
 
-    def on_textdocumentdidclose(self, file_path: str):
+    @classmethod
+    def on_textdocumentdidclose(cls, file_path: str):
         params = _t.DidCloseTextDocumentParams(
             text_document=_t.TextDocumentIdentifier(uri=f'file:///{file_path}')
         )
@@ -375,21 +431,25 @@ class LanguageServerMixIn(ILanguageServe):
         return _lsp_context.body(r)
 
     # normal
-
-    def on_initialize(self):
+    @classmethod
+    def on_initialize(cls, client_cap: _t.ClientCapabilities, client_info: _t.InitializeParamsClientInfoType = None,
+                      root_uri: str = None,
+                      ):
         with LspContext() as c:
             t = c.type
             params = t.InitializeParams(
-                capabilities=self.clientCapacities(),
-                client_info=self.client_info(),
-                root_uri=self.app.lsp_root_uri(),
+                capabilities=client_cap,  # self.clientCapacities(),
+                client_info=client_info,  # self.client_info(),
+                root_uri=root_uri,  # self.app.lsp_root_uri(),
+
                 work_done_token=c.token.initialize_token
             )
             req = t.InitializeRequest(id=c.method_id.initialize_id,
                                       params=params)
             return c.body(req, method_name=t.INITIALIZE)
 
-    def on_textdocumentdiagnosticrequest(self, file_path: str):
+    @classmethod
+    def on_textdocumentdiagnosticrequest(cls, file_path: str):
         params = _t.DocumentDiagnosticParams(
             text_document=_t.TextDocumentIdentifier(uri=f'file:///{file_path}'),
             work_done_token=_lsp_context.token.diagnosticrequest_token
@@ -400,34 +460,33 @@ class LanguageServerMixIn(ILanguageServe):
         )
         return _lsp_context.body(r)
 
-    def on_textdocumentreferences(self, word, line, col):
-        with LspContext() as c:
-            t = c.type
-            params = t.ReferenceParams(
-                context=t.ReferenceContext(include_declaration=True),
-                text_document=t.TextDocumentIdentifier(
-                    uri=self.app.lsp_current_document_uri()),
-                position=t.Position(line=line, character=col)
-            )
-            r = t.TextDocumentReferencesRequest(
-                id=c.method_id.textdocumentreferences_id, params=params)
-            return c.body(r)
+    @classmethod
+    def on_textdocumentreferences(cls, word, line, col):
+        params = _t.ReferenceParams(
+            context=_t.ReferenceContext(include_declaration=True),
+            text_document=_t.TextDocumentIdentifier(
+                uri=cls.app.lsp_current_document_uri()),
+            position=_t.Position(line=line, character=col)
+        )
+        r = _t.TextDocumentReferencesRequest(
+            id=c.method_id.textdocumentreferences_id, params=params)
+        return _lsp_context.body(r)
 
-    def on_textdocumentdocumenthighlight(self, file_path: str):
-        with LspContext() as c:
-            t = c.type
-            params = t.DocumentHighlightParams(
-                text_document=t.TextDocumentIdentifier(
-                    uri=f'file:///{file_path}'),
-                position=t.Position(line=8, character=43)
-            )
-            r = t.TextDocumentDocumentHighlightRequest(
-                id=c.method_id.textdocumentdocumenthighlight_id,
-                params=params
-            )
-            return c.body(r)
+    @classmethod
+    def on_textdocumentdocumenthighlight(cls, file_path: str):
+        params = _t.DocumentHighlightParams(
+            text_document=_t.TextDocumentIdentifier(
+                uri=f'file:///{file_path}'),
+            position=_t.Position(line=8, character=43)
+        )
+        r = _t.TextDocumentDocumentHighlightRequest(
+            id=_method_id.method_id.textdocumentdocumenthighlight_id,
+            params=params
+        )
+        return _lsp_context.body(r)
 
-    def on_textdocumentdocumentsymbol(self, file_path: str):
+    @classmethod
+    def on_textdocumentdocumentsymbol(cls, file_path: str):
         params = _t.DocumentSymbolParams(
             text_document=_t.TextDocumentIdentifier(uri=f'file:///{file_path}')
         )
@@ -438,7 +497,8 @@ class LanguageServerMixIn(ILanguageServe):
         resp = _t.TextDocumentDocumentSymbolResponse
         return _lsp_context.body(r)
 
-    def on_textdocumentcolor(self, file_path: str):
+    @classmethod
+    def on_textdocumentcolor(cls, file_path: str):
         params = _t.DocumentColorParams(
             text_document=_t.TextDocumentIdentifier(uri=f'file:///{file_path}')
         )
@@ -448,7 +508,8 @@ class LanguageServerMixIn(ILanguageServe):
         )
         return _lsp_context.body(r)
 
-    def on_textdocumentformatting(self, file_path: str):
+    @classmethod
+    def on_textdocumentformatting(cls, file_path: str):
         params = _t.DocumentFormattingParams(
             text_document=_t.TextDocumentIdentifier(uri=f'file:///{file_path}'),
             options=_t.FormattingOptions(
@@ -464,19 +525,24 @@ class LanguageServerMixIn(ILanguageServe):
         )
         return _lsp_context.body(r)
 
-    def on_textdocumentfolding(self):
+    @classmethod
+    def on_textdocumentfolding(cls):
         raise NotImplementedError
 
-    def on_textdocumentdocumentlink(self):
+    @classmethod
+    def on_textdocumentdocumentlink(cls):
         raise NotImplementedError
 
-    def on_textdocumentsignaturehelp(self):
+    @classmethod
+    def on_textdocumentsignaturehelp(cls):
         raise NotImplementedError
 
-    def on_textdocumentinfer(self, word: str, line, col):
+    @classmethod
+    def on_textdocumentinfer(cls, word: str, line, col):
         raise NotImplementedError
 
-    def on_textdocumentcompletion(self, word: str, line, col, file_path):
+    @classmethod
+    def on_textdocumentcompletion(cls, word: str, line, col, file_path):
         params = _t.CompletionParams(
             text_document=_t.TextDocumentIdentifier(uri=f'file:///{file_path}'),
             position=_t.Position(line=line, character=col - 1)
@@ -487,7 +553,8 @@ class LanguageServerMixIn(ILanguageServe):
         )
         return _lsp_context.body(r)
 
-    def on_textdocumenthover(self, word: str, line: int, col: int,
+    @classmethod
+    def on_textdocumenthover(cls, word: str, line: int, col: int,
                              file_path: str):
         params = _t.HoverParams(
             text_document=_t.TextDocumentIdentifier(uri=f'file:///{file_path}'),
@@ -499,5 +566,6 @@ class LanguageServerMixIn(ILanguageServe):
         )
         return _lsp_context.body(r)
 
-    def on_textdocumentrename(self, word: str, line, col):
+    @classmethod
+    def on_textdocumentrename(cls, word: str, line, col):
         raise NotImplementedError

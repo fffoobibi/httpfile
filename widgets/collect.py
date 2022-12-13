@@ -22,6 +22,6 @@ def collect_plugins() -> Collections:
     left_controls = load_left_control_widgets()
     toolbar_actions = load_toolbar_actions()
     status_widgets = load_status_control_widgets()
-    styles = load_style_clz()
+    load_style_clz()
     return Collections(folder=folder, tabs=tabs, controls=controls, left_controls=left_controls, toolbar_actions=toolbar_actions,
                        status=status_widgets)

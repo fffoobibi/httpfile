@@ -7,6 +7,7 @@ import weakref
 from collections import deque
 from typing import Callable, Union, List
 
+import pysnooper
 from PyQt5.Qsci import QsciScintilla
 from PyQt5.QtCore import pyqtSignal, Qt, pyqtSlot, QTimer, QPoint
 from PyQt5.QtGui import QColor, QFont, QIcon, QFontMetrics, QKeyEvent, \
@@ -14,7 +15,7 @@ from PyQt5.QtGui import QColor, QFont, QIcon, QFontMetrics, QKeyEvent, \
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QButtonGroup, \
     QPushButton, QLabel, QFrame, QShortcut
 from cached_property import cached_property
-from lsprotocol.types import Diagnostic
+from lsprotocol.types import Diagnostic, ClientCapabilities
 from zope.interface import implementer
 
 from lsp.lsp_interface import LanguageServerMixIn as IL
@@ -33,109 +34,126 @@ def get_code_refs():
     return _code_refs
 
 
-@implementer(ILanguageInterFace)
-class LanguageServerMixIn(object):
-    support_language_parse: bool = False
-
-    language_mask = 0
-    rename_flag = 1
-    infer_flag = 1 << 1
-    completion_flag = 1 << 2
-    hover_flag = 1 << 3
-    ref_flag = 1 << 4
-    syntax_flag = 1 << 5
-
-    __setup_targets__ = [
-        'onTextDocumentInfer', 'onTextDocumentCompletion',
-        'onTextDocumentHover', 'onTextDocumentReferences',
-        'onTextDocumentRename', 'onTextDocumentSyntaxCheck', 'capacities'
-    ]
-
-    __flags__ = 200
-
-    def support_enabled(self, flags: int):
-        self.language_mask |= flags
-
-    def supported(self, flag: int):
-        return self.language_mask & flag
-
-    def support_disabled(self, flag: int):
-        self.language_mask &= ~flag
-
-    def set_up_from_obj(self, obj):
-        clz = obj.__class__
-        for k, v in clz.__dict__.items():
-            if inspect.isfunction(v) and v.__name__ in self.__setup_targets__:
-                bound_method = types.MethodType(v, self)
-                setattr(self, k, bound_method)
-
-    #### language server protocol ###
-
-    def capacities(self) -> int:
-        return 0
-
-    def onInitialize(self):
-        pass
-
-    def onTextDocumentFormatting(self):
-        pass
-
-    def onTextDocumentDocumentHighlight(self):
-        pass
-
-    def onTextDocumentDocumentSymbol(self):
-        pass
-
-    def onTextDocumentFolding(self):
-        pass
-
-    def onTextDocumentDocumentLink(self):
-        pass
-
-    def onTextDocumentDidSave(self):
-        pass
-
-    def onTextDocumentSignatureHelp(self):
-        pass
-
-    def onTextDocumentDidChange(self, word: str, line, col):
-        pass
-
-    def onTextDocumentDidOpen(self, word: str, line, col):
-        pass
-
-    def onTextDocumentDidClose(self, word: str, line, col):
-        pass
-
-    def onTextDocumentInfer(self, word: str, line, col):
-        pass
-
-    def onTextDocumentCompletion(self, word: str, line, col):
-        pass
-
-    def onTextDocumentHover(self, word: str, line: int, col: int):
-        pass
-
-    def onTextDocumentReferences(self, word: str, line, col):
-        pass
-
-    def onTextDocumentRename(self, word: str, line, col):
-        pass
-
-    def onTextDocumentSyntaxCheck(self, word: str, line, col):
-        pass
-
+# @implementer(ILanguageInterFace)
+# class LanguageServerMixIn(object):
+#     support_language_parse: bool = False
+#
+#     language_mask = 0
+#     rename_flag = 1
+#     infer_flag = 1 << 1
+#     completion_flag = 1 << 2
+#     hover_flag = 1 << 3
+#     ref_flag = 1 << 4
+#     syntax_flag = 1 << 5
+#
+#     __setup_targets__ = [
+#         'onTextDocumentInfer', 'onTextDocumentCompletion',
+#         'onTextDocumentHover', 'onTextDocumentReferences',
+#         'onTextDocumentRename', 'onTextDocumentSyntaxCheck', 'capacities'
+#     ]
+#
+#     __flags__ = 200
+#
+#     def support_enabled(self, flags: int):
+#         self.language_mask |= flags
+#
+#     def supported(self, flag: int):
+#         return self.language_mask & flag
+#
+#     def support_disabled(self, flag: int):
+#         self.language_mask &= ~flag
+#
+#     def set_up_from_obj(self, obj):
+#         clz = obj.__class__
+#         for k, v in clz.__dict__.items():
+#             if inspect.isfunction(v) and v.__name__ in self.__setup_targets__:
+#                 bound_method = types.MethodType(v, self)
+#                 setattr(self, k, bound_method)
+#
+#     #### language server protocol ###
+#
+#     def capacities(self) -> int:
+#         return 0
+#
+#     def onInitialize(self):
+#         pass
+#
+#     def onTextDocumentFormatting(self):
+#         pass
+#
+#     def onTextDocumentDocumentHighlight(self):
+#         pass
+#
+#     def onTextDocumentDocumentSymbol(self):
+#         pass
+#
+#     def onTextDocumentFolding(self):
+#         pass
+#
+#     def onTextDocumentDocumentLink(self):
+#         pass
+#
+#     def onTextDocumentDidSave(self):
+#         pass
+#
+#     def onTextDocumentSignatureHelp(self):
+#         pass
+#
+#     def onTextDocumentDidChange(self, word: str, line, col):
+#         pass
+#
+#     def onTextDocumentDidOpen(self, word: str, line, col):
+#         pass
+#
+#     def onTextDocumentDidClose(self, word: str, line, col):
+#         pass
+#
+#     def onTextDocumentInfer(self, word: str, line, col):
+#         pass
+#
+#     def onTextDocumentCompletion(self, word: str, line, col):
+#         pass
+#
+#     def onTextDocumentHover(self, word: str, line: int, col: int):
+#         pass
+#
+#     def onTextDocumentReferences(self, word: str, line, col):
+#         pass
+#
+#     def onTextDocumentRename(self, word: str, line, col):
+#         pass
+#
+#     def onTextDocumentSyntaxCheck(self, word: str, line, col):
+#         pass
+#
 
 def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                 custom_menu_policy, set_apis,
                 find_self=None, render_style=None, multi_line=False,
                 simple_search=False, cap=None,
-                language_server_factory=IL
+                language_server_factory=IL,
+                lsp_serve_name=None,
+                lsp_init_kw=None,
+                clientCapacities=None,
+                client_class=None
                 ):
     from widgets.mainwidget import MainWidget
     class BaseCodeChild(BaseCodeWidget, PluginBaseMixIn,
                         language_server_factory):
+        @classmethod
+        def lsp_serve_name(cls) -> str:
+            return lsp_serve_name()
+
+        @classmethod
+        def lsp_init_kw(cls) -> dict:
+            return lsp_init_kw()
+
+        @classmethod
+        def clientCapacities(cls) -> ClientCapabilities:
+            return clientCapacities()
+
         support_language_parse: bool = False
+        language_client_class = client_class
 
         click_signal = pyqtSignal()
         click_with_pos_signal = pyqtSignal(QPoint)
@@ -393,6 +411,21 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
 
         __repr__ = __str__
 
+        def enable_multi(self, enabled: bool):
+            if enabled:
+                self.code.setWrapMode(self.code.WrapCharacter)
+            else:
+                self.code.setWrapMode(self.code.WrapNone)
+
+        def disabled_line(self, enabled):
+            if enabled:
+                self.code_container.store_data(self.code.marginWidth(0))  # from instance
+                self.code.setMarginWidth(0, 0)
+            else:
+                margin = self.code_container.restore_data()  # from instance
+                if margin is not None:
+                    self.code.setMarginWidth(0, margin)
+
         def statics_current_refs(self):
             return list(self._current_refs)
 
@@ -517,6 +550,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             if word and not has_ref:
                 self.onTextDocumentHover(word, line, col, instance.file_path())
 
+        # @pysnooper.snoop()
         def __init__(self):
             super(BaseCodeChild, self).__init__()
             self.SendScintilla(self.SCI_SETFONTQUALITY,
@@ -536,10 +570,13 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             self.setAutoCompletionSource(self.AcsAPIs)
             self.setStyleSheet(
                 'BaseCodeChild{border:none}')  # QToolTip{background:red;color:white}')
+
+            # todo
             if instance is None:
                 out = custom_menu_support(instance)
             else:
-                out = custom_menu_support()
+                out = custom_menu_support(self)
+
             if out:
                 self.setContextMenuPolicy(Qt.CustomContextMenu)
                 self.customContextMenuRequested.connect(custom_menu_policy)
@@ -706,8 +743,8 @@ class LspResultProcessHandler(object):
                                                  self.code.indic_diagnostics)
                 elif diagnostic.severity == t.DiagnosticSeverity.Warning:
                     warn_count += 1
-                    print(diagnostic.source, diagnostic.code,
-                          diagnostic.message)
+                    # print(diagnostic.source, diagnostic.code,
+                    #       diagnostic.message)
                     l1, c1 = diagnostic.range.start.line, diagnostic.range.start.character,
                     l2, c2 = diagnostic.range.end.line, diagnostic.range.end.character,
                     self.code.fillIndicatorRange(l1, c1, l2, c2,
@@ -877,8 +914,5 @@ def widget_debounce(self: QWidget, trigger_func: Callable,
 
 
 def get_ref_line_words(refs: _Queue[t.Location], sci: QsciScintilla):
-    # refs: List[Name]
     for ref in refs:
         yield ref, ref.uri.strip('file:///').replace('\\', '/').split('/')[-1]
-        # line, col = ref.line - 1, ref.column
-        # yield sci.text(line), sci.wordAtLineIndex(line, col), line, col, ref

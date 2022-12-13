@@ -1,7 +1,7 @@
 import sys
 import typing
-from contextlib import suppress
 from pathlib import Path
+# from types import NoneType
 from typing import Optional, List, Tuple
 
 from PyQt5.QtCore import QPoint, QSize, Qt
@@ -43,15 +43,19 @@ class AppRunTime(BaseModel):
               text_color=current_styles.foreground,
               back_ground_color=Qt.transparent,
               border_color=current_styles.border,
-              set_bkg=False, nestle_enable=False)
+              button_text_color=current_styles.foreground,
+              set_bkg=False)
 class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
     __lsp_initials__ = {}
 
-    def lsp_initial(self, lsp_serve_name: str, cur):
-        if cur.support_code and cur.code.support_language_parse:
-            if self.__lsp_initials__.get(lsp_serve_name) is None:
-                self.__lsp_initials__[lsp_serve_name] = True
-                cur.code.onInitialize()
+    # def lsp_initial(self, lsp_serve_name: str, cur):
+    #     if typing.TYPE_CHECKING:
+    #         from widgets.tabs import TabCodeWidget
+    #         cur: TabCodeWidget
+    #     if cur.support_code and cur.code.support_language_parse:
+    #         if self.__lsp_initials__.get(lsp_serve_name) is None:
+    #             self.__lsp_initials__[lsp_serve_name] = True
+    #             cur.code.onInitialize()
 
     def lsp_current_line_col(self) -> Tuple[int]:
         tab = self.current_tab()
@@ -77,9 +81,12 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
                     print('disabled ', k)
                     editor.support_disabled(flag)
             else:
-                editor.support_enabled(flag)
+                if field:
+                    editor.support_enabled(flag)
+                else:
+                    editor.support_disabled(flag)
 
-    def dispatch_lsp_msg(self, msg: dict, lsp_serve_name: str, file_path: str):
+    def dispatch_lsp_msg(self, msg: dict, lsp_serve_name: str, file_path: str = None):
         handler_lsp_msg(self, msg, lsp_serve_name, file_path)
 
     def lsp_root_uri(self):
@@ -191,7 +198,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
         self.fdb = QFontDatabase()
         fts = DirFontLoader.load(self.fdb, './')
         self.r_run_time.font_src.extend(fts)
-        print(self.r_run_time.font_src)
+        # print(self.r_run_time.font_src)
 
     def after_init(self):
         add_styled(self.tabWidget, 'tab')
@@ -200,6 +207,7 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
         add_styled(qApp, 'qApp')
 
         self.set_provider('main_app', self)
+        self.start_lsp_server('pylsp', str(Path.cwd().resolve()))
         app_start_up.send(self)
 
     def init_signal_manager(self):
@@ -436,13 +444,14 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
                         tab_ = k()
                         tab_.is_remote = False
                         if tab_.support_code:
-                            # tab_.code.language_client_class = TCPLanguageClient
-                            flag = tab_.code.register_to_app(self)
-                            if flag:
-                                lsp_name = tab_.code.lsp_serve_name()
-                                # important
-                                self.get_client(lsp_name)
-                                self.lsp_initial(lsp_name, tab_)
+                            pass
+
+                            # flag = tab_.code.register_to_app(self)
+                            # if flag:
+                            #     lsp_name = tab_.code.lsp_serve_name()
+                            #     # important
+                            #     self.get_client(lsp_name)
+                            #     self.lsp_initial(lsp_name, tab_)
                         tab_.load_file(file_path)
                         return tab_
 
