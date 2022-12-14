@@ -9,10 +9,11 @@ from PyQt5.QtGui import QFont, QFontMetrics, QIcon, QColor, QKeyEvent
 from PyQt5.QtWidgets import (QWidget, QHBoxLayout, QLineEdit, QButtonGroup, QPushButton, QSpacerItem,
                              QSizePolicy, QFrame, QVBoxLayout, QSplitter, QLabel, QShortcut)
 from cached_property import cached_property
-from lsprotocol.types import ClientCapabilities, ServerCapabilities
+from lsprotocol.types import ClientCapabilities, ServerCapabilities, TextDocumentSaveReason
 
 from lsp.lsp_interface import ILanguageServe
 from lsp.interface import register_lsp_factory
+from lsp.utils import lsp_context
 from pyqt5utils.components import Toast
 from pyqt5utils.components.styles import StylesHelper
 from widgets.signals import signal_manager
@@ -85,15 +86,15 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
     def _make_code_class(cls):
         if cls.__dict__.get('_make_code_classed', None) is None:
             cls._make_code_classed = _make_child(Proxy(cls._object), cls.set_lexer, cls.when_app_exit,
-                                               cls.when_app_start_up,
-                                               cls.custom_menu_support, cls.custom_menu_policy, cls.set_apis,
-                                               find_self=True,
-                                               cap=cls.capacities,
-                                               lsp_init_kw=cls.lsp_init_kw,
-                                               lsp_serve_name=cls.lsp_serve_name,
-                                               clientCapacities=cls.clientCapacities,
-                                               client_class=cls.language_client_class
-                                               )
+                                                 cls.when_app_start_up,
+                                                 cls.custom_menu_support, cls.custom_menu_policy, cls.set_apis,
+                                                 find_self=True,
+                                                 cap=cls.capacities,
+                                                 lsp_init_kw=cls.lsp_init_kw,
+                                                 lsp_serve_name=cls.lsp_serve_name,
+                                                 clientCapacities=cls.clientCapacities,
+                                                 client_class=cls.language_client_class
+                                                 )
         return cls._make_code_classed
 
     def serverCapacities(self) -> ServerCapabilities:
@@ -270,9 +271,9 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
         self.lay.setSpacing(0)
         if self.support_code:
             code_class = self._make_code_class()
-            print('make code-class ', code_class)
+            # print('make code-class ', code_class)
             self.code = code_class()
-            print('instance: ', self.code)
+            # print('instance: ', self.code)
             # self.code = _make_child(self, self.set_lexer, self.when_app_exit, self.when_app_start_up,
             #                         self.custom_menu_support, self.custom_menu_policy, self.set_apis, find_self=True,
             #                         cap=self.capacities,
@@ -418,6 +419,10 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
         def __save_slot(self):
             if self.file_path() and not self.is_remote:
                 try:
+                    # will save
+                    if self.code and self.code.support_language_parse:
+                        self.code.onTextDocumentWillSaveNotification(self.file_path(), TextDocumentSaveReason.Manual)
+
                     import mmap
                     with open(self._file, 'w+b') as f:
                         decode_text = self.code.text().encode()
@@ -430,10 +435,17 @@ class TabCodeWidget(QWidget, StoreDataMixIn, ILanguageServe):
                     msg = f'{self.file_path()} 已保存, {save_time.strftime("%H:%M:%S")}'
 
                     signal_manager.emit(signal_manager.statusMsg, msg, 3000)
+
+                    # did save
+                    if self.code and self.code.support_language_parse:
+                        self.code._version += 1
+                        self.code.onTextDocumentDidSave(self.file_path(), self.code._version)
+
                     with suppress(Exception):
                         self.after_saved.emit()
                 except:
-                    pass
+                    import traceback
+                    traceback.print_exc()
 
         def __define_search_indicator(self):
             self.code.indicatorDefine(self.code.INDIC_FULLBOX, self.search_result_indicator)

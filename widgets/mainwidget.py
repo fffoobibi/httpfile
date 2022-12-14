@@ -41,21 +41,12 @@ class AppRunTime(BaseModel):
 @color_widget(title='FEditor', icon=icon,
               bar_color=current_styles.title_background,
               text_color=current_styles.foreground,
-              back_ground_color=Qt.transparent,
+              back_ground_color=current_styles.background_darker,
               border_color=current_styles.border,
               button_text_color=current_styles.foreground,
               set_bkg=False)
 class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
     __lsp_initials__ = {}
-
-    # def lsp_initial(self, lsp_serve_name: str, cur):
-    #     if typing.TYPE_CHECKING:
-    #         from widgets.tabs import TabCodeWidget
-    #         cur: TabCodeWidget
-    #     if cur.support_code and cur.code.support_language_parse:
-    #         if self.__lsp_initials__.get(lsp_serve_name) is None:
-    #             self.__lsp_initials__[lsp_serve_name] = True
-    #             cur.code.onInitialize()
 
     def lsp_current_line_col(self) -> Tuple[int]:
         tab = self.current_tab()
@@ -443,15 +434,18 @@ class MainWidget(QMainWindow, Ui_MainWindow, PluginBaseMixIn, LSPAppMixIn):
                     if file_type in v:
                         tab_ = k()
                         tab_.is_remote = False
-                        if tab_.support_code:
-                            pass
-
-                            # flag = tab_.code.register_to_app(self)
-                            # if flag:
-                            #     lsp_name = tab_.code.lsp_serve_name()
-                            #     # important
-                            #     self.get_client(lsp_name)
-                            #     self.lsp_initial(lsp_name, tab_)
+                        if typing.TYPE_CHECKING:
+                            from widgets.tabs import TabCodeWidget
+                            tab_: TabCodeWidget
+                        if tab_.support_code and tab_.code.support_language_parse:
+                            self.start_lsp_server(tab_.lsp_serve_name(), str(self.r_run_time.current.resolve()))
+                        # if tab_.support_code:
+                        #     flag = tab_.code.register_to_app(self)
+                        #     if flag:
+                        #         lsp_name = tab_.code.lsp_serve_name()
+                        #         # important
+                        #         self.get_client(lsp_name)
+                        #         self.lsp_initial(lsp_name, tab_)
                         tab_.load_file(file_path)
                         return tab_
 

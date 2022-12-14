@@ -4,8 +4,10 @@
 # @Email   : 2836204894@qq.com
 # @File    : utils.py
 # @Software: PyCharm
+import types
+import typing
 from contextlib import contextmanager
-from typing import Type
+from typing import Type, Callable
 
 from PyQt5.QtWidgets import QFrame, QHBoxLayout
 from jedi import RefactoringError
@@ -61,6 +63,13 @@ def must_call_super(parent: Type):
         return inner
 
     return wrapper
+
+
+def get_function(f: Callable[..., typing.Any]) -> types.FunctionType:
+    if isinstance(f, types.MethodType):
+        return f.__func__
+    f: types.FunctionType
+    return f
 
 
 if __name__ == '__main__':

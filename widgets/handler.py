@@ -29,12 +29,14 @@ def base_lsp_handler(app, msg: dict, lsp_serve_name: str, file_path: str):
     app: MainWidget
     current_tab: TabCodeWidget = app.current_tab()
     current_file_path = app.current_file_path()
-    print('mmm', current_tab)
+    # print('mmm', current_tab)
     msg_id = msg.get('id', None)
     if msg_id == LspMethodId.initialize_id:
         app.register_lsp_serve_capacities(lsp_serve_name, msg['result']['capabilities'])
+    print('get msg')
+    print(msg)
     if current_tab and current_tab.support_code and current_tab.code.support_language_parse:
-        print('heerr======', file_path, current_file_path)
+        # print('heerr======', file_path, current_file_path)
         # msg_id = msg.get('id', None)
         # if msg_id == LspMethodId.initialize_id:
         #     app.register_lsp_serve_capacities(lsp_serve_name, msg['result']['capabilities'])
@@ -50,7 +52,8 @@ def base_lsp_handler(app, msg: dict, lsp_serve_name: str, file_path: str):
                     current_tab.lsp_render.render_references(rs)
 
                 elif msg_id == LspMethodId.textdocumentdocumenthighlight_id:
-                    print('hiligh: ', msg)
+                    # print('hiligh: ', msg)
+                    pass
                 elif msg['id'] == LspMethodId.textdocumentdocumentsymbol_id:
                     if msg['result']:
                         if not msg['result'][0].get('location', None):
@@ -69,7 +72,6 @@ def base_lsp_handler(app, msg: dict, lsp_serve_name: str, file_path: str):
                     import pprint
                     print(msg)
                 elif msg_id == LspMethodId.textdocumentformatting_id:
-                    print('get formart msg')
                     response = lsp_context.converter.structure(msg, lsp_context.type.TextDocumentFormattingResponse)
                     if response.result:
                         current_tab.lsp_render.render_format(response.result)
@@ -78,12 +80,20 @@ def base_lsp_handler(app, msg: dict, lsp_serve_name: str, file_path: str):
             else:
                 notification_method = msg.get('method', None)
                 if notification_method == lsp_context.type.TEXT_DOCUMENT_PUBLISH_DIAGNOSTICS:
-                    print('get render =======')
                     params = msg['params']
                     uri = params['uri']
                     diagnostics = params['diagnostics']
                     obj = lsp_context.converter.structure(diagnostics, List[lsp_context.type.Diagnostic])
                     current_tab.lsp_render.render_diagnostics(uri, obj)
+                elif notification_method == lsp_context.type.TEXT_DOCUMENT_DID_CLOSE:
+                    print('get close message ', )
+                    print(msg)
+                elif notification_method == lsp_context.type.TEXT_DOCUMENT_DID_SAVE:
+                    print('get save msg')
+                    print(msg)
+                elif notification_method == lsp_context.type.TEXT_DOCUMENT_WILL_SAVE:
+                    print('get will save msg')
+                    print(msg)
 
 
 # register_handler('jedi-language-serve', base_lsp_handler)

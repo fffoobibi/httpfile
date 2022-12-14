@@ -19,6 +19,59 @@ from widgets.loggers import lsp_logger
 _lsp_context = LspContext()
 _t = _lsp_context.type
 _method_id = _lsp_context.method_id
+_token = _lsp_context.token
+
+
+# decorator
+def send_to_language_serve_in_thread(method):
+    def wrapper(self, *a, **kw):
+        serve_name = self.lsp_serve_name()
+        worker = WorkerManager().get('lsp-worker')
+
+        async def _send(body):
+            try:
+                try:
+                    path = self.app.current_file_path()
+                except:
+                    path = None
+                if isinstance(body, tuple):
+                    body, method_name_ = body
+                lsp_logger.info(f'{self} request {body.get("method")}')
+                client = self.app.get_client(serve_name)
+                resp = await client.send_lsg_msg(body)
+                return resp, path
+            except:
+                import traceback
+                traceback.print_exc()
+                raise
+
+        def _call(msg_path):
+            msg_, path = msg_path
+            self.app.dispatch_lsp_msg(msg_, serve_name, path)
+
+        def _err(error):
+            pass
+
+        try:
+            method_name: str = method.__name__
+            prefix, m = method_name.split('on', maxsplit=1)
+            true_call = getattr(self, f'on_{m.lower()}')
+            msg = true_call(*a, **kw)
+            worker.add_coro(_send(msg), call_back=_call,
+                            err_back=_err)
+        except:
+            raise
+
+    return wrapper
+
+
+def not_implement(method):
+    def wrapper(*a, **kw):
+        import warnings
+        warnings.warn('not implement yet, to do')
+        raise NotImplementedError
+
+    return wrapper
 
 
 class ILanguageServe(object):
@@ -36,6 +89,173 @@ class ILanguageServe(object):
     @classmethod
     def clientCapacities(cls) -> ClientCapabilities:
         raise NotImplementedError
+
+
+class ILanguageLifecycle(object):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onInitialize(cls, client_cap: _t.ClientCapabilities, client_info: _t.InitializeParamsClientInfoType = None,
+                     root_uri: str = None):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onInitialized(cls):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onRegisterCapability(cls, file_path: str):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onUnregisterCapability(cls):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onSetTrace(cls):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onLogTrace(cls):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onShutDown(cls):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onExit(cls):
+        pass
+
+
+class ILanguageDocumentSynchronization(object):
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentWillSaveNotification(cls, file_path: str, reason: _t.TextDocumentSaveReason):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDidOpen(cls, file_path: str, language_id: str,
+                              version: int, text: str):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDidChange(cls, file_path: str, text: str, version: int):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDidSave(cls, file_path: str, version: int):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDidClose(cls, file_path: str):
+        pass
+
+    @classmethod
+    @not_implement
+    @send_to_language_serve_in_thread
+    def onNoteBookDidOpen(cls, file_path: str, language_id: str,
+                          version: int, text: str):
+        pass
+
+    @classmethod
+    @not_implement
+    @send_to_language_serve_in_thread
+    def onNoteBookDidChange(cls, file_path: str, text: str, version: int):
+        pass
+
+    @classmethod
+    @not_implement
+    @send_to_language_serve_in_thread
+    def onNoteBookDidSave(cls, file_path: str, version: int):
+        pass
+
+    @classmethod
+    @not_implement
+    @send_to_language_serve_in_thread
+    def onNoteBookDidClose(cls, file_path: str):
+        pass
+
+
+class ILanguageFeatures(object):
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentFormatting(cls, file_path: str):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDocumentHighlight(cls, file_path: str):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDocumentSymbol(cls, file_path: str):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentFolding(cls):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDocumentLink(cls):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentSignatureHelp(cls):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentInfer(cls, word: str, line, col):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentCompletion(cls, word: str, line, col, file_path: str):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentHover(cls, word: str, line: int, col: int,
+                            file_path: str):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentReferences(cls, word: str, line, col):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentRename(cls, word: str, line, col):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentColor(cls, file_path: str):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentPublishDiagnostics(cls, file_path: str, version: int,
+                                         start_line: int, start_col: int,
+                                         end_line: int, end_col: int):
+        pass
 
 
 class ILanguageServeImp(object):
@@ -69,7 +289,11 @@ class ILanguageServeImp(object):
         raise NotImplementedError
 
     @classmethod
-    def on_textdocumentdidsave(cls, file_path: str):
+    def on_textdocumentwillsavenotification(cls, file_path: str, reason: _t.TextDocumentSaveReason):
+        raise NotImplementedError
+
+    @classmethod
+    def on_textdocumentdidsave(cls, file_path: str, version: int):
         raise NotImplementedError
 
     @classmethod
@@ -194,8 +418,10 @@ class LanguageServerMixIn(ILanguageServe, ILanguageServeImp):
 
     @classmethod
     def register_to_app(cls, main_app: LSPAppMixIn) -> bool:
+        print('try to register main app ===> ', cls, getattr(cls, 'app', None))
         if getattr(cls, 'app', None) is None:
             cls.app = main_app
+            print('register app ====>', cls, cls.app)
             if cls.language_client_class is TCPLanguageClient:
                 return main_app.register_lsp_serve_params(cls.client_init_params(),
                                                           cls._client, 'tcp')
@@ -230,6 +456,8 @@ class LanguageServerMixIn(ILanguageServe, ILanguageServeImp):
                     resp = await client.send_lsg_msg(body)
                     return resp, path
                 except:
+                    import traceback
+                    traceback.print_exc()
                     raise
 
             def _call(msg_path):
@@ -256,6 +484,11 @@ class LanguageServerMixIn(ILanguageServe, ILanguageServeImp):
     @send_to_language_serve_in_thread
     def onInitialize(cls, client_cap: _t.ClientCapabilities, client_info: _t.InitializeParamsClientInfoType = None,
                      root_uri: str = None):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onInitialized(cls):
         pass
 
     @classmethod
@@ -290,7 +523,12 @@ class LanguageServerMixIn(ILanguageServe, ILanguageServeImp):
 
     @classmethod
     @send_to_language_serve_in_thread
-    def onTextDocumentDidSave(cls):
+    def onTextDocumentWillSaveNotification(cls, file_path: str, reason: _t.TextDocumentSaveReason):
+        pass
+
+    @classmethod
+    @send_to_language_serve_in_thread
+    def onTextDocumentDidSave(cls, file_path: str, version: int):
         pass
 
     @classmethod
@@ -348,7 +586,7 @@ class LanguageServerMixIn(ILanguageServe, ILanguageServeImp):
 
     @classmethod
     @send_to_language_serve_in_thread
-    def onTextDocumentDidSave(cls, file_path: str):
+    def onTextDocumentDidSave(cls, file_path: str, version: int):
         pass
 
     @classmethod
@@ -410,9 +648,22 @@ class LanguageServerMixIn(ILanguageServe, ILanguageServeImp):
         return _lsp_context.body(r)
 
     @classmethod
-    def on_textdocumentdidsave(cls, file_path: str):
+    def on_textdocumentwillsavenotification(cls, file_path: str, reason: _t.TextDocumentSaveReason):
+        params = _t.WillSaveTextDocumentParams(
+            text_document=_t.TextDocumentIdentifier(
+                uri=f'file:///{file_path}'),
+            reason=reason
+        )
+        r = _t.TextDocumentWillSaveNotification(
+            params=params
+        )
+        return _lsp_context.body(r)
+
+    @classmethod
+    def on_textdocumentdidsave(cls, file_path: str, version: int):
         params = _t.DidSaveTextDocumentParams(
             text_document=_t.VersionedTextDocumentIdentifier(
+                version=version,
                 uri=f'file:///{file_path}'),
         )
         r = _t.TextDocumentDidSaveNotification(
@@ -423,14 +674,14 @@ class LanguageServerMixIn(ILanguageServe, ILanguageServeImp):
     @classmethod
     def on_textdocumentdidclose(cls, file_path: str):
         params = _t.DidCloseTextDocumentParams(
-            text_document=_t.TextDocumentIdentifier(uri=f'file:///{file_path}')
+            text_document=_t.TextDocumentIdentifier(uri=f'file://{file_path}')
         )
         r = _t.TextDocumentDidCloseNotification(
             params=params
         )
         return _lsp_context.body(r)
 
-    # normal
+    ### Document Synchronization
     @classmethod
     def on_initialize(cls, client_cap: _t.ClientCapabilities, client_info: _t.InitializeParamsClientInfoType = None,
                       root_uri: str = None,
@@ -441,12 +692,19 @@ class LanguageServerMixIn(ILanguageServe, ILanguageServeImp):
                 capabilities=client_cap,  # self.clientCapacities(),
                 client_info=client_info,  # self.client_info(),
                 root_uri=root_uri,  # self.app.lsp_root_uri(),
-
                 work_done_token=c.token.initialize_token
             )
             req = t.InitializeRequest(id=c.method_id.initialize_id,
                                       params=params)
             return c.body(req, method_name=t.INITIALIZE)
+
+    @classmethod
+    def on_initialized(cls):
+        params = _t.InitializedParams()
+        r = _t.InitializedNotification(
+            params=params
+        )
+        return _lsp_context.body(r)
 
     @classmethod
     def on_textdocumentdiagnosticrequest(cls, file_path: str):
@@ -469,7 +727,7 @@ class LanguageServerMixIn(ILanguageServe, ILanguageServeImp):
             position=_t.Position(line=line, character=col)
         )
         r = _t.TextDocumentReferencesRequest(
-            id=c.method_id.textdocumentreferences_id, params=params)
+            id=_method_id.textdocumentreferences_id, params=params)
         return _lsp_context.body(r)
 
     @classmethod

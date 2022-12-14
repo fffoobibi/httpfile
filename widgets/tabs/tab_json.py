@@ -5,10 +5,10 @@ from typing import List
 
 import jmespath
 from PyQt5.Qsci import QsciLexerJSON
-from PyQt5.QtCore import Qt, pyqtSignal, QPoint
-from PyQt5.QtGui import QColor, QIcon, QFontMetricsF, QFont, QCursor
+from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QEvent, QRectF, QSize
+from PyQt5.QtGui import QColor, QIcon, QFontMetricsF, QFont, QCursor, QPainter, QPainterPath, QTextOption, QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSplitter, QTextEdit, QHBoxLayout, QPushButton, \
-    QSpacerItem, QSizePolicy, QListWidget, QMenu, QApplication
+    QSpacerItem, QSizePolicy, QListWidget, QMenu, QApplication, QListWidgetItem
 from cached_property import cached_property
 from lsprotocol.types import ClientCapabilities
 
@@ -222,6 +222,61 @@ class JsonCodeWidget(TabCodeWidget):
 
         return [self.navigator_bar]
 
+    class NavigatorButton(QWidget):
+        def __init__(self, txt: str, draw_arrow=True):
+            super().__init__()
+            self.bk = QColor(current_styles.editor_json['paper']['background'])
+            self.fk = QColor(current_styles.button_hover)
+            self.hover = False
+            self.draw_arrow = draw_arrow
+            self.txt = txt
+            self.fm = QFontMetricsF(QFont('微软雅黑', 10))
+            self.fm_h = self.fm.height() * 1.4
+            self.fm_w = self.fm.width(self.txt) + 20
+            self.setFixedHeight(self.fm_h)
+            self.setFixedWidth(self.fm_w)
+            self.font = QFont('微软雅黑', 10)
+
+        def enterEvent(self, a0: QEvent) -> None:
+            super().enterEvent(a0)
+            self.hover = True
+            self.update()
+
+        def leaveEvent(self, a0: QEvent) -> None:
+            super().leaveEvent(a0)
+            self.hover = False
+            self.update()
+
+        def paintEvent(self, a0: 'QPaintEvent') -> None:
+            super().paintEvent(a0)
+            painter = QPainter()
+            painter.begin(self)
+            painter.setRenderHints(QPainter.Antialiasing | QPainter.TextAntialiasing, True)
+            w = self.width()
+            h = self.height()
+            if self.hover:
+                painter.fillRect(self.rect(), self.fk)
+            else:
+                painter.fillRect(self.rect(), self.bk)
+
+            painter.setPen(QColor(current_styles.foreground))
+            painter.setFont(self.font)
+            x = (self.fm_w - w) / 2
+            y = (self.fm_h - h) / 2
+            painter.drawText(self.rect().adjusted(x, y, -x, -y), Qt.AlignHCenter | Qt.AlignVCenter, self.txt, )
+            # draw arrow
+            if self.draw_arrow:
+                icon = ':/icon/箭头_列表向右.svg'
+                x1 = w - 8
+                y1 = h / 6
+
+                x2 = 0
+                y2 = h / 6
+                painter.drawPixmap(self.rect().adjusted(x1, y1, -x2, -y2),
+                                   QPixmap(icon).scaled(QSize(8, h * 2 / 3), transformMode=Qt.SmoothTransformation))
+
+            painter.end()
+
     @cached_property
     def navigator_bar(self):
         f = QListWidget()
@@ -230,25 +285,32 @@ class JsonCodeWidget(TabCodeWidget):
         f.setLayoutDirection(Qt.LeftToRight)
         f.setFlow(QListWidget.LeftToRight)
         f.setSpacing(0)
-        f.setStyleSheet('QListWidget{background: %s;color: %s;font-family:微软雅黑}' % (
+        f.setStyleSheet('QListWidget{background: %s;color: %s;font-family:微软雅黑;border:none;}' % (
             current_styles.editor_json['paper']['background'], current_styles.foreground))
-        fm = QFontMetricsF(QFont('微软雅黑'))
-        # fl = QHBoxLayout(f)
-        # fl.setSpacing(0)
-        # fl.setContentsMargins(0, 0, 0, 0)
-        f.setFixedHeight(fm.height() + 4)
+        fm = QFontMetricsF(QFont('微软雅黑', 10))
+        f.setFixedHeight(fm.height() * 1.4)
         return f
 
     def set_navigator_items(self, items: List[str]):
         self.navigator_bar.clear()
-        self.navigator_bar.addItems(items)
+        # self.navigator_bar.addItems(items)
+        length = len(items)
+        for index, txt in enumerate(items):
+            item = QListWidgetItem()
+            item.setText(txt)
+            item.setForeground(Qt.transparent)
+            widget = self.NavigatorButton(txt, not (index == length - 1))
+            item.setSizeHint(widget.size())
+            self.navigator_bar.addItem(item)
+            self.navigator_bar.setItemWidget(item, widget)
         self.navigator_bar.setCurrentRow(len(items) - 1)
         self.navigator_bar.update()
 
     language_client_class = StdIoLanguageClient
 
-    def lsp_init_kw(self) -> dict:
-        if self.language_client_class is StdIoLanguageClient:
+    @classmethod
+    def lsp_init_kw(cls) -> dict:
+        if cls.language_client_class is StdIoLanguageClient:
             from json_lsp.main import NODE, PATH_TO_BIN_JS
             commands = [
                 r'vscode-json-languageserver.cmd', '--stdio'
@@ -263,20 +325,27 @@ class JsonCodeWidget(TabCodeWidget):
 
         return dict(host='127.0.0.1', port=9910)
 
-    def lsp_serve_name(self) -> str:
+    @classmethod
+    def lsp_serve_name(cls) -> str:
         return 'vscode-json-language-server'
 
-    def clientCapacities(self) -> ClientCapabilities:
+    @classmethod
+    def clientCapacities(cls) -> ClientCapabilities:
         with LspContext() as c:
             t = c.type
-            r = t.ClientCapabilities(text_document=t.TextDocumentClientCapabilities(
-                references=t.ReferenceClientCapabilities(dynamic_registration=True),
-                color_provider=t.DocumentColorClientCapabilities(dynamic_registration=True),
-                publish_diagnostics=t.PublishDiagnosticsClientCapabilities(),
-                document_symbol=t.DocumentSymbolClientCapabilities(
-                    hierarchical_document_symbol_support=True
-                )
-            ))
+            r = t.ClientCapabilities(
+                text_document=t.TextDocumentClientCapabilities(
+                    synchronization=t.TextDocumentSyncClientCapabilities(
+                        will_save=True,
+                        did_save=True
+                    ),
+                    references=t.ReferenceClientCapabilities(dynamic_registration=True),
+                    color_provider=t.DocumentColorClientCapabilities(dynamic_registration=True),
+                    publish_diagnostics=t.PublishDiagnosticsClientCapabilities(),
+                    document_symbol=t.DocumentSymbolClientCapabilities(
+                        hierarchical_document_symbol_support=True
+                    )
+                ))
             return r
 
     def custom_menu_support(self):
@@ -291,7 +360,7 @@ class JsonCodeWidget(TabCodeWidget):
             if act == ac1:
                 print(
                     'canformat: ',
-                    self.serverCapacities.document_formatting_provider,
+                    self.serverCapacities().document_formatting_provider,
                     self.main_app.get_lsp_capacities(self.lsp_serve_name()).document_formatting_provider)
             elif act == ac2:
                 pointer_str = []
@@ -299,3 +368,21 @@ class JsonCodeWidget(TabCodeWidget):
                     txt = self.navigator_bar.item(i).text()
                     pointer_str.append(txt)
                 QApplication.clipboard().setText('/'.join(pointer_str))
+
+
+def install_lsp_service():
+    serve_name = JsonCodeWidget.lsp_serve_name()
+
+    def _factory(main_app: 'appHint', root_uri: str):
+        try:
+            code = JsonCodeWidget._make_code_class()
+            # print('install code: ', code, 'get obj: ', JsonCodeWidget._object())
+            if code.register_to_app(main_app):
+                lsp_name = JsonCodeWidget.lsp_serve_name()
+                main_app.get_client(lsp_name)
+                code.onInitialize(code.clientCapacities(), code.client_info(), root_uri=root_uri)
+        except:
+            import traceback
+            traceback.print_exc()
+
+    return serve_name, _factory

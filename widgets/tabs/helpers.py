@@ -26,6 +26,7 @@ from widgets.base import PluginBaseMixIn
 from widgets.factorys import add_styled
 from widgets.interfaces import ILanguageInterFace
 from widgets.styles import current_styles
+from widgets.tabs.utils import get_function
 
 _code_refs = weakref.WeakValueDictionary()
 
@@ -142,15 +143,25 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
                         language_server_factory):
         @classmethod
         def lsp_serve_name(cls) -> str:
-            return lsp_serve_name()
+            # print('lsp_serve_name  ==>', lsp_serve_name)
+            if isinstance(lsp_serve_name, types.MethodType):
+                return lsp_serve_name()
+            else:
+                return lsp_serve_name(cls)
 
         @classmethod
         def lsp_init_kw(cls) -> dict:
-            return lsp_init_kw()
+            if isinstance(lsp_init_kw, types.MethodType):
+                return lsp_init_kw()
+            else:
+                return lsp_init_kw(cls)
 
         @classmethod
         def clientCapacities(cls) -> ClientCapabilities:
-            return clientCapacities()
+            if isinstance(lsp_serve_name, types.MethodType):
+                return clientCapacities()
+            else:
+                return clientCapacities(cls)
 
         support_language_parse: bool = False
         language_client_class = client_class
@@ -178,10 +189,11 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
 
         if render_style:
             def render_custom_style(self):
-                if isinstance(render_style, types.MethodType):
-                    render_style.__func__(self)
-                else:
-                    render_style(self)
+                get_function(render_style)(self)
+                # if isinstance(render_style, types.MethodType):
+                #     render_style.__func__(self)
+                # else:
+                #     render_style(self)
 
         if find_self:
             @property
@@ -430,6 +442,14 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             return list(self._current_refs)
 
         @property
+        def version(self) -> int:
+            return self._version
+
+        @version.setter
+        def version(self, value: int):
+            self._version = value
+
+        @property
         def current_refs(self) -> Union[_Queue[t.Location], list]:
             if self.support_language_parse:
                 return self._current_refs
@@ -555,7 +575,7 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             super(BaseCodeChild, self).__init__()
             self.SendScintilla(self.SCI_SETFONTQUALITY,
                                self.SC_EFF_QUALITY_ANTIALIASED)
-
+            self._version = 0
             self.code_container = instance
             self.find_from = find_self
             self._has_alt_control: bool = False
@@ -575,11 +595,17 @@ def _make_child(instance, lex_func, app_exit, app_start_up, custom_menu_support,
             if instance is None:
                 out = custom_menu_support(instance)
             else:
-                out = custom_menu_support(self)
+                # if isinstance(custom_menu_support, types.MethodType):
+                #     out = custom_menu_support()
+                # else:
+                #     out = custom_menu_support(self)
+                out = get_function(custom_menu_support)(self)
 
             if out:
                 self.setContextMenuPolicy(Qt.CustomContextMenu)
-                self.customContextMenuRequested.connect(custom_menu_policy)
+                bind_menu = get_function(custom_menu_policy)
+
+                self.customContextMenuRequested.connect(lambda pos: bind_menu(self, pos))
             if multi_line:
                 self.setWrapMode(self.WrapCharacter)
             if simple_search:
